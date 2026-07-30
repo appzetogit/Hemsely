@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Lexend", sans-serif;
+
+  /*
+   * Hemsely brand palette — derived from the purple (#6F3BCE / #733FE0)
+   * already used consistently across the dating-app screens. Swap these
+   * values for the user's official brand colors/logo when provided; every
+   * admin surface reads from this single scale so the swap is a config
+   * change, not a rewrite.
+   */
+  --color-brand-50: #F9F7FF;
+  --color-brand-100: #F0EBFB;
+  --color-brand-200: #DBCFFA;
+  --color-brand-300: #C0AAF5;
+  --color-brand-400: #9F7CEC;
+  --color-brand-500: #6F3BCE;
+  --color-brand-600: #5F2EBD;
+  --color-brand-700: #4C2A9E;
+  --color-brand-800: #3B1F79;
+  --color-brand-900: #2B1658;
+
+  --color-success-50: #ECFDF5;
+  --color-success-500: #10B981;
+  --color-success-600: #059669;
+
+  --color-danger-50: #FEF2F2;
+  --color-danger-500: #EF4444;
+  --color-danger-600: #DC2626;
+
+  --color-warning-50: #FFFBEB;
+  --color-warning-500: #F59E0B;
+  --color-warning-600: #D97706;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+}

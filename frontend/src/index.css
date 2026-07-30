@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Lexend", sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button,
+.custom-date-input::-webkit-calendar-picker-indicator {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Hide native browser placeholder text (dd-mm-yyyy / dd/mm/yyyy) for empty date inputs */
+input[type="date"].empty-date-input::-webkit-datetime-edit,
+input[type="date"].empty-date-input::-webkit-datetime-edit-fields-wrapper,
+input[type="date"].empty-date-input::-webkit-datetime-edit-text,
+input[type="date"].empty-date-input::-webkit-datetime-edit-month-field,
+input[type="date"].empty-date-input::-webkit-datetime-edit-day-field,
+input[type="date"].empty-date-input::-webkit-datetime-edit-year-field {
+  color: transparent !important;
+}

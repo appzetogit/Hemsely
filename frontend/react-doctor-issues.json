@@ -1,0 +1,1618 @@
+{
+  "package.json": [
+    {
+      "rule": "unused-dependency",
+      "message": "Unused dependency: `clsx`"
+    },
+    {
+      "rule": "unused-dependency",
+      "message": "Unused dependency: `framer-motion`"
+    },
+    {
+      "rule": "unused-dependency",
+      "message": "Unused dependency: `tailwind-merge`"
+    }
+  ],
+  "src/App.jsx": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    }
+  ],
+  "src/components/BottomNavigation.jsx": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    },
+    {
+      "rule": "no-nested-component-definition",
+      "line": 13,
+      "message": "Your users lose all state in \"NavItem\" on every render because it's defined inside \"BottomNavigation\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 13,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`BottomNavigation`)."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 14,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 14,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    }
+  ],
+  "src/components/HeartIcon.jsx": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    }
+  ],
+  "src/context/AuthContext.jsx": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 21,
+      "message": "localStorage.setItem(\"Hemsely_user\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"Hemsely_user:v1\")."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 32,
+      "message": "localStorage.setItem(\"Hemsely_user\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"Hemsely_user:v1\")."
+    },
+    {
+      "rule": "jsx-no-constructed-context-values",
+      "line": 36,
+      "message": "Every reader of this context redraws on each render because you build its `value` inline."
+    }
+  ],
+  "src/lib/adminQueue.js": [
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 27,
+      "message": "localStorage.setItem(\"amora_admin_queue_settings\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_admin_queue_settings:v1\")."
+    }
+  ],
+  "src/modules/admin/components/AdminLayout.jsx": [
+    {
+      "rule": "rerender-state-only-in-handlers",
+      "line": 7,
+      "message": "Each update to \"isMobileMenuOpen\" redraws your component for nothing because this useState is set but never shown on screen."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 22,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 34,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 41,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/admin/components/AdminSidebar.jsx": [
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 23,
+      "message": "`navItems` inside `AdminSidebar` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 36,
+      "message": "`websitePagesItems` inside `AdminSidebar` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 125,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/admin/pages/AdminDashboardPage.jsx": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    }
+  ],
+  "src/modules/admin/pages/AdminLoginPage.jsx": [
+    {
+      "rule": "auth-token-in-web-storage",
+      "line": 102,
+      "message": "Storing an auth token in `localStorage`/`sessionStorage` exposes it to any XSS on the page: JavaScript can read web storage and exfiltrate the token. Keep tokens in an `HttpOnly`, `Secure`, `SameSite` cookie instead."
+    }
+  ],
+  "src/modules/admin/pages/AdminProfilePage.jsx": [
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 35,
+      "message": "localStorage.setItem(\"amora_admin_profile\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_admin_profile:v1\")."
+    },
+    {
+      "rule": "no-nested-component-definition",
+      "line": 67,
+      "message": "Your users lose all state in \"PasswordInput\" on every render because it's defined inside \"AdminProfilePage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 67,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`AdminProfilePage`)."
+    },
+    {
+      "rule": "html-label-has-single-control",
+      "line": 68,
+      "message": "This label contains multiple native controls, but a label can identify only one control. Split the labels or name the group with fieldset and legend."
+    }
+  ],
+  "src/modules/admin/pages/AdminSettingsPage.jsx": [
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 42,
+      "message": "localStorage.setItem(\"amora_admin_settings\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_admin_settings:v1\")."
+    },
+    {
+      "rule": "no-nested-component-definition",
+      "line": 88,
+      "message": "Your users lose all state in \"PasswordInput\" on every render because it's defined inside \"AdminSettingsPage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 88,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`AdminSettingsPage`)."
+    },
+    {
+      "rule": "html-label-has-single-control",
+      "line": 89,
+      "message": "This label contains multiple native controls, but a label can identify only one control. Split the labels or name the group with fieldset and legend."
+    }
+  ],
+  "src/modules/admin/pages/AppConfigPage.jsx": [
+    {
+      "rule": "rendering-hydration-no-flicker",
+      "line": 31,
+      "message": "`useEffect(setState, [])` runs after the first paint, so users can see the initial state flash. Initialize from a render-safe value or use `useSyncExternalStore` for external values."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 49,
+      "message": "localStorage.setItem(\"amora_app_config\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_app_config:v1\")."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 56,
+      "message": "localStorage.setItem(\"amora_app_config\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_app_config:v1\")."
+    },
+    {
+      "rule": "no-nested-component-definition",
+      "line": 61,
+      "message": "Your users lose all state in \"ToggleRow\" on every render because it's defined inside \"AppConfigPage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 61,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`AppConfigPage`)."
+    },
+    {
+      "rule": "no-nested-component-definition",
+      "line": 78,
+      "message": "Your users lose all state in \"NumberField\" on every render because it's defined inside \"AppConfigPage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 78,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`AppConfigPage`)."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 86,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 109,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 113,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 188,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 189,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    }
+  ],
+  "src/modules/admin/pages/DashboardPage.jsx": [
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 22,
+      "message": "`recentUsers` inside `DashboardPage` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 76,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/admin/pages/ModerationPage.jsx": [
+    {
+      "rule": "no-giant-component",
+      "line": 8,
+      "message": "Component \"ModerationPage\" is over 300 lines long, which is hard to read & change. Split it into a few smaller components."
+    },
+    {
+      "rule": "no-set-state-after-await-in-effect",
+      "line": 54,
+      "message": "This setter runs after `await`, so overlapping re-runs of the effect can resolve out of order and write stale state; gate it behind a cancellation/ignore flag or return a cleanup that cancels the work."
+    },
+    {
+      "rule": "exhaustive-deps",
+      "line": 56,
+      "message": "`useEffect` can run with a stale `fetchUsers` & show your users old data."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 111,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 111,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "no-array-index-as-key",
+      "line": 236,
+      "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"idx\"."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 262,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 338,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/admin/pages/NotificationsPage.jsx": [
+    {
+      "rule": "button-has-type",
+      "line": 61,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 108,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 127,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 142,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 161,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 161,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 169,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 189,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 190,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 202,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 203,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    }
+  ],
+  "src/modules/admin/pages/QueueManagementPage.jsx": [
+    {
+      "rule": "rendering-hydration-no-flicker",
+      "line": 33,
+      "message": "`useEffect(setState, [])` runs after the first paint, so users can see the initial state flash. Initialize from a render-safe value or use `useSyncExternalStore` for external values."
+    }
+  ],
+  "src/modules/admin/pages/ReportsPage.jsx": [
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 24,
+      "message": "`map` inside `StatusBadge` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 118,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 119,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 128,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 129,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 137,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 187,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 196,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 206,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 229,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 240,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 270,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 308,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 317,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 325,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/admin/pages/SubscriptionsPage.jsx": [
+    {
+      "rule": "no-giant-component",
+      "line": 50,
+      "message": "Component \"SubscriptionsPage\" is over 300 lines long, which is hard to read & change. Split it into a few smaller components."
+    },
+    {
+      "rule": "rendering-hydration-no-flicker",
+      "line": 55,
+      "message": "`useEffect(setState, [])` runs after the first paint, so users can see the initial state flash. Initialize from a render-safe value or use `useSyncExternalStore` for external values."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 60,
+      "message": "localStorage.setItem(\"amora_admin_subscriptions\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_admin_subscriptions:v1\")."
+    }
+  ],
+  "src/modules/admin/pages/TransactionsPage.jsx": [
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 29,
+      "message": "`styles` inside `StatusBadge` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 135,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 136,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 146,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 147,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 157,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 158,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 167,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 168,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 177,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 183,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 251,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 262,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/admin/pages/UsersPage.jsx": [
+    {
+      "rule": "no-giant-component",
+      "line": 16,
+      "message": "Component \"UsersPage\" is over 300 lines long, which is hard to read & change. Split it into a few smaller components."
+    },
+    {
+      "rule": "no-set-state-after-await-in-effect",
+      "line": 60,
+      "message": "This setter runs after `await`, so overlapping re-runs of the effect can resolve out of order and write stale state; gate it behind a cancellation/ignore flag or return a cleanup that cancels the work."
+    },
+    {
+      "rule": "exhaustive-deps",
+      "line": 62,
+      "message": "`useEffect` can run with a stale `fetchUsers` & show your users old data."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 83,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 83,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "no-array-index-as-key",
+      "line": 309,
+      "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"idx\"."
+    }
+  ],
+  "src/modules/admin/pages/WebsitePageEditorPage.jsx": [
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 75,
+      "message": "localStorage.setItem(\"amora_website_pages_content\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_website_pages_content:v1\")."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 93,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 124,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 127,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 142,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 145,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 160,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    }
+  ],
+  "src/modules/admin/pages/WebsitePagesPage.jsx": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 40,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    }
+  ],
+  "src/modules/user/components/BottomNavigation.jsx": [
+    {
+      "rule": "no-nested-component-definition",
+      "line": 13,
+      "message": "Your users lose all state in \"NavItem\" on every render because it's defined inside \"BottomNavigation\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 13,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`BottomNavigation`)."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 14,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 14,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    }
+  ],
+  "src/modules/user/context/AuthContext.jsx": [
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 21,
+      "message": "localStorage.setItem(\"Hemsely_user\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"Hemsely_user:v1\")."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 32,
+      "message": "localStorage.setItem(\"Hemsely_user\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"Hemsely_user:v1\")."
+    },
+    {
+      "rule": "jsx-no-constructed-context-values",
+      "line": 36,
+      "message": "Every reader of this context redraws on each render because you build its `value` inline."
+    }
+  ],
+  "src/modules/user/pages/AddPhotosPage.jsx": [
+    {
+      "rule": "rerender-state-only-in-handlers",
+      "line": 10,
+      "message": "Each update to \"activeIndex\" redraws your component for nothing because this useState is set but never shown on screen."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 39,
+      "message": "localStorage.setItem(\"onboarding_photos\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"onboarding_photos:v1\")."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 71,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 71,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 71,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "no-array-index-as-key",
+      "line": 72,
+      "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"idx\"."
+    },
+    {
+      "rule": "img-redundant-alt",
+      "line": 80,
+      "message": "Screen reader users hear \"image\" or \"photo\" twice because they already announce it, so describe what the image shows instead."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 111,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/ChatListPage.jsx": [
+    {
+      "rule": "click-events-have-key-events",
+      "line": 33,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 33,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 76,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 76,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 148,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 148,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/ChatScreenPage.jsx": [
+    {
+      "rule": "no-static-element-interactions",
+      "line": 133,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 151,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 163,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 210,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 210,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 244,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 244,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 273,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 277,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 286,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 298,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 302,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/DiscoveryPage.jsx": [
+    {
+      "rule": "button-has-type",
+      "line": 230,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 246,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 293,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 322,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 322,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 337,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 337,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 361,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 361,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-array-index-as-key",
+      "line": 474,
+      "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"idx\"."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 499,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 499,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-giant-component",
+      "line": 521,
+      "message": "Component \"DiscoveryPage\" is over 300 lines long, which is hard to read & change. Split it into a few smaller components."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 619,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 619,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 644,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 644,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 670,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 705,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 709,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 709,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-array-index-as-key",
+      "line": 760,
+      "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"i\"."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 778,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 833,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 846,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/EditProfilePage.jsx": [
+    {
+      "rule": "control-has-associated-label",
+      "line": 130,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 130,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 196,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 264,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 274,
+      "message": "localStorage.setItem(\"profile_complete\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"profile_complete:v1\")."
+    }
+  ],
+  "src/modules/user/pages/EnableLocationPage.jsx": [
+    {
+      "rule": "no-transition-all",
+      "line": 76,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 76,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/GenderSelectionPage.jsx": [
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 18,
+      "message": "localStorage.setItem(\"onboarding_gender\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"onboarding_gender:v1\")."
+    },
+    {
+      "rule": "no-nested-component-definition",
+      "line": 23,
+      "message": "Your users lose all state in \"GenderButton\" on every render because it's defined inside \"GenderSelectionPage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 23,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`GenderSelectionPage`)."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 24,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 105,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 105,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/InterestsPage.jsx": [
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 9,
+      "message": "`icons` inside `InterestsPage` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 51,
+      "message": "localStorage.setItem(\"onboarding_interests\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"onboarding_interests:v1\")."
+    },
+    {
+      "rule": "js-set-map-lookups",
+      "line": 69,
+      "message": "This scales poorly because `array.includes()` inside a loop scans the whole list every time. Use a Set for constant-time lookups."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 71,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 92,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/LikesYouPage.jsx": [
+    {
+      "rule": "no-static-element-interactions",
+      "line": 21,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 50,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 50,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 65,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 65,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 89,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 89,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-array-index-as-key",
+      "line": 202,
+      "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"idx\"."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 227,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 227,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 316,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 316,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 330,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 330,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/LoginScreen.jsx": [
+    {
+      "rule": "no-transition-all",
+      "line": 95,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 95,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 114,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 114,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 117,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 117,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 120,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 120,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 127,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/MeasurementUnitsPage.jsx": [
+    {
+      "rule": "no-nested-component-definition",
+      "line": 9,
+      "message": "Your users lose all state in \"UnitToggle\" on every render because it's defined inside \"MeasurementUnitsPage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 9,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`MeasurementUnitsPage`)."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 33,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 33,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 49,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 134,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 134,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/PhoneInputPage.jsx": [
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 34,
+      "message": "localStorage.setItem(\"onboarding_phone\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"onboarding_phone:v1\")."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 45,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 72,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 72,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 96,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 96,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 117,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 139,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 139,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/PremiumPage.jsx": [
+    {
+      "rule": "click-events-have-key-events",
+      "line": 6,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 6,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 71,
+      "message": "`features` inside `PremiumPage` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 90,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 90,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-array-index-as-key",
+      "line": 186,
+      "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"i\"."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 192,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/PrivacyPolicyPage.jsx": [
+    {
+      "rule": "control-has-associated-label",
+      "line": 22,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 22,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 46,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/ProfileDetailPage.jsx": [
+    {
+      "rule": "control-has-associated-label",
+      "line": 32,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 32,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 37,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 37,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 51,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-noninteractive-element-interactions",
+      "line": 51,
+      "message": "Keyboard & screen reader users can't trigger this `<h2>` because it isn't interactive, so use a button or link or add an interactive role."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 81,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 84,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 84,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/ProfileDetailsPage.jsx": [
+    {
+      "rule": "no-eager-new-in-use-state-initializer",
+      "line": 13,
+      "message": "new Date() inside useState constructs a fresh instance on every render and discards it. Wrap the construction in a lazy initializer so it only runs once."
+    },
+    {
+      "rule": "client-localstorage-no-version",
+      "line": 20,
+      "message": "localStorage.setItem(\"onboarding_profile\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"onboarding_profile:v1\")."
+    },
+    {
+      "rule": "prefer-module-scope-pure-function",
+      "line": 36,
+      "message": "`daysInMonth` inside `ProfileDetailsPage` uses no local state but is rebuilt on every render, so it wastes work & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "prefer-module-scope-pure-function",
+      "line": 37,
+      "message": "`firstDayOfMonth` inside `ProfileDetailsPage` uses no local state but is rebuilt on every render, so it wastes work & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 39,
+      "message": "`months` inside `ProfileDetailsPage` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 80,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "label-has-associated-control",
+      "line": 115,
+      "message": "Screen reader users can't tell which input this label names because it's tied to none, so add `htmlFor` or wrap the input inside it."
+    },
+    {
+      "rule": "no-placeholder-only-field",
+      "line": 119,
+      "message": "Placeholder text disappears during entry and cannot replace a persistent field label. Add a visible associated label."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 131,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 131,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 145,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 148,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 148,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 157,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 157,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 185,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 185,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/ProfilePreviewPage.jsx": [
+    {
+      "rule": "no-static-element-interactions",
+      "line": 30,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 49,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 126,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 126,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 190,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-giant-component",
+      "line": 218,
+      "message": "Component \"ProfilePreviewPage\" is over 300 lines long, which is hard to read & change. Split it into a few smaller components."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 250,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 284,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 354,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 399,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 446,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 584,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/RelationshipGoalsPage.jsx": [
+    {
+      "rule": "button-has-type",
+      "line": 34,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 53,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 72,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/SettingsPage.jsx": [
+    {
+      "rule": "no-nested-component-definition",
+      "line": 10,
+      "message": "Your users lose all state in \"SectionHeader\" on every render because it's defined inside \"SettingsPage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 10,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`SettingsPage`)."
+    },
+    {
+      "rule": "no-nested-component-definition",
+      "line": 24,
+      "message": "Your users lose all state in \"SettingRow\" on every render because it's defined inside \"SettingsPage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 24,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`SettingsPage`)."
+    },
+    {
+      "rule": "click-events-have-key-events",
+      "line": 25,
+      "message": "Keyboard users can't trigger this click handler because there's no keyboard one, so add `onKeyUp`, `onKeyDown`, or `onKeyPress`."
+    },
+    {
+      "rule": "no-static-element-interactions",
+      "line": 25,
+      "message": "Screen reader users can't tell this click handler is interactive because it has no `role`, so add a `role` or use a button or link."
+    },
+    {
+      "rule": "no-nested-component-definition",
+      "line": 101,
+      "message": "Your users lose all state in \"Toggle\" on every render because it's defined inside \"SettingsPage\", so move it out to the top of the file."
+    },
+    {
+      "rule": "no-unstable-nested-components",
+      "line": 101,
+      "message": "Your users lose this component's state on every render because it's defined inside another component (`SettingsPage`)."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 102,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 102,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 102,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 118,
+      "message": "This can stutter because transition: \"all\" animates every property, even slow layout ones, so list only the properties you actually change"
+    },
+    {
+      "rule": "button-has-type",
+      "line": 158,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 253,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 267,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/TermsOfServicePage.jsx": [
+    {
+      "rule": "control-has-associated-label",
+      "line": 22,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 22,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 46,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/pages/VerifyOTPPage.jsx": [
+    {
+      "rule": "prefer-module-scope-static-value",
+      "line": 12,
+      "message": "`inputRefs` inside `VerifyOTPPage` uses no local state but is rebuilt every render, so it looks new each time & breaks memoized children. Move it to the top of the file, outside the component."
+    },
+    {
+      "rule": "control-has-associated-label",
+      "line": 80,
+      "message": "Blind users can't tell what this control does because screen readers find no label, so add visible text, `aria-label`, or `aria-labelledby`."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 80,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "no-array-index-as-key",
+      "line": 81,
+      "message": "Your users can see & submit the wrong data when this list reorders or filters, so use a stable id like `key={item.id}`, not the array index \"index\"."
+    },
+    {
+      "rule": "no-transition-all",
+      "line": 100,
+      "message": "Your users see janky animation because `transition-all` animates every property that changes, including expensive layout ones and instant ones like focus rings. Name the properties: `transition-colors`, `transition-opacity`, or `transition-transform`."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 100,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    },
+    {
+      "rule": "button-has-type",
+      "line": 108,
+      "message": "Your users can submit the form by accident because a `<button>` with no `type` defaults to submit."
+    }
+  ],
+  "src/modules/user/theme/profileTheme.js": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    }
+  ],
+  "src/routes/AppRoutes.jsx": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    }
+  ],
+  "src/theme/profileTheme.js": [
+    {
+      "rule": "unused-file",
+      "message": "Unused file is not reachable from any entry point, so it adds maintenance surface without shipping any code."
+    }
+  ]
+}
