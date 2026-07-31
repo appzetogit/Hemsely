@@ -14,7 +14,7 @@ const matchSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'rejected', 'blocked'],
+      enum: ['pending', 'accepted', 'rejected', 'blocked', 'unmatched'],
       default: 'pending',
     },
     initiatedBy: {
@@ -24,6 +24,17 @@ const matchSchema = new mongoose.Schema(
     },
     rejectedBy: mongoose.Schema.Types.ObjectId,
     rejectedAt: Date,
+    unmatchedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    unmatchedAt: Date,
+    deletedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     lastMessageAt: Date,
     isActive: {
       type: Boolean,

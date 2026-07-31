@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNavigation from '../components/BottomNavigation';
 import apiClient from '../../../shared/services/apiClient';
@@ -68,40 +68,81 @@ const MatchAvatar = ({ match, onClick }) => (
 );
 
 /* ─── Chat Item Component ─── */
-const ChatItem = ({ chat, onClick }) => (
-    <button
-        type="button"
-        onClick={onClick}
-        aria-label={`Chat with ${chat.name}`}
-        className="w-full px-5 py-3 hover:bg-purple-50/40 active:bg-purple-50/70 transition-colors flex items-center gap-3.5 border-b border-gray-50/80 cursor-pointer bg-transparent text-left"
-    >
-        <div className="relative shrink-0">
-            <img src={chat.photo} alt="" className="w-[54px] h-[54px] rounded-full object-cover border border-gray-100 shadow-xs" />
-        </div>
+const ChatItem = ({ chat, onClick, onHold }) => {
+    const timerRef = useRef(null);
+    const isLongPress = useRef(false);
 
-        <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-                <h3 className="text-[15px] font-bold text-gray-900 tracking-tight truncate leading-tight">
-                    {chat.name}
-                </h3>
-                <span className="text-[11px] text-gray-400 font-medium shrink-0">
-                    {chat.time}
-                </span>
-            </div>
+    const startPress = () => {
+        isLongPress.current = false;
+        timerRef.current = setTimeout(() => {
+            isLongPress.current = true;
+            if (onHold) onHold(chat);
+        }, 500);
+    };
 
-            <div className="flex items-center justify-between gap-2 mt-1">
-                <p className={`text-[13px] truncate leading-tight ${chat.unread ? 'text-[#703DE2] font-bold' : 'text-gray-500 font-normal'}`}>
-                    {chat.message}
-                </p>
-                {chat.unread > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-[#703DE2] text-white text-[10px] font-extrabold shadow-xs shrink-0 min-w-[18px] text-center">
-                        {chat.unread}
+    const cancelPress = () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+    };
+
+    const handleClick = (e) => {
+        if (isLongPress.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        onClick();
+    };
+
+    return (
+        <button
+            type="button"
+            onClick={handleClick}
+            onMouseDown={startPress}
+            onMouseUp={cancelPress}
+            onMouseLeave={cancelPress}
+            onTouchStart={startPress}
+            onTouchEnd={cancelPress}
+            onTouchMove={cancelPress}
+            onContextMenu={(e) => { e.preventDefault(); if (onHold) onHold(chat); }}
+            aria-label={`Chat with ${chat.name}`}
+            className="w-full px-5 py-3 hover:bg-purple-50/40 active:bg-purple-50/70 transition-colors flex items-center gap-3.5 border-b border-gray-50/80 cursor-pointer bg-transparent text-left relative select-none"
+        >
+            {chat.isUnmatched ? (
+                <div className="w-[54px] h-[54px] rounded-full bg-gray-200 border border-gray-100 shadow-xs flex items-center justify-center text-gray-400 shrink-0">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                </div>
+            ) : (
+                <div className="relative shrink-0">
+                    <img src={chat.photo} alt="" className="w-[54px] h-[54px] rounded-full object-cover border border-gray-100 shadow-xs" />
+                </div>
+            )}
+
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-[15px] font-bold text-gray-900 tracking-tight truncate leading-tight">
+                        {chat.name}
+                    </h3>
+                    <span className="text-[11px] text-gray-400 font-medium shrink-0">
+                        {chat.time}
                     </span>
-                )}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 mt-1">
+                    <p className={`text-[13px] truncate leading-tight ${chat.unread ? 'text-[#703DE2] font-bold' : 'text-gray-500 font-normal'}`}>
+                        {chat.message}
+                    </p>
+                    {chat.unread > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-[#703DE2] text-white text-[10px] font-extrabold shadow-xs shrink-0 min-w-[18px] text-center">
+                            {chat.unread}
+                        </span>
+                    )}
+                </div>
             </div>
-        </div>
-    </button>
-);
+        </button>
+    );
+};
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Both'];
 const RELATIONSHIP_GOAL_OPTIONS = ['Any', 'Long-term', 'Short-term', 'New friends', 'Casual'];
@@ -372,6 +413,8 @@ const ChatListPage = () => {
     const [loading, setLoading] = useState(true);
     const [showFilter, setShowFilter] = useState(false);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
+    const [chatToDelete, setChatToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
     const hasActiveFilter = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
 
     const loadData = useCallback(async () => {
@@ -398,11 +441,12 @@ const ChatListPage = () => {
             setChats(
                 conversationsRes.data.conversations.map((c) => ({
                     id: c.otherUser?._id,
-                    name: c.otherUser?.firstName || 'User',
-                    photo: c.otherUser?.profilePicture || demoPhoto,
+                    name: c.isUnmatched ? 'Hemsely User' : (c.otherUser?.firstName || 'User'),
+                    photo: c.isUnmatched ? demoPhoto : (c.otherUser?.profilePicture || demoPhoto),
                     message: c.lastMessageImage ? '📷 Photo' : (c.lastMessage || ''),
                     time: timeAgo(c.lastMessageTime),
                     unread: c.unreadCount || 0,
+                    isUnmatched: !!c.isUnmatched,
                 }))
             );
         }
@@ -421,11 +465,31 @@ const ChatListPage = () => {
         const onNewMessage = () => loadData();
         socket.on('new_message', onNewMessage);
         socket.on('new_match', onNewMessage);
+        socket.on('user_unmatched', onNewMessage);
         return () => {
             socket.off('new_message', onNewMessage);
             socket.off('new_match', onNewMessage);
+            socket.off('user_unmatched', onNewMessage);
         };
     }, [socket, loadData]);
+
+    const handleDeleteChat = async () => {
+        if (!chatToDelete) return;
+        setDeleting(true);
+        try {
+            const { ok } = await apiClient.delete(`/messages/conversation/${chatToDelete.id}`);
+            if (ok) {
+                setChats((prev) => prev.filter((c) => String(c.id) !== String(chatToDelete.id)));
+            } else {
+                alert('Failed to delete chat.');
+            }
+        } catch (err) {
+            console.error('Error deleting chat:', err);
+        } finally {
+            setDeleting(false);
+            setChatToDelete(null);
+        }
+    };
 
     const avatarRow = [
         { id: 'likes', name: 'Likes you', photo: demoPhoto, isLikesYou: true },
@@ -504,7 +568,8 @@ const ChatListPage = () => {
                             <ChatItem
                                 key={chat.id}
                                 chat={chat}
-                                onClick={() => navigate(`/chat/${chat.id}`, { state: { name: chat.name, photo: chat.photo } })}
+                                onClick={() => navigate(`/chat/${chat.id}`, { state: { name: chat.name, photo: chat.photo, isUnmatched: chat.isUnmatched } })}
+                                onHold={(targetChat) => setChatToDelete(targetChat)}
                             />
                         ))}
                     </div>
@@ -519,6 +584,40 @@ const ChatListPage = () => {
                     onApply={setFilters}
                     onClose={() => setShowFilter(false)}
                 />
+            )}
+
+            {/* Delete Chat Modal */}
+            {chatToDelete && (
+                <div className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl p-5 max-w-[340px] w-full text-center shadow-xl animate-in zoom-in-95 duration-150">
+                        <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-3 text-xl">
+                            🗑️
+                        </div>
+                        <h3 className="font-bold text-[16px] text-gray-900 mb-1">
+                            Delete Chat?
+                        </h3>
+                        <p className="text-[13px] text-gray-500 mb-4 leading-relaxed">
+                            Delete conversation with <span className="font-semibold text-gray-800">{chatToDelete.name}</span>? This will remove this chat from your list.
+                        </p>
+                        <div className="flex gap-2.5">
+                            <button
+                                type="button"
+                                onClick={() => setChatToDelete(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-700 font-semibold text-[13px] cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDeleteChat}
+                                disabled={deleting}
+                                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-[13px] cursor-pointer border-0 shadow-md shadow-red-200"
+                            >
+                                {deleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             <BottomNavigation activeTab="chats" />

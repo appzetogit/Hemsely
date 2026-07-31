@@ -204,7 +204,7 @@ const TransactionsPage = () => {
                 ) : (
                     <Table>
                         <TableHead>
-                            <TableRow>
+                            <TableRow hover={false}>
                                 <TableHeader>User</TableHeader>
                                 <TableHeader>Plan</TableHeader>
                                 <TableHeader>Amount</TableHeader>

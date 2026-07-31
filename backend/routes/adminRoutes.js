@@ -11,6 +11,8 @@ import {
   banUser,
   getModerationUsers,
   unbanUser,
+  updateUserByAdmin,
+  deleteUserByAdmin,
   getSelfieVerifications,
   reviewSelfieVerification,
   setUserStatus,
@@ -23,6 +25,7 @@ import { getTransactions } from '../controllers/transactionController.js';
 import { sendNotification, getNotifications } from '../controllers/notificationController.js';
 import { getAppConfig, updateAppConfig } from '../controllers/appConfigController.js';
 import { getWebsitePages, getWebsitePageBySlug, updateWebsitePage } from '../controllers/websitePageController.js';
+import { getAdminTickets, updateTicketAdmin } from '../controllers/ticketController.js';
 import { adminProtect } from '../middleware/auth.js';
 import { adminAuthRateLimiter } from '../middleware/rateLimiter.js';
 import { validate } from '../middleware/validate.js';
@@ -53,6 +56,8 @@ router.put('/password', adminProtect, adminPasswordValidator, validate, changeAd
 
 // Moderation
 router.get('/users', adminProtect, getModerationUsers);
+router.put('/users/:id', adminProtect, mongoIdParam('id'), validate, updateUserByAdmin);
+router.delete('/users/:id', adminProtect, mongoIdParam('id'), validate, deleteUserByAdmin);
 router.patch('/users/:id/ban', adminProtect, mongoIdParam('id'), banUserValidator, validate, banUser);
 router.patch('/users/:id/unban', adminProtect, mongoIdParam('id'), validate, unbanUser);
 router.patch('/users/:id/status', adminProtect, setUserStatusValidator, validate, setUserStatus);
@@ -94,5 +99,9 @@ router.put('/app-config', adminProtect, appConfigValidator, validate, updateAppC
 router.get('/website-pages', adminProtect, getWebsitePages);
 router.get('/website-pages/:slug', adminProtect, getWebsitePageBySlug);
 router.put('/website-pages/:slug', adminProtect, websitePageValidator, validate, updateWebsitePage);
+
+// Support Tickets (Support Management)
+router.get('/tickets', adminProtect, getAdminTickets);
+router.patch('/tickets/:id', adminProtect, mongoIdParam('id'), validate, updateTicketAdmin);
 
 export default router;

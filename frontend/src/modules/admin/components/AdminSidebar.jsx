@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
     Users,
     ShieldAlert,
     CreditCard,
     Clock3,
-    Settings,
-    LogOut,
-    Heart,
     Receipt,
     Flag,
     Bell,
@@ -17,11 +14,8 @@ import {
     ChevronDown,
     UserCircle,
     ScanFace,
+    LifeBuoy,
 } from 'lucide-react';
-import adminApi from '../services/adminApi';
-
-const ADMIN_TOKEN_KEY = 'amora_admin_token';
-const ADMIN_SESSION_KEY = 'amora_admin_session:v1';
 
 const NAV_ITEMS = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
@@ -29,6 +23,7 @@ const NAV_ITEMS = [
     { icon: ShieldAlert, label: 'Moderation', path: '/admin/moderation' },
     { icon: ScanFace, label: 'Selfie Verification', path: '/admin/selfie-verification' },
     { icon: Flag, label: 'Reports & Flags', path: '/admin/reports' },
+    { icon: LifeBuoy, label: 'Support Management', path: '/admin/support' },
     { icon: CreditCard, label: 'Subscriptions', path: '/admin/subscriptions' },
     { icon: Receipt, label: 'Transactions', path: '/admin/transactions' },
     { icon: Clock3, label: 'Queue Management', path: '/admin/queue-management' },
@@ -44,19 +39,7 @@ const WEBSITE_PAGES_ITEMS = [
 
 const AdminSidebar = () => {
     const location = useLocation();
-    const navigate = useNavigate();
     const [websitePagesOpen, setWebsitePagesOpen] = useState(location.pathname.startsWith('/admin/website-pages'));
-
-    const handleLogout = async () => {
-        try {
-            await adminApi.post('/admin/logout', {});
-        } catch {
-            // Clearing the local session is what actually matters here.
-        }
-        localStorage.removeItem(ADMIN_TOKEN_KEY);
-        sessionStorage.removeItem(ADMIN_SESSION_KEY);
-        navigate('/admin/login', { replace: true });
-    };
 
     return (
         <aside className="w-72 h-screen bg-zinc-900 text-zinc-300 border-r border-white/5 flex flex-col hidden md:flex sticky top-0 z-20">
@@ -129,18 +112,6 @@ const AdminSidebar = () => {
                     )}
                 </div>
             </nav>
-
-            {/* Bottom User Area */}
-            <div className="p-3 border-t border-white/5 bg-zinc-900">
-                <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="flex items-center w-full px-3 py-2.5 text-sm font-medium text-red-400 rounded-lg hover:bg-red-500/10 hover:text-red-300 transition-colors group cursor-pointer border-0 bg-transparent"
-                >
-                    <LogOut className="w-5 h-5 mr-3 text-red-400/80 group-hover:text-red-300" />
-                    Logout
-                </button>
-            </div>
         </aside>
     );
 };

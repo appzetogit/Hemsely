@@ -9,13 +9,13 @@ export const Table = ({ children }) => (
 );
 
 export const TableHead = ({ children }) => (
-    <thead className="text-xs font-semibold text-white uppercase bg-zinc-800 border-y border-zinc-800">
+    <thead className="text-xs font-semibold text-white uppercase bg-zinc-800 border-y border-zinc-800 [&_tr]:hover:bg-transparent [&_tr]:border-none">
         {children}
     </thead>
 );
 
-export const TableRow = ({ children, className = '' }) => (
-    <tr className={`border-b border-zinc-100 hover:bg-zinc-50 transition-colors ${className}`}>
+export const TableRow = ({ children, className = '', hover = true }) => (
+    <tr className={`border-b border-zinc-100 ${hover ? 'hover:bg-zinc-50' : ''} transition-colors ${className}`}>
         {children}
     </tr>
 );

@@ -17,11 +17,19 @@ const messageSchema = new mongoose.Schema(
       required: true,
     },
     image: String,
+    audio: String,
+    audioDuration: Number,
     isRead: {
       type: Boolean,
       default: false,
     },
     readAt: Date,
+    deletedFor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     // Deterministic sorted-pair key so a conversation can be queried/grouped
     // with a single equality match instead of an $or across both directions.
     conversationId: {

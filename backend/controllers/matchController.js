@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Like from '../models/Like.js';
 import Match from '../models/Match.js';
@@ -43,54 +44,137 @@ export const likeUser = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Check if already liked
-  let like = await Like.findOne({ likedBy, likedUser });
+  const likedByObj = mongoose.Types.ObjectId.isValid(likedBy) ? new mongoose.Types.ObjectId(likedBy) : likedBy;
+  const likedUserObj = mongoose.Types.ObjectId.isValid(likedUser) ? new mongoose.Types.ObjectId(likedUser) : likedUser;
 
-  if (like) {
-    return res.status(400).json({
-      success: false,
-      message: 'You have already liked this user',
-    });
+  // Check if already liked
+  let like = await Like.findOne({
+    $or: [
+      { likedBy: likedByObj, likedUser: likedUserObj },
+      { likedBy, likedUser },
+    ],
+  });
+
+  if (!like) {
+    like = await Like.create({ likedBy: likedByObj, likedUser: likedUserObj });
   }
 
-  // Create like
-  like = await Like.create({ likedBy, likedUser });
-
   // Check if mutual like exists
-  const mutualLike = await Like.findOne({ likedBy: likedUser, likedUser: likedBy });
+  const mutualLike = await Like.findOne({
+    $or: [
+      { likedBy: likedUserObj, likedUser: likedByObj },
+      { likedBy: likedUser, likedUser: likedBy },
+    ],
+  });
+
+  let match = await Match.findOne({
+    $or: [
+      { user1: likedByObj, user2: likedUserObj },
+      { user1: likedUserObj, user2: likedByObj },
+      { user1: likedBy, user2: likedUser },
+      { user1: likedUser, user2: likedBy },
+    ],
+  });
 
   if (mutualLike) {
-    // Create match
-    let match = await Match.findOne({
-      $or: [
-        { user1: likedBy, user2: likedUser },
-        { user1: likedUser, user2: likedBy },
-      ],
-    });
-
     if (!match) {
       match = await Match.create({
-        user1: likedBy,
-        user2: likedUser,
-        initiatedBy: likedBy,
+        user1: likedByObj,
+        user2: likedUserObj,
+        initiatedBy: likedByObj,
         status: 'accepted',
       });
+    } else {
+      match.status = 'accepted';
+      match.initiatedBy = likedByObj;
+      match.unmatchedBy = null;
+      match.unmatchedAt = null;
+      match.deletedBy = [];
+      await match.save();
     }
 
     emitToUser(likedUser, 'new_match', { match, otherUserId: likedBy });
 
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
-      message: 'It\'s a match!',
+      message: "It's a match!",
       isMatched: true,
       match,
     });
   }
 
-  res.status(201).json({
+  res.status(200).json({
     success: true,
     message: 'User liked successfully',
     isMatched: false,
+  });
+});
+
+// @desc Unmatch a user
+// @route POST /api/matches/unmatch/:userId
+// @access Private
+export const unmatchUser = asyncHandler(async (req, res, next) => {
+  const userId = req.user?._id || req.user?.id;
+  const targetId = req.params?.userId;
+
+  try {
+    if (userId && targetId) {
+      const uId = userId.toString();
+      const tId = targetId.toString();
+
+      const userObjId = mongoose.Types.ObjectId.isValid(uId) ? new mongoose.Types.ObjectId(uId) : uId;
+      const targetObjId = mongoose.Types.ObjectId.isValid(tId) ? new mongoose.Types.ObjectId(tId) : tId;
+
+      // Update or create Match document with 'unmatched' status
+      let match = await Match.findOne({
+        $or: [
+          { user1: userObjId, user2: targetObjId },
+          { user1: targetObjId, user2: userObjId },
+          { user1: uId, user2: tId },
+          { user1: tId, user2: uId },
+        ],
+      });
+
+      if (match) {
+        match.status = 'unmatched';
+        match.unmatchedBy = userObjId;
+        match.unmatchedAt = new Date();
+        await match.save();
+      } else {
+        await Match.create({
+          user1: userObjId,
+          user2: targetObjId,
+          initiatedBy: userObjId,
+          status: 'unmatched',
+          unmatchedBy: userObjId,
+          unmatchedAt: new Date(),
+        });
+      }
+
+      // Remove likes so that users can swipe/like each other again in future
+      await Like.deleteMany({
+        $or: [
+          { likedBy: userObjId, likedUser: targetObjId },
+          { likedBy: targetObjId, likedUser: userObjId },
+          { likedBy: uId, likedUser: tId },
+          { likedBy: tId, likedUser: uId },
+        ],
+      });
+
+      try {
+        emitToUser(tId, 'user_unmatched', { unmatchBy: uId, targetId: tId });
+        emitToUser(uId, 'user_unmatched', { unmatchBy: tId, targetId: uId });
+      } catch (err) {
+        // Ignore socket emit error
+      }
+    }
+  } catch (err) {
+    console.error('Error in unmatchUser:', err);
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'User unmatched successfully',
   });
 });
 
@@ -98,16 +182,21 @@ export const likeUser = asyncHandler(async (req, res, next) => {
 // @route DELETE /api/matches/unlike/:userId
 // @access Private
 export const unlikeUser = asyncHandler(async (req, res, next) => {
-  const likedBy = req.user.id;
-  const likedUser = req.params.userId;
+  const likedBy = req.user?._id || req.user?.id;
+  const likedUser = req.params?.userId;
 
-  const like = await Like.findOneAndDelete({ likedBy, likedUser });
-
-  if (!like) {
-    return res.status(404).json({
-      success: false,
-      message: 'Like not found',
-    });
+  try {
+    if (likedBy && likedUser && mongoose.Types.ObjectId.isValid(likedUser) && mongoose.Types.ObjectId.isValid(likedBy)) {
+      await Like.findOneAndDelete({ likedBy, likedUser });
+      await Match.deleteMany({
+        $or: [
+          { user1: likedBy, user2: likedUser },
+          { user1: likedUser, user2: likedBy },
+        ],
+      });
+    }
+  } catch (err) {
+    console.error('Error in unlikeUser:', err);
   }
 
   res.status(200).json({
@@ -122,13 +211,21 @@ export const unlikeUser = asyncHandler(async (req, res, next) => {
 export const getMatches = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
 
-  const matches = await Match.find({
+  const userDoc = await User.findById(userId).select('blockedUsers');
+  const blockedIds = (userDoc?.blockedUsers || []).map((id) => String(id));
+
+  let matches = await Match.find({
     $or: [{ user1: userId }, { user2: userId }],
     status: 'accepted',
   })
     .populate('user1', 'firstName lastName profilePicture')
     .populate('user2', 'firstName lastName profilePicture')
     .sort({ lastMessageAt: -1 });
+
+  matches = matches.filter((m) => {
+    const otherId = String(m.user1?._id) === String(userId) ? String(m.user2?._id) : String(m.user1?._id);
+    return !blockedIds.includes(otherId);
+  });
 
   res.status(200).json({
     success: true,

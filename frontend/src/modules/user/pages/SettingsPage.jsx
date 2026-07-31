@@ -151,6 +151,52 @@ const SettingsPage = () => {
     const [emailInput, setEmailInput] = useState('');
     const [savingEmail, setSavingEmail] = useState(false);
 
+    // Blocked Accounts state
+    const [showBlockedModal, setShowBlockedModal] = useState(false);
+    const [blockedUsers, setBlockedUsers] = useState([]);
+    const [loadingBlocked, setLoadingBlocked] = useState(false);
+    const [unblockingId, setUnblockingId] = useState(null);
+
+    const fetchBlockedUsers = async () => {
+        const uId = localStorage.getItem('userId');
+        if (!uId) return;
+        setLoadingBlocked(true);
+        try {
+            const { data, ok } = await apiClient.get(`/users/${uId}/blocked`);
+            if (ok && data?.blockedUsers) {
+                setBlockedUsers(data.blockedUsers);
+            }
+        } catch (err) {
+            devError('Failed to fetch blocked users:', err);
+        } finally {
+            setLoadingBlocked(false);
+        }
+    };
+
+    const handleOpenBlockedModal = () => {
+        setShowBlockedModal(true);
+        fetchBlockedUsers();
+    };
+
+    const handleUnblockUser = async (blockedUserId) => {
+        const uId = localStorage.getItem('userId');
+        if (!uId) return;
+        setUnblockingId(blockedUserId);
+        try {
+            const { ok, data } = await apiClient.post(`/users/${uId}/unblock/${blockedUserId}`);
+            if (ok) {
+                setBlockedUsers((prev) => prev.filter((u) => (u._id || u.id) !== blockedUserId));
+            } else {
+                alert(data?.message || 'Failed to unblock user.');
+            }
+        } catch (err) {
+            devError('Error unblocking user:', err);
+            alert('Failed to unblock user.');
+        } finally {
+            setUnblockingId(null);
+        }
+    };
+
     useEffect(() => {
         const loadUserData = async () => {
             try {
@@ -191,6 +237,16 @@ const SettingsPage = () => {
                         setIsPaused(!fetchedUser.isActive);
                     }
                     if (typeof fetchedUser.showActiveStatus === 'boolean') setShowActiveStatus(fetchedUser.showActiveStatus);
+
+                    const uId = fetchedUser._id || userId;
+                    if (uId) {
+                        try {
+                            const bRes = await apiClient.get(`/users/${uId}/blocked`);
+                            if (bRes.ok && bRes.data?.blockedUsers) {
+                                setBlockedUsers(bRes.data.blockedUsers);
+                            }
+                        } catch { }
+                    }
                 }
             } catch (err) {
                 devError('Error loading settings user profile:', err);
@@ -331,14 +387,15 @@ const SettingsPage = () => {
                     showArrow
                     onClick={() => setShowEmailModal(true)}
                 />
-
-                <SectionHeader title="Language & region" />
-                <SettingRow label="App language" subtext="English (United Kingdom)" showArrow />
                 <SettingRow
-                    label="Unit of measurement"
-                    subtext="Kilometres, Feet"
+                    label="Blocked Accounts"
                     showArrow
-                    onClick={() => navigate('/measurement-units')}
+                    onClick={() => navigate('/blocked-accounts')}
+                />
+                <SettingRow
+                    label="Support"
+                    showArrow
+                    onClick={() => navigate('/support')}
                 />
 
                 <SectionHeader title="Legal" />

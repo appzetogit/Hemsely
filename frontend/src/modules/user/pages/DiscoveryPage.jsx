@@ -105,7 +105,7 @@ const DiscoveryPage = () => {
         }
     }, []);
 
-    // Swipe state
+    const [swipedIds, setSwipedIds] = useState(new Set());
     const [dragOffset, setDragOffset] = useState(0);
     const [isExiting, setIsExiting] = useState(false);
     const [exitDir, setExitDir] = useState(null);
@@ -116,7 +116,13 @@ const DiscoveryPage = () => {
     const loadFeed = useCallback(async (pageToLoad) => {
         const { data, ok } = await apiClient.get(`/users/discovery?${buildDiscoveryQuery(pageToLoad, filters)}`);
         if (ok && data.success) {
-            setProfiles((prev) => [...prev, ...data.users.map(toProfileCardShape)]);
+            setProfiles((prev) => {
+                const existingIds = new Set(prev.map((p) => String(p.id)));
+                const newItems = data.users
+                    .filter((u) => !existingIds.has(String(u._id)) && !swipedIds.has(String(u._id)))
+                    .map(toProfileCardShape);
+                return [...prev, ...newItems];
+            });
             setHasMore(!!data.hasMore);
         } else if (data?.queued) {
             setQueueInfo({ position: data.position, totalQueued: data.totalQueued });
@@ -124,7 +130,7 @@ const DiscoveryPage = () => {
         } else {
             setHasMore(false);
         }
-    }, [filters]);
+    }, [filters, swipedIds]);
 
     const handleApplyFilters = (newFilters) => {
         setFilters(newFilters);
@@ -164,6 +170,7 @@ const DiscoveryPage = () => {
         if (!profile) return;
         if (!isProfileComplete) { setShowIncomplete(true); return; }
 
+        setSwipedIds((prev) => new Set(prev).add(profile.id));
         setLikesCount((c) => c + 1);
         setIsExiting(true);
         setExitDir('right');
@@ -186,6 +193,7 @@ const DiscoveryPage = () => {
     const handleReject = () => {
         if (!profile) return;
         if (!isProfileComplete) { setShowIncomplete(true); return; }
+        setSwipedIds((prev) => new Set(prev).add(profile.id));
         setPassesCount((c) => c + 1);
 
         setIsExiting(true);

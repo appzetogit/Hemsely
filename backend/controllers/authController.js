@@ -62,9 +62,10 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
 
   if (user) {
     if (user.isBanned) {
-      return res.status(403).json({
+      return res.status(200).json({
         success: false,
-        message: user.banReason || 'This phone number has been banned',
+        isBanned: true,
+        message: 'You are banned by Hemsely',
       });
     }
     user.phoneNumber = normalizedPhone;
@@ -152,9 +153,10 @@ export const verifyOTP = asyncHandler(async (req, res, next) => {
   }
 
   if (user.isBanned) {
-    return res.status(403).json({
+    return res.status(200).json({
       success: false,
-      message: user.banReason || 'Your account has been banned',
+      isBanned: true,
+      message: 'You are banned by Hemsely',
     });
   }
 

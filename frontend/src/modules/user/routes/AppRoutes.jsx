@@ -23,6 +23,8 @@ const ChatListPage = lazy(() => import('../pages/ChatListPage'));
 const ChatScreenPage = lazy(() => import('../pages/ChatScreenPage'));
 const LikesYouPage = lazy(() => import('../pages/LikesYouPage'));
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
+const BlockedAccountsPage = lazy(() => import('../pages/BlockedAccountsPage'));
+const SupportPage = lazy(() => import('../pages/SupportPage'));
 const MeasurementUnitsPage = lazy(() => import('../pages/MeasurementUnitsPage'));
 const PrivacyPolicyPage = lazy(() => import('../pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('../pages/TermsOfServicePage'));
@@ -40,8 +42,8 @@ const ReportsPage = lazy(() => import('../../admin/pages/ReportsPage'));
 const NotificationsPage = lazy(() => import('../../admin/pages/NotificationsPage'));
 const AppConfigPage = lazy(() => import('../../admin/pages/AppConfigPage'));
 const AdminProfilePage = lazy(() => import('../../admin/pages/AdminProfilePage'));
-const AdminSettingsPage = lazy(() => import('../../admin/pages/AdminSettingsPage'));
 const WebsitePageEditorPage = lazy(() => import('../../admin/pages/WebsitePageEditorPage'));
+const SupportManagementPage = lazy(() => import('../../admin/pages/SupportManagementPage'));
 
 const RouteFallback = () => (
     <div className="h-[100dvh] flex items-center justify-center" style={{ background: '#FCFCFC' }}>
@@ -75,6 +77,8 @@ const AppRoutes = () => {
                 <Route path="/chat/:userId" element={<PrivateRoute><ChatScreenPage /></PrivateRoute>} />
                 <Route path="/likes" element={<PrivateRoute><LikesYouPage /></PrivateRoute>} />
                 <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+                <Route path="/blocked-accounts" element={<PrivateRoute><BlockedAccountsPage /></PrivateRoute>} />
+                <Route path="/support" element={<PrivateRoute><SupportPage /></PrivateRoute>} />
                 <Route path="/measurement-units" element={<MeasurementUnitsPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms-of-service" element={<TermsOfServicePage />} />
@@ -88,6 +92,7 @@ const AppRoutes = () => {
                     <Route path="moderation" element={<ModerationPage />} />
                     <Route path="selfie-verification" element={<SelfieVerificationPage />} />
                     <Route path="reports" element={<ReportsPage />} />
+                    <Route path="support" element={<SupportManagementPage />} />
                     <Route path="subscriptions" element={<SubscriptionsPage />} />
                     <Route path="queue-management" element={<QueueManagementPage />} />
                     <Route path="transactions" element={<TransactionsPage />} />
@@ -95,7 +100,6 @@ const AppRoutes = () => {
                     <Route path="app-config" element={<AppConfigPage />} />
                     <Route path="website-pages/:slug" element={<WebsitePageEditorPage />} />
                     <Route path="profile" element={<AdminProfilePage />} />
-                    <Route path="settings" element={<AdminSettingsPage />} />
                 </Route>
             </Routes>
         </Suspense>

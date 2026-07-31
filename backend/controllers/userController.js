@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Like from '../models/Like.js';
 import Match from '../models/Match.js';
@@ -323,13 +324,44 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
   const skip = (page - 1) * limit;
   const effectiveRadiusKm = parseFloat(req.query.distanceKm || config.discoveryRadiusKm || '50');
 
+  const userIdStr = String(req.user._id || req.user.id);
+  const userObjId = mongoose.Types.ObjectId.isValid(userIdStr) ? new mongoose.Types.ObjectId(userIdStr) : userIdStr;
+
   // Already-liked users shouldn't reappear in the feed
-  const likedUserIds = await Like.find({ likedBy: req.user.id }).distinct('likedUser');
-  const excludedIds = [req.user.id, ...currentUser.blockedUsers, ...likedUserIds];
+  const likedUserIds = await Like.find({
+    $or: [{ likedBy: userObjId }, { likedBy: userIdStr }],
+  }).distinct('likedUser');
+
+  // Only active ('accepted') matched users shouldn't reappear in discovery. Unmatched users CAN reappear!
+  const activeMatches = await Match.find({
+    status: 'accepted',
+    $or: [
+      { user1: userObjId },
+      { user2: userObjId },
+      { user1: userIdStr },
+      { user2: userIdStr },
+    ],
+  }).select('user1 user2');
+
+  const activeMatchedUserIds = activeMatches.map((m) => {
+    const u1 = String(m.user1);
+    return u1 === userIdStr ? String(m.user2) : u1;
+  });
+
+  const rawExcluded = [
+    userIdStr,
+    ...(currentUser.blockedUsers || []).map((id) => String(id)),
+    ...likedUserIds.map((id) => String(id)),
+    ...activeMatchedUserIds,
+  ];
+
+  const excludedObjIds = rawExcluded
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
 
   // Build query to find matching profiles
   const query = {
-    _id: { $nin: excludedIds },
+    _id: { $nin: [...rawExcluded, ...excludedObjIds] },
     isBanned: false,
     isPaused: { $ne: true },
     isActive: { $ne: false },
@@ -554,5 +586,34 @@ export const deleteUserProfile = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: 'Account deleted successfully',
+  });
+});
+
+// @desc Get list of blocked users
+// @route GET /api/users/:id/blocked
+// @access Private
+export const getBlockedUsers = asyncHandler(async (req, res, next) => {
+  if (req.params.id !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'You can only view your own block list',
+    });
+  }
+
+  const user = await User.findById(req.params.id).populate({
+    path: 'blockedUsers',
+    select: 'firstName lastName name profilePicture galleryImages age phone email',
+  });
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found',
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    blockedUsers: user.blockedUsers || [],
   });
 });

@@ -1,55 +1,81 @@
-import React, { useState } from 'react';
+import React from 'react';
+import {
+    ResponsiveContainer,
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+} from 'recharts';
 
-// Single-series bar chart (daily signups) — sequential magnitude, one hue (brand-500),
-// thin bars with rounded data-ends, hover tooltip, no legend needed for one series.
+const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-semibold text-white shadow-xl border border-zinc-800">
+                <p className="text-zinc-400 text-[11px] mb-0.5">{label}</p>
+                <p className="text-purple-400 text-sm font-bold">
+                    {payload[0].value} <span className="text-zinc-300 text-xs font-normal">signup{payload[0].value === 1 ? '' : 's'}</span>
+                </p>
+            </div>
+        );
+    }
+    return null;
+};
+
 const GrowthChart = ({ data }) => {
-    const [hovered, setHovered] = useState(null);
-
     if (!data || data.length === 0) {
         return (
-            <div className="flex-1 min-h-[180px] w-full flex flex-col items-center justify-center text-zinc-400">
-                <span className="text-[13px] font-medium">No signup activity in this range yet.</span>
+            <div className="flex-1 min-h-[220px] w-full flex flex-col items-center justify-center text-zinc-400">
+                <span className="text-sm font-medium">No signup activity in this range yet.</span>
             </div>
         );
     }
 
-    const max = Math.max(...data.map((d) => d.count), 1);
-    const width = 100 / data.length;
+    const chartData = data.map((item) => ({
+        ...item,
+        month: item.month || item.formattedDate || item.date,
+    }));
 
     return (
-        <div className="flex-1 min-h-[180px] w-full flex flex-col">
-            <div className="relative flex-1 flex items-end gap-1 px-1">
-                {data.map((d) => {
-                    const heightPct = Math.max((d.count / max) * 100, d.count > 0 ? 6 : 2);
-                    const isHovered = hovered?.date === d.date;
-                    return (
-                        <div
-                            key={d.date}
-                            className="relative flex-1 flex items-end justify-center h-full"
-                            style={{ maxWidth: `${width}%` }}
-                            onMouseEnter={() => setHovered(d)}
-                            onMouseLeave={() => setHovered(null)}
-                        >
-                            {isHovered && (
-                                <div className="absolute -top-9 left-1/2 -translate-x-1/2 rounded-lg bg-zinc-900 px-2.5 py-1.5 text-[11px] font-semibold text-white whitespace-nowrap shadow-lg z-10">
-                                    {d.count} signup{d.count === 1 ? '' : 's'}
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
-                                </div>
-                            )}
-                            <div
-                                className={`w-full rounded-t-md transition-colors cursor-default ${isHovered ? 'bg-brand-600' : 'bg-brand-400'}`}
-                                style={{ height: `${heightPct}%`, minHeight: '3px' }}
-                            />
-                        </div>
-                    );
-                })}
-            </div>
-            <div className="mt-2 flex justify-between px-1 text-[10px] font-medium text-zinc-400">
-                <span>{new Date(data[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                <span>{new Date(data[data.length - 1].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-            </div>
+        <div className="w-full h-[260px] pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id="userGrowthGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
+                    <XAxis
+                        dataKey="month"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                        dy={5}
+                    />
+                    <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#a1a1aa', fontSize: 11 }}
+                        allowDecimals={false}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#8b5cf6"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#userGrowthGradient)"
+                        activeDot={{ r: 6, fill: '#7c3aed', stroke: '#ffffff', strokeWidth: 2 }}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
         </div>
     );
 };
 
 export default GrowthChart;
+

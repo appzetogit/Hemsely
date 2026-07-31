@@ -7,9 +7,13 @@ import { Button } from '../../../shared/components/ui/Button';
 
 const CATEGORY_LABELS = {
     spam: 'Spam',
-    harassment: 'Harassment',
     fake_profile: 'Fake Profile',
     inappropriate_content: 'Inappropriate Content',
+    harassment: 'Harassment',
+    scams: 'Scam or Solicitation',
+    underage: 'Underage User',
+    hate_speech: 'Hate Speech',
+    impersonation: 'Impersonation / Stolen Photos',
     other: 'Other',
 };
 
@@ -229,7 +233,7 @@ const ReportsPage = () => {
                 ) : (
                     <Table>
                         <TableHead>
-                            <TableRow>
+                            <TableRow hover={false}>
                                 <TableHeader>Reported User</TableHeader>
                                 <TableHeader>Reported By</TableHeader>
                                 <TableHeader>Category</TableHeader>
@@ -249,8 +253,8 @@ const ReportsPage = () => {
                                         <span className="text-sm font-medium text-zinc-700">{userName(report.reporter)}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 text-zinc-700 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide">
-                                            <AlertTriangle className="w-3 h-3" />
+                                        <span className="inline-flex items-center gap-1.5 rounded-md bg-red-50 text-red-600 border border-red-200/80 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide">
+                                            <AlertTriangle className="w-3 h-3 text-red-500" />
                                             {CATEGORY_LABELS[report.category] || report.category}
                                         </span>
                                     </TableCell>

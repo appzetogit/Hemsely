@@ -12,6 +12,7 @@ const VerifyOTPPage = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(30);
+    const [showBannedModal, setShowBannedModal] = useState(false);
     const inputRefs = useRef([]);
 
     const savedPhone = JSON.parse(
@@ -102,12 +103,17 @@ const VerifyOTPPage = () => {
                 } else {
                     sessionStorage.setItem('profile_complete:v1', 'false');
                     localStorage.setItem('profile_complete:v1', 'false');
-                    navigate('/profile-details');
                 }
                 return;
+            } else {
+                const msg = (data?.message || '').toLowerCase();
+                if (data?.isBanned || msg.includes('banned') || msg.includes('reported')) {
+                    setError('');
+                    setShowBannedModal(true);
+                } else {
+                    setError(data?.message || 'Invalid OTP code. Please try again.');
+                }
             }
-
-            setError(data.message || 'Invalid OTP code. Please try again.');
         } catch {
             setError('Could not reach the server. Please check your connection and try again.');
         } finally {
@@ -218,6 +224,49 @@ const VerifyOTPPage = () => {
                     {loading ? 'Verifying...' : 'Verify & Continue'}
                 </button>
             </div>
+
+            {/* Banned Modal Popup */}
+            {showBannedModal && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 1000,
+                    background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '20px', maxWidth: '420px', margin: '0 auto',
+                }}>
+                    <div style={{
+                        width: '100%', background: '#FFFFFF', borderRadius: '24px',
+                        padding: '24px 20px', textAlign: 'center',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+                    }}>
+                        <div style={{
+                            width: '56px', height: '56px', borderRadius: '50%',
+                            background: '#FEE2E2', color: '#EF4444',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 16px', fontSize: '26px',
+                        }}>
+                            🚫
+                        </div>
+                        <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: '20px', fontWeight: 700, color: '#18181B', margin: '0 0 8px' }}>
+                            You are banned by Hemsely
+                        </h2>
+                        <p style={{ fontFamily: "'Roboto', sans-serif", fontSize: '13.5px', color: '#71717A', margin: '0 0 20px', lineHeight: '1.5' }}>
+                            Your account has been restricted for violating Hemsely community guidelines.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setShowBannedModal(false)}
+                            style={{
+                                width: '100%', padding: '12px', borderRadius: '12px',
+                                border: 'none', background: '#EF4444', color: '#FFFFFF',
+                                fontFamily: "'Roboto', sans-serif", fontSize: '15px', fontWeight: 700,
+                                cursor: 'pointer', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                            }}
+                        >
+                            OK
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

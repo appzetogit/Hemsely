@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useNavigate, Link } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import adminApi from '../services/adminApi';
-import { Menu, Bell, User, LogOut, Settings } from 'lucide-react';
+import { Menu, Bell, User, LogOut } from 'lucide-react';
 
 const ADMIN_TOKEN_KEY = 'amora_admin_token';
 const ADMIN_SESSION_KEY = 'amora_admin_session:v1';
@@ -172,13 +172,6 @@ const AdminLayout = () => {
                                         className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
                                     >
                                         <User className="w-4 h-4" /> My Profile
-                                    </Link>
-                                    <Link
-                                        to="/admin/settings"
-                                        onClick={() => setShowUserMenu(false)}
-                                        className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-                                    >
-                                        <Settings className="w-4 h-4" /> Settings
                                     </Link>
                                     <button
                                         type="button"

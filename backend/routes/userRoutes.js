@@ -10,9 +10,11 @@ import {
   getQueueStatus,
   blockUser,
   unblockUser,
+  getBlockedUsers,
   reportUser,
   deleteUserProfile,
 } from '../controllers/userController.js';
+
 import { protect } from '../middleware/auth.js';
 import { uploadProfilePicture as uploadProfilePictureMiddleware, uploadGalleryImages as uploadGalleryImagesMiddleware, uploadSelfie as uploadSelfieMiddleware } from '../config/cloudinary.js';
 import { validate } from '../middleware/validate.js';
@@ -26,6 +28,7 @@ router.get('/plans', protect, getPlans);
 router.post('/subscribe', protect, subscribeUserToPlan);
 router.get('/discovery', protect, discoveryFeedQueryValidator, validate, getDiscoveryFeed);
 router.get('/queue-status', protect, getQueueStatus);
+router.get('/:id/blocked', protect, mongoIdParam('id'), validate, getBlockedUsers);
 router.get('/:id', protect, mongoIdParam('id'), validate, getUserProfile);
 router.put('/:id', protect, updateProfileValidator, validate, updateUserProfile);
 router.delete('/:id', protect, mongoIdParam('id'), validate, deleteUserProfile);

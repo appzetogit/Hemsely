@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Message from '../models/Message.js';
+import Match from '../models/Match.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { emitToUser } from '../socket/index.js';
 
@@ -29,11 +30,28 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
     });
   }
 
+  // Check if active match exists
+  const match = await Match.findOne({
+    $or: [
+      { user1: sender, user2: receiver },
+      { user1: receiver, user2: sender },
+    ],
+  });
+
+  if (!match || match.status !== 'accepted') {
+    return res.status(403).json({
+      success: false,
+      message: 'Cannot send message to an unmatched user',
+    });
+  }
+
   let newMessage = await Message.create({
     sender,
     receiver,
     message,
     image: req.file ? req.file.path : null,
+    audio: req.body.audio || null,
+    audioDuration: req.body.audioDuration || null,
   });
 
   newMessage = await newMessage.populate('sender', 'firstName lastName profilePicture');
@@ -53,17 +71,58 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
 // @route GET /api/messages/conversation/:userId
 // @access Private
 export const getConversation = asyncHandler(async (req, res, next) => {
-  const userId1 = req.user.id;
-  const userId2 = req.params.userId;
+  const userId1 = String(req.user._id || req.user.id);
+  const userId2 = String(req.params.userId);
 
-  const messages = await Message.find({ conversationId: conversationKey(userId1, userId2) })
+  const uObjId1 = mongoose.Types.ObjectId.isValid(userId1) ? new mongoose.Types.ObjectId(userId1) : userId1;
+  const uObjId2 = mongoose.Types.ObjectId.isValid(userId2) ? new mongoose.Types.ObjectId(userId2) : userId2;
+
+  const match = await Match.findOne({
+    $or: [
+      { user1: uObjId1, user2: uObjId2 },
+      { user1: uObjId2, user2: uObjId1 },
+      { user1: userId1, user2: userId2 },
+      { user1: userId2, user2: userId1 },
+    ],
+  });
+
+  const isUnmatched = match ? match.status === 'unmatched' : false;
+
+  let messages = await Message.find({
+    conversationId: conversationKey(userId1, userId2),
+    deletedFor: { $ne: uObjId1 },
+  })
     .populate('sender', 'firstName lastName profilePicture')
     .populate('receiver', 'firstName lastName profilePicture')
     .sort({ createdAt: 1 });
 
+  if (isUnmatched) {
+    messages = messages.map((m) => {
+      const msgObj = m.toObject();
+      if (String(msgObj.sender?._id || msgObj.sender) === userId2) {
+        msgObj.sender = {
+          _id: userId2,
+          firstName: 'Hemsely User',
+          lastName: '',
+          profilePicture: null,
+        };
+      }
+      if (String(msgObj.receiver?._id || msgObj.receiver) === userId2) {
+        msgObj.receiver = {
+          _id: userId2,
+          firstName: 'Hemsely User',
+          lastName: '',
+          profilePicture: null,
+        };
+      }
+      return msgObj;
+    });
+  }
+
   res.status(200).json({
     success: true,
     count: messages.length,
+    isUnmatched,
     messages,
   });
 });
@@ -134,22 +193,52 @@ const buildConversationFilterMatch = (q, myLocationKnown) => {
   return clauses.length ? { $and: clauses } : null;
 };
 
-// @desc Get all conversations (chat list)
+// @desc Get all conversations for current user
 // @route GET /api/messages/conversations
 // @access Private
 export const getConversations = asyncHandler(async (req, res, next) => {
-  const userId = new mongoose.Types.ObjectId(req.user.id);
+  const userIdStr = String(req.user._id || req.user.id);
+  const userObjId = mongoose.Types.ObjectId.isValid(userIdStr) ? new mongoose.Types.ObjectId(userIdStr) : userIdStr;
 
-  const me = await User.findById(userId).select('location.coordinates');
+  // Fetch active or unmatched matches for current user, ignoring those deleted by current user
+  const matches = await Match.find({
+    $or: [
+      { user1: userObjId },
+      { user2: userObjId },
+      { user1: userIdStr },
+      { user2: userIdStr },
+    ],
+    status: { $in: ['accepted', 'unmatched'] },
+    deletedBy: { $ne: userObjId },
+  }).select('user1 user2 status');
+
+  const matchStatusMap = new Map();
+  matches.forEach((m) => {
+    const u1 = String(m.user1);
+    const otherId = u1 === userIdStr ? String(m.user2) : u1;
+    matchStatusMap.set(otherId, m.status);
+  });
+
+  const me = await User.findById(userObjId).select('location.coordinates blockedUsers');
+  const blockedIds = (me?.blockedUsers || []).map((id) => String(id));
+
   const [myLng, myLat] = me?.location?.coordinates?.coordinates || [0, 0];
   const myLocationKnown = myLng !== 0 || myLat !== 0;
   const myLatRad = (myLat * Math.PI) / 180;
   const myLngRad = (myLng * Math.PI) / 180;
 
-  // Aggregation replaces the old "load every message the user has ever sent
-  // or received into memory and group in JS" approach, which didn't scale.
   const pipeline = [
-    { $match: { $or: [{ sender: userId }, { receiver: userId }] } },
+    {
+      $match: {
+        $or: [
+          { sender: userObjId },
+          { receiver: userObjId },
+          { sender: userIdStr },
+          { receiver: userIdStr },
+        ],
+        deletedFor: { $ne: userObjId },
+      },
+    },
     { $sort: { createdAt: -1 } },
     {
       $group: {
@@ -157,12 +246,18 @@ export const getConversations = asyncHandler(async (req, res, next) => {
         lastMessage: { $first: '$message' },
         lastMessageTime: { $first: '$createdAt' },
         lastMessageImage: { $first: '$image' },
+        lastMessageAudio: { $first: '$audio' },
         lastSender: { $first: '$sender' },
         lastReceiver: { $first: '$receiver' },
         unreadCount: {
           $sum: {
             $cond: [
-              { $and: [{ $eq: ['$receiver', userId] }, { $eq: ['$isRead', false] }] },
+              {
+                $and: [
+                  { $or: [{ $eq: ['$receiver', userObjId] }, { $eq: ['$receiver', userIdStr] }] },
+                  { $eq: ['$isRead', false] },
+                ],
+              },
               1,
               0,
             ],
@@ -173,7 +268,11 @@ export const getConversations = asyncHandler(async (req, res, next) => {
     {
       $addFields: {
         otherUserId: {
-          $cond: [{ $eq: ['$lastSender', userId] }, '$lastReceiver', '$lastSender'],
+          $cond: [
+            { $or: [{ $eq: ['$lastSender', userObjId] }, { $eq: ['$lastSender', userIdStr] }] },
+            '$lastReceiver',
+            '$lastSender',
+          ],
         },
       },
     },
@@ -248,13 +347,34 @@ export const getConversations = asyncHandler(async (req, res, next) => {
         lastMessage: 1,
         lastMessageTime: 1,
         lastMessageImage: 1,
+        lastMessageAudio: 1,
         unreadCount: 1,
       },
     },
     { $sort: { lastMessageTime: -1 } }
   );
 
-  const conversations = await Message.aggregate(pipeline);
+  let conversations = await Message.aggregate(pipeline);
+
+  // Filter out conversations of users who are not matched/unmatched or are blocked
+  conversations = conversations
+    .filter((c) => {
+      const oId = String(c.otherUser?._id);
+      return matchStatusMap.has(oId) && !blockedIds.includes(oId);
+    })
+    .map((c) => {
+      const oId = String(c.otherUser?._id);
+      const status = matchStatusMap.get(oId);
+      if (status === 'unmatched') {
+        c.isUnmatched = true;
+        c.otherUser.firstName = 'Hemsely User';
+        c.otherUser.lastName = '';
+        c.otherUser.profilePicture = null;
+      } else {
+        c.isUnmatched = false;
+      }
+      return c;
+    });
 
   res.status(200).json({
     success: true,
@@ -314,5 +434,42 @@ export const deleteMessage = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: 'Message deleted successfully',
+  });
+});
+
+// @desc Delete/Clear conversation for current user
+// @route DELETE /api/messages/conversation/:userId
+// @access Private
+export const deleteConversation = asyncHandler(async (req, res, next) => {
+  const userIdStr = String(req.user._id || req.user.id);
+  const targetIdStr = String(req.params.userId);
+
+  const userObjId = mongoose.Types.ObjectId.isValid(userIdStr) ? new mongoose.Types.ObjectId(userIdStr) : userIdStr;
+  const targetObjId = mongoose.Types.ObjectId.isValid(targetIdStr) ? new mongoose.Types.ObjectId(targetIdStr) : targetIdStr;
+
+  const conversationId = conversationKey(userIdStr, targetIdStr);
+
+  // Mark all messages in this conversation as deletedFor current user
+  await Message.updateMany(
+    { conversationId },
+    { $addToSet: { deletedFor: userObjId } }
+  );
+
+  // Add current user to deletedBy array in Match document
+  await Match.updateMany(
+    {
+      $or: [
+        { user1: userObjId, user2: targetObjId },
+        { user1: targetObjId, user2: userObjId },
+        { user1: userIdStr, user2: targetIdStr },
+        { user1: targetIdStr, user2: userIdStr },
+      ],
+    },
+    { $addToSet: { deletedBy: userObjId } }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Conversation deleted successfully',
   });
 });

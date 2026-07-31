@@ -29,3 +29,13 @@ input[type="date"].empty-date-input::-webkit-datetime-edit-day-field,
 input[type="date"].empty-date-input::-webkit-datetime-edit-year-field {
   color: transparent !important;
 }
+
+/* Fix browser autofill light blue background on inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: inherit !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

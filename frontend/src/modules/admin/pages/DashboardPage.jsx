@@ -23,8 +23,13 @@ const StatCard = ({ title, value, icon: Icon, iconBg, iconColor, ringColor, acti
 
 const DashboardPage = () => {
     const [loading, setLoading] = useState(true);
+    const [chartLoading, setChartLoading] = useState(false);
     const [stats, setStats] = useState(null);
     const [growth, setGrowth] = useState([]);
+    const [selectedYear, setSelectedYear] = useState(2026);
+    const [availableYears, setAvailableYears] = useState(
+        Array.from({ length: 2099 - 2026 + 1 }, (_, i) => 2026 + i)
+    );
     const [recentUsers, setRecentUsers] = useState([]);
     const [resettingMatches, setResettingMatches] = useState(false);
 
@@ -41,16 +46,34 @@ const DashboardPage = () => {
         setResettingMatches(false);
     };
 
+    const fetchGrowthData = async (year) => {
+        setChartLoading(true);
+        const statsRes = await adminApi.get(`/admin/dashboard/stats?year=${year}`);
+        if (statsRes.ok && statsRes.data.success) {
+            setGrowth(statsRes.data.growth || []);
+            if (statsRes.data.selectedYear) setSelectedYear(statsRes.data.selectedYear);
+            if (statsRes.data.availableYears?.length) setAvailableYears(statsRes.data.availableYears);
+        }
+        setChartLoading(false);
+    };
+
+    const handleYearChange = (year) => {
+        setSelectedYear(year);
+        fetchGrowthData(year);
+    };
+
     useEffect(() => {
         (async () => {
             const [statsRes, usersRes] = await Promise.all([
-                adminApi.get('/admin/dashboard/stats?days=14'),
+                adminApi.get(`/admin/dashboard/stats?year=${selectedYear}`),
                 adminApi.get('/admin/users?page=1&limit=5'),
             ]);
 
             if (statsRes.ok && statsRes.data.success) {
                 setStats(statsRes.data.stats);
-                setGrowth(statsRes.data.growth);
+                setGrowth(statsRes.data.growth || []);
+                if (statsRes.data.selectedYear) setSelectedYear(statsRes.data.selectedYear);
+                if (statsRes.data.availableYears?.length) setAvailableYears(statsRes.data.availableYears);
             }
             if (usersRes.ok && usersRes.data.success) {
                 setRecentUsers(usersRes.data.users);
@@ -117,10 +140,34 @@ const DashboardPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                 <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-zinc-200 p-3.5 flex flex-col">
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-sm font-bold text-zinc-900">User Growth (last 14 days)</h2>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div>
+                            <h2 className="text-sm font-bold text-zinc-900">User Growth</h2>
+                            <p className="text-[11px] text-zinc-500">Monthly signups (Jan – Dec)</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="year-select" className="text-xs font-semibold text-zinc-500">Year:</label>
+                            <select
+                                id="year-select"
+                                value={selectedYear}
+                                onChange={(e) => handleYearChange(Number(e.target.value))}
+                                className="px-3 py-1 text-xs font-semibold rounded-lg bg-zinc-50 hover:bg-zinc-100 text-zinc-800 border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all cursor-pointer shadow-2xs"
+                            >
+                                {availableYears.map((yr) => (
+                                    <option key={yr} value={yr}>
+                                        {yr}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                    <GrowthChart data={growth} />
+                    {chartLoading ? (
+                        <div className="flex-1 min-h-[220px] w-full flex items-center justify-center text-zinc-400">
+                            <span className="text-xs font-medium animate-pulse">Loading year data...</span>
+                        </div>
+                    ) : (
+                        <GrowthChart data={growth} />
+                    )}
                 </div>
 
                 {/* Recent Activity / Users */}

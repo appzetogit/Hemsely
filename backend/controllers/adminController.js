@@ -129,6 +129,92 @@ export const unbanUser = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc Update user profile by admin
+// @route PUT /api/admin/users/:id
+// @access Private/Admin
+export const updateUserByAdmin = asyncHandler(async (req, res) => {
+  const { firstName, lastName, email, phoneNumber, gender, age, profession, isPremium, isBanned, bio } = req.body;
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found',
+    });
+  }
+
+  if (firstName !== undefined) user.firstName = firstName.trim();
+  if (lastName !== undefined) user.lastName = lastName.trim();
+  if (email !== undefined) user.email = email.trim();
+  if (phoneNumber !== undefined) user.phoneNumber = phoneNumber.trim();
+  if (gender !== undefined) user.gender = gender;
+  if (age !== undefined) user.age = Number(age);
+  if (profession !== undefined) user.profession = profession.trim();
+  if (bio !== undefined) user.bio = bio.trim();
+  if (isPremium !== undefined) user.isPremium = Boolean(isPremium);
+  if (isBanned !== undefined) {
+    user.isBanned = Boolean(isBanned);
+    if (user.isBanned) {
+      user.bannedAt = new Date();
+      user.bannedBy = req.admin.id;
+      user.isActive = false;
+    } else {
+      user.banReason = '';
+      user.bannedAt = null;
+      user.bannedBy = null;
+      user.isActive = true;
+    }
+  }
+
+  await user.save();
+
+  await logAdminAction({
+    adminId: req.admin.id,
+    action: 'update_user_profile',
+    targetType: 'User',
+    targetId: user._id,
+    details: req.body,
+    ip: req.ip,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'User profile updated successfully',
+    user,
+  });
+});
+
+// @desc Delete user account by admin
+// @route DELETE /api/admin/users/:id
+// @access Private/Admin
+export const deleteUserByAdmin = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found',
+    });
+  }
+
+  await user.deleteOne();
+
+  await logAdminAction({
+    adminId: req.admin.id,
+    action: 'delete_user',
+    targetType: 'User',
+    targetId: req.params.id,
+    details: { name: `${user.firstName} ${user.lastName}` },
+    ip: req.ip,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'User deleted successfully',
+  });
+});
+
 // @desc List selfie verification submissions (defaults to pending queue)
 // @route GET /api/admin/selfie-verifications
 // @access Private/Admin

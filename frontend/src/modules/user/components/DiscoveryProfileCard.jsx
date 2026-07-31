@@ -6,7 +6,6 @@ import religionIcon from '../assets/icons/religion.png';
 import drinkIcon from '../assets/icons/drink.png';
 import smokeIcon from '../assets/icons/cigratee.png';
 import studyIcon from '../assets/icons/study.png';
-import chatIcon from '../assets/icons/chat.png';
 import heartIcon from '../assets/icons/heart.png';
 import { Pill, renderInterestIcon } from '../constants/discoveryData';
 
@@ -203,17 +202,10 @@ const DiscoveryProfileCard = ({
                                 )}
                                 {prompt && (
                                     <div className="rounded-[20px] overflow-hidden shadow-xs border border-gray-100/80 bg-white p-4 flex justify-between items-center">
-                                        <div className="pr-3 flex-1">
+                                        <div className="flex-1">
                                             <p className="text-[12px] font-medium text-gray-900 leading-snug">{prompt.question || prompt.text}</p>
                                             <p className="text-[14.5px] font-normal text-black mt-1 leading-tight">{prompt.answer}</p>
                                         </div>
-                                        <button
-                                            type="button"
-                                            aria-label="Comment on prompt"
-                                            className="w-9 h-9 rounded-full bg-[#F6F1FE] hover:bg-[#EFE5FD] transition-colors flex items-center justify-center shrink-0 border-0 cursor-pointer"
-                                        >
-                                            <img src={chatIcon} className="w-4 h-4 object-contain" alt="" />
-                                        </button>
                                     </div>
                                 )}
                             </React.Fragment>

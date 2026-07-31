@@ -14,7 +14,17 @@ const reportSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['spam', 'harassment', 'fake_profile', 'inappropriate_content', 'other'],
+      enum: [
+        'spam',
+        'fake_profile',
+        'inappropriate_content',
+        'harassment',
+        'scams',
+        'underage',
+        'hate_speech',
+        'impersonation',
+        'other',
+      ],
       default: 'other',
     },
     reason: {

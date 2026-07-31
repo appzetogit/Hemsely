@@ -61,7 +61,7 @@ export const updateReportStatus = asyncHandler(async (req, res) => {
   if (banReportedUser) {
     await User.findByIdAndUpdate(report.reportedUser, {
       isBanned: true,
-      banReason: `Reported: ${report.category}`,
+      banReason: 'You are banned by Hemsely',
       bannedAt: new Date(),
       bannedBy: req.admin.id,
       isActive: false,

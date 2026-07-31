@@ -5,9 +5,9 @@ import tickIcon from '../assets/icons/tick.png';
 import tickProfileIcon from '../assets/icons/tick-profile.png';
 import settingIcon from '../assets/icons/setting.png';
 import pencilIcon from '../assets/icons/pencil.png';
-import textIcon from '../assets/icons/text.png';
 import thumbIcon from '../assets/icons/thumb.png';
 import crossIcon from '../assets/icons/cross.png';
+import premiumBg from '../../../assets/premiumbackground.png';
 import BottomNavigation from '../components/BottomNavigation';
 import { devError } from '../../../shared/utils/logger';
 
@@ -216,25 +216,11 @@ const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerifi
 );
 
 const QuickActionCards = ({ onOpenPopup }) => (
-    <section className="mt-4 mb-4 grid grid-cols-2 gap-2.5 w-full shrink-0">
-        <button
-            type="button"
-            onClick={() => onOpenPopup('comments')}
-            className="text-left px-3 py-3 rounded-[20px] bg-[#F9F3FF] border border-[#F3E5FF] flex items-center gap-2.5 transition-transform active:scale-[0.98] cursor-pointer shadow-2xs hover:border-purple-200"
-        >
-            <div className="w-9 h-9 rounded-full bg-[#ECE0FF] flex items-center justify-center shrink-0">
-                <img src={textIcon} alt="" className="w-4 h-4 object-contain" />
-            </div>
-            <div className="min-w-0 flex-1">
-                <p className="font-extrabold text-[13px] text-gray-900 leading-tight tracking-tight">Comments</p>
-                <p className="text-[11px] text-gray-400 font-normal mt-0.5">Get now</p>
-            </div>
-        </button>
-
+    <section className="mt-4 mb-4 w-full shrink-0">
         <button
             type="button"
             onClick={() => onOpenPopup('boost')}
-            className="text-left px-3 py-3 rounded-[20px] bg-[#FFF6F4] border border-[#FFEBE5] flex items-center gap-2.5 transition-transform active:scale-[0.98] cursor-pointer shadow-2xs hover:border-orange-200"
+            className="w-full text-left px-3 py-3 rounded-[20px] bg-[#FFF6F4] border border-[#FFEBE5] flex items-center gap-2.5 transition-transform active:scale-[0.98] cursor-pointer shadow-2xs hover:border-orange-200"
         >
             <div className="w-9 h-9 rounded-full bg-[#FFE5DF] flex items-center justify-center shrink-0">
                 <img src={thumbIcon} alt="" className="w-4 h-4 object-contain" />
@@ -253,7 +239,10 @@ const PremiumOfferCard = ({ onUpgradeClick }) => (
             Our Premium offer
         </h3>
 
-        <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#733FE0] to-[#5C2DBA] p-5 text-white shadow-md">
+        <div
+            className="relative overflow-hidden rounded-[24px] bg-cover bg-center p-5 text-white shadow-md"
+            style={{ backgroundImage: `url(${premiumBg})` }}
+        >
             <div className="relative z-10 flex flex-col items-center text-center">
                 <div className="px-3.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-white font-extrabold text-[11px] uppercase tracking-wider mb-3">
                     PREMIUM
