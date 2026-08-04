@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { errorHandler } from './middleware/errorHandler.js';
 import { getOrCreateConfig } from './controllers/appConfigController.js';
 import { apiRateLimiter } from './middleware/rateLimiter.js';
+import { csrfProtection } from './middleware/csrf.js';
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
@@ -19,6 +20,8 @@ import userRoutes from './routes/userRoutes.js';
 import matchRoutes from './routes/matchRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+import fcmRoutes from './routes/fcmRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +47,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(cookieParser());
 app.use(mongoSanitize());
+app.use(csrfProtection);
 
 app.set('view engine', 'ejs');
 
@@ -76,9 +80,12 @@ import { getPublicWebsitePageBySlug } from './controllers/websitePageController.
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', apiRateLimiter, userRoutes);
+app.use('/api/subscriptions', apiRateLimiter, userRoutes);
 app.use('/api/matches', apiRateLimiter, matchRoutes);
 app.use('/api/messages', apiRateLimiter, messageRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/fcm', fcmRoutes);
+app.use('/api/notifications', apiRateLimiter, notificationRoutes);
 app.get('/api/pages/:slug', getPublicWebsitePageBySlug);
 
 // Health check route

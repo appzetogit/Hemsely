@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../../../shared/services/apiClient';
 import demoPhoto from '../assets/6ee1ef9d2677e06049fb899a7658f4b9ac9c11dc.jpg';
+import VerifiedBadge from '../components/VerifiedBadge';
 
 // Reusing icons from assets or SVGs where needed
 import crossIcon from '../assets/icons/cross.png';
@@ -101,14 +102,10 @@ const ProfileDetailPage = () => {
             <div className="px-2">
                 {/* Header Info */}
                 <div className="flex flex-col mb-4 px-2">
-                    <div className="flex items-center space-x-2 mb-1">
+                    <div className="flex items-center space-x-2 mb-1 flex-wrap gap-y-1">
                         <h2 className="text-[22px] font-bold text-black tracking-tight">{name}{profile.age ? `, ${profile.age}` : ''}</h2>
-                        {profile.isVerified && (
-                            <div className="w-5 h-5 rounded-full bg-[#4094F7] flex items-center justify-center shrink-0">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="4">
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                            </div>
+                        {(profile.isPremium || profile.subscriptionName === 'Premium') && (
+                            <VerifiedBadge size={20} />
                         )}
                     </div>
 

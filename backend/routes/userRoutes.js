@@ -6,6 +6,7 @@ import {
   addGalleryImages,
   deleteGalleryImage,
   submitSelfie,
+  verifySelfieAWS,
   getDiscoveryFeed,
   getQueueStatus,
   blockUser,
@@ -13,28 +14,42 @@ import {
   getBlockedUsers,
   reportUser,
   deleteUserProfile,
+  requestAccountDeletionOtp,
+  activateBoost,
 } from '../controllers/userController.js';
+
 
 import { protect } from '../middleware/auth.js';
 import { uploadProfilePicture as uploadProfilePictureMiddleware, uploadGalleryImages as uploadGalleryImagesMiddleware, uploadSelfie as uploadSelfieMiddleware } from '../config/cloudinary.js';
 import { validate } from '../middleware/validate.js';
 import { mongoIdParam, updateProfileValidator, discoveryFeedQueryValidator } from '../validators/userValidators.js';
+import { selfieVerificationRateLimiter } from '../middleware/rateLimiter.js';
 
-import { getPlans, subscribeUserToPlan } from '../controllers/subscriptionController.js';
+import { getPlans, createRazorpayOrder, verifyRazorpayPayment, createBoostOrder, verifyBoostPayment, getBoostPlans } from '../controllers/subscriptionController.js';
 
 const router = express.Router();
 
 router.get('/plans', protect, getPlans);
-router.post('/subscribe', protect, subscribeUserToPlan);
+router.get('/boost-plans', protect, getBoostPlans);
+router.post('/subscribe/create-order', protect, createRazorpayOrder);
+router.post('/subscribe/verify', protect, verifyRazorpayPayment);
+router.post('/create-order', protect, createRazorpayOrder);
+router.post('/verify-payment', protect, verifyRazorpayPayment);
+router.post('/boost/create-order', protect, createBoostOrder);
+router.post('/boost/verify', protect, verifyBoostPayment);
+router.post('/boost/activate', protect, activateBoost);
 router.get('/discovery', protect, discoveryFeedQueryValidator, validate, getDiscoveryFeed);
 router.get('/queue-status', protect, getQueueStatus);
 router.get('/:id/blocked', protect, mongoIdParam('id'), validate, getBlockedUsers);
 router.get('/:id', protect, mongoIdParam('id'), validate, getUserProfile);
 router.put('/:id', protect, updateProfileValidator, validate, updateUserProfile);
+router.post('/:id/request-delete-otp', protect, mongoIdParam('id'), validate, requestAccountDeletionOtp);
 router.delete('/:id', protect, mongoIdParam('id'), validate, deleteUserProfile);
 router.post('/:id/profile-picture', protect, mongoIdParam('id'), validate, uploadProfilePictureMiddleware.single('profilePicture'), uploadProfilePicture);
 router.post('/:id/gallery', protect, mongoIdParam('id'), validate, uploadGalleryImagesMiddleware.array('galleryImages', 10), addGalleryImages);
 router.post('/:id/selfie', protect, mongoIdParam('id'), validate, uploadSelfieMiddleware.single('selfie'), submitSelfie);
+router.post('/selfie-verify-aws', protect, selfieVerificationRateLimiter, uploadSelfieMiddleware.single('selfie'), verifySelfieAWS);
+
 router.delete('/:id/gallery/:imageId', protect, mongoIdParam('id'), validate, deleteGalleryImage);
 router.post('/:id/block/:blockedUserId', protect, mongoIdParam('id'), mongoIdParam('blockedUserId'), validate, blockUser);
 router.post('/:id/unblock/:blockedUserId', protect, mongoIdParam('id'), mongoIdParam('blockedUserId'), validate, unblockUser);

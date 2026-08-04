@@ -2,6 +2,7 @@ import Report from '../models/Report.js';
 import User from '../models/User.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logAdminAction } from '../utils/auditLog.js';
+import { stripAllHtml } from '../utils/sanitize.js';
 
 // @desc Get paginated reports (filterable by status)
 // @route GET /api/admin/reports
@@ -16,7 +17,7 @@ export const getReports = asyncHandler(async (req, res) => {
     query.status = req.query.status;
   }
 
-  const [reports, totalReports] = await Promise.all([
+  const [reports, totalReports, pendingCount, reviewedCount, actionedCount, dismissedCount] = await Promise.all([
     Report.find(query)
       .populate('reporter', 'firstName lastName profilePicture')
       .populate('reportedUser', 'firstName lastName profilePicture isBanned')
@@ -25,11 +26,21 @@ export const getReports = asyncHandler(async (req, res) => {
       .skip(skip)
       .limit(limit),
     Report.countDocuments(query),
+    Report.countDocuments({ status: 'pending' }),
+    Report.countDocuments({ status: 'reviewed' }),
+    Report.countDocuments({ status: 'actioned' }),
+    Report.countDocuments({ status: 'dismissed' }),
   ]);
 
   res.status(200).json({
     success: true,
     reports,
+    counts: {
+      pending: pendingCount,
+      reviewed: reviewedCount,
+      actioned: actionedCount,
+      dismissed: dismissedCount,
+    },
     pagination: {
       page,
       limit,
@@ -51,7 +62,7 @@ export const updateReportStatus = asyncHandler(async (req, res) => {
   }
 
   report.status = status;
-  report.notes = notes || report.notes;
+  report.notes = notes !== undefined ? stripAllHtml(notes) : report.notes;
   report.reviewedBy = req.admin.id;
   report.reviewedAt = new Date();
   await report.save();
@@ -99,5 +110,10 @@ export const updateReportStatus = asyncHandler(async (req, res) => {
     ip: req.ip,
   });
 
-  res.status(200).json({ success: true, message: 'Report updated', report, autoBanned });
+  const populatedReport = await Report.findById(report._id)
+    .populate('reporter', 'firstName lastName profilePicture')
+    .populate('reportedUser', 'firstName lastName profilePicture isBanned')
+    .populate('reviewedBy', 'firstName lastName username');
+
+  res.status(200).json({ success: true, message: 'Report updated', report: populatedReport, autoBanned });
 });

@@ -1,6 +1,7 @@
 import WebsitePageContent from '../models/WebsitePageContent.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logAdminAction } from '../utils/auditLog.js';
+import { sanitizeCmsHtml, stripAllHtml } from '../utils/sanitize.js';
 
 // @desc List all website page content entries
 // @route GET /api/admin/website-pages
@@ -14,10 +15,11 @@ export const getWebsitePages = asyncHandler(async (req, res) => {
 // @route GET /api/admin/website-pages/:slug
 // @access Private/Admin
 export const getWebsitePageBySlug = asyncHandler(async (req, res) => {
-  let page = await WebsitePageContent.findOne({ slug: req.params.slug });
-  if (!page) {
-    page = await WebsitePageContent.create({ slug: req.params.slug, title: req.params.slug, summary: '', body: '' });
-  }
+  const page = await WebsitePageContent.findOneAndUpdate(
+    { slug: req.params.slug },
+    { $setOnInsert: { slug: req.params.slug, title: req.params.slug, summary: '', body: '' } },
+    { new: true, upsert: true }
+  );
   res.status(200).json({ success: true, page });
 });
 
@@ -29,7 +31,12 @@ export const updateWebsitePage = asyncHandler(async (req, res) => {
 
   const page = await WebsitePageContent.findOneAndUpdate(
     { slug: req.params.slug },
-    { title, summary, body, updatedBy: req.admin.id },
+    {
+      title: stripAllHtml(title),
+      summary: stripAllHtml(summary),
+      body: sanitizeCmsHtml(body),
+      updatedBy: req.admin.id,
+    },
     { new: true, upsert: true, runValidators: true }
   );
 

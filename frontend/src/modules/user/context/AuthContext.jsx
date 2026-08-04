@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { API_BASE_URL } from '../../../shared/services/apiClient';
+import { registerFcmToken, removeFcmToken } from '../../../lib/fcmService';
 
 const AuthContext = createContext();
 const AUTH_STORAGE_KEY = 'Hemsely_user:v1';
@@ -15,7 +16,10 @@ export const AuthProvider = ({ children }) => {
                           localStorage.getItem(AUTH_STORAGE_KEY);
         if (savedUser) {
             try {
-                setUser(JSON.parse(savedUser));
+                const parsed = JSON.parse(savedUser);
+                setUser(parsed);
+                // Register FCM token if user is logged in
+                registerFcmToken();
             } catch {
                 setUser(null);
             }
@@ -34,10 +38,14 @@ export const AuthProvider = ({ children }) => {
                 sessionStorage.setItem('userId', userData.id || userData._id);
                 localStorage.setItem('userId', userData.id || userData._id);
             }
+            // Register FCM token on login
+            registerFcmToken();
         }
     }, []);
 
     const logout = useCallback(() => {
+        // Remove FCM token from backend before clearing session
+        removeFcmToken();
         setUser(null);
         sessionStorage.removeItem(AUTH_STORAGE_KEY);
         sessionStorage.removeItem('Hemsely_user');

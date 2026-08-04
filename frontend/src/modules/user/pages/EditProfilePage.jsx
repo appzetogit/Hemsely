@@ -210,7 +210,29 @@ const EditProfilePage = () => {
     };
 
     const handleSelfieClick = () => {
-        navigate('/verify-selfie');
+        if (form.selfieStatus === 'pending' || form.selfieStatus === 'approved') return;
+        selfieInputRef.current?.click();
+    };
+
+    const handleSelfieUpload = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file || !userId) return;
+
+        setUploading(true);
+        try {
+            const croppedFile = await cropImageToSquare(file).catch(() => file);
+            const formData = new FormData();
+            formData.append('selfie', croppedFile);
+            const { data, ok } = await apiClient.post(`/users/${userId}/selfie`, formData);
+            if (ok && data.success && data.user) {
+                updateField('selfiePhoto', data.user.selfiePhoto);
+                updateField('selfieStatus', data.user.selfieStatus);
+                updateField('selfieRejectionReason', data.user.selfieRejectionReason || '');
+            }
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleRemoveGalleryImage = async (imageId) => {
@@ -329,6 +351,21 @@ const EditProfilePage = () => {
         );
     }
 
+    if (!userId) {
+        return (
+            <div className="h-[100dvh] flex flex-col items-center justify-center gap-4 max-w-[414px] mx-auto px-8 text-center" style={{ background: '#FCFCFC' }}>
+                <p className="text-[15px] font-semibold text-gray-900">You need to be logged in to edit your profile.</p>
+                <button
+                    type="button"
+                    onClick={() => navigate('/phone-input')}
+                    className="px-5 py-2.5 rounded-full bg-[#733FE0] text-white text-[14px] font-bold cursor-pointer border-0"
+                >
+                    Go to login
+                </button>
+            </div>
+        );
+    }
+
     const isValidPhoto = (url) => url && typeof url === 'string' && !url.includes('wallet') && !url.includes('svg');
 
     const photoSlots = [
@@ -348,6 +385,7 @@ const EditProfilePage = () => {
     return (
         <div className="h-[100dvh] flex flex-col font-sans overflow-hidden max-w-[414px] mx-auto" style={{ background: '#FCFCFC' }}>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
+            <input ref={selfieInputRef} type="file" accept="image/*" capture="user" onChange={handleSelfieUpload} className="hidden" />
 
             {/* Header */}
             <header className="h-[52px] bg-[#FCFCFC] border-b border-gray-100 flex items-center justify-center px-4 relative shrink-0 shadow-2xs">
@@ -434,28 +472,40 @@ const EditProfilePage = () => {
                     </div>
 
                     <p className="text-[11.5px] font-normal text-gray-400 mt-2.5 px-0.5">
-                        At least 4 photos are mandatory
+                        At least 1 photo is required — add up to 6 to boost your profile
                     </p>
                 </section>
 
                 {/* Verified Your Photos */}
                 <section
                     onClick={handleSelfieClick}
-                    className="bg-white rounded-[20px] p-3.5 px-4 shadow-2xs border border-gray-100/70 mt-3.5 flex items-center justify-between cursor-pointer hover:border-purple-200 transition-colors"
+                    className={`bg-white rounded-[20px] p-3.5 px-4 shadow-2xs border border-gray-100/70 mt-3.5 flex items-center justify-between transition-colors ${form.selfieStatus === 'pending' || form.selfieStatus === 'approved' ? '' : 'cursor-pointer hover:border-purple-200'}`}
                 >
-                    <div className="flex items-center gap-2">
-                        <span className="font-bold text-[14.5px] text-gray-900 tracking-tight">Verified Your Photos</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#22C55E" className="shrink-0">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                            <path d="M9 12l2 2 4-4" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                        </svg>
+                    <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-[14.5px] text-gray-900 tracking-tight">Verify Your Photos</span>
+                            {form.selfieStatus === 'approved' && (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#22C55E" className="shrink-0">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                    <path d="M9 12l2 2 4-4" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                                </svg>
+                            )}
+                        </div>
+                        <span className="text-[11.5px] font-medium text-gray-400">
+                            {form.selfieStatus === 'approved' && 'Verified'}
+                            {form.selfieStatus === 'pending' && 'Submitted — under review'}
+                            {form.selfieStatus === 'rejected' && (form.selfieRejectionReason || 'Rejected — tap to resubmit')}
+                            {(!form.selfieStatus || form.selfieStatus === 'not_submitted') && 'Not verified yet'}
+                        </span>
                     </div>
 
-                    <div className="w-7 h-7 rounded-full bg-purple-50 text-[#733FE0] flex items-center justify-center shrink-0">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                    </div>
+                    {form.selfieStatus !== 'pending' && form.selfieStatus !== 'approved' && (
+                        <div className="w-7 h-7 rounded-full bg-purple-50 text-[#733FE0] flex items-center justify-center shrink-0">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </div>
+                    )}
                 </section>
 
                 {/* Profile Strength */}

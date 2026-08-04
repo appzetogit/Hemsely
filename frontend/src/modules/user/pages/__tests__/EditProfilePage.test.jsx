@@ -20,7 +20,9 @@ vi.mock('../../../../shared/services/apiClient', () => ({
 describe('EditProfilePage', () => {
     beforeEach(() => {
         localStorage.clear();
-        vi.clearAllMocks();
+        // resetAllMocks (not clearAllMocks) - a mockResolvedValue set by one test
+        // must not leak its implementation into the next test.
+        vi.resetAllMocks();
     });
 
     it('renders without crashing and shows the loaded profile bio', async () => {
@@ -30,6 +32,7 @@ describe('EditProfilePage', () => {
             data: {
                 success: true,
                 user: {
+                    _id: 'user-1',
                     bio: 'Hello from a real profile',
                     interests: ['Music'],
                     education: '',

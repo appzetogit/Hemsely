@@ -118,6 +118,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    boostCount: {
+      type: Number,
+      default: 0,
+    },
     premiumExpiry: Date,
     isVerified: {
       type: Boolean,
@@ -173,7 +177,7 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
-    // Selfie verification (fully manual admin review — no automated face-match)
+    // Selfie verification (automated via AWS Rekognition, falling back to manual admin review)
     selfiePhoto: {
       type: String,
       default: null,
@@ -210,6 +214,30 @@ const userSchema = new mongoose.Schema(
     sessionCount: {
       type: Number,
       default: 0,
+    },
+
+    // Profile Boost feature
+    boostUntil: {
+      type: Date,
+      default: null,
+    },
+    isBoosted: {
+      type: Boolean,
+      default: false,
+    },
+
+    // FCM Push Notification Tokens per platform
+    fcmtokenweb: {
+      type: String,
+      default: null,
+    },
+    fcmtokenmobile: {
+      type: String,
+      default: null,
+    },
+    fcmtokenios: {
+      type: String,
+      default: null,
     },
   },
   {

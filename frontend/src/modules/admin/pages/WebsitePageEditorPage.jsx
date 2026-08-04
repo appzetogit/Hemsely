@@ -10,23 +10,34 @@ const WebsitePageEditorPage = () => {
     const staticMeta = websitePagesBySlug[slug];
 
     const [page, setPage] = useState(null);
+    const [lastSavedPage, setLastSavedPage] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [saveError, setSaveError] = useState('');
     const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         if (!staticMeta) return;
         setLoading(true);
+        setLoadError('');
         setIsEditing(false);
         adminApi.get(`/admin/website-pages/${slug}`).then(({ data, ok }) => {
             if (ok && data.success) {
-                setPage({
+                const loaded = {
                     title: data.page.title === slug ? staticMeta.title : data.page.title,
                     summary: data.page.summary || staticMeta.description,
                     body: data.page.body || '',
-                });
+                };
+                setPage(loaded);
+                setLastSavedPage(loaded);
+            } else {
+                setLoadError(data?.message || 'Could not load this page.');
             }
+            setLoading(false);
+        }).catch(() => {
+            setLoadError('Could not load this page. Please try again.');
             setLoading(false);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -41,6 +52,12 @@ const WebsitePageEditorPage = () => {
         setSaved(false);
     };
 
+    const handleCancel = () => {
+        setPage(lastSavedPage);
+        setIsEditing(false);
+        setSaveError('');
+    };
+
     const handleAction = async () => {
         if (!isEditing) {
             setIsEditing(true);
@@ -48,17 +65,44 @@ const WebsitePageEditorPage = () => {
         }
 
         setSaving(true);
-        const { data, ok } = await adminApi.put(`/admin/website-pages/${slug}`, page);
-        setSaving(false);
-
-        if (ok && data.success) {
-            setSaved(true);
-            setIsEditing(false);
-            window.setTimeout(() => setSaved(false), 2500);
+        setSaveError('');
+        try {
+            const { data, ok } = await adminApi.put(`/admin/website-pages/${slug}`, page);
+            if (ok && data.success) {
+                // The server sanitizes `body` (strips disallowed tags) before saving -
+                // sync that back so the editor reflects what was actually persisted,
+                // rather than the admin's raw, possibly-stripped input.
+                const saved_ = {
+                    title: data.page.title === slug ? staticMeta.title : data.page.title,
+                    summary: data.page.summary || staticMeta.description,
+                    body: data.page.body || '',
+                };
+                setPage(saved_);
+                setLastSavedPage(saved_);
+                setSaved(true);
+                setIsEditing(false);
+                window.setTimeout(() => setSaved(false), 2500);
+            } else {
+                setSaveError(data?.message || 'Could not save this page.');
+            }
+        } catch {
+            setSaveError('Could not save this page. Please try again.');
+        } finally {
+            setSaving(false);
         }
     };
 
-    if (loading || !page) return <PageSpinner />;
+    if (loading) return <PageSpinner />;
+
+    if (loadError && !page) {
+        return (
+            <div className="w-full max-w-5xl mx-auto rounded-3xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">
+                {loadError}
+            </div>
+        );
+    }
+
+    if (!page) return null;
 
     return (
         <div className="w-full max-w-5xl mx-auto">
@@ -71,36 +115,54 @@ const WebsitePageEditorPage = () => {
                         </p>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={handleAction}
-                        disabled={saving}
-                        className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white transition-colors shadow-sm cursor-pointer disabled:opacity-60 ${
-                            saved
-                                ? 'bg-success-600 hover:bg-success-600'
-                                : isEditing
-                                    ? 'bg-brand-600 hover:bg-brand-700'
-                                    : 'bg-zinc-900 hover:bg-black'
-                        }`}
-                    >
-                        {saved ? (
-                            <>
-                                <Check className="h-4 w-4" />
-                                Saved
-                            </>
-                        ) : isEditing ? (
-                            <>
-                                <Save className="h-4 w-4" />
-                                {saving ? 'Saving...' : 'Save Content'}
-                            </>
-                        ) : (
-                            <>
-                                <Edit3 className="h-4 w-4" />
-                                Edit Content
-                            </>
+                    <div className="flex items-center gap-2">
+                        {isEditing && (
+                            <button
+                                type="button"
+                                onClick={handleCancel}
+                                disabled={saving}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-700 transition-colors shadow-sm cursor-pointer hover:bg-zinc-50 disabled:opacity-60"
+                            >
+                                Cancel
+                            </button>
                         )}
-                    </button>
+                        <button
+                            type="button"
+                            onClick={handleAction}
+                            disabled={saving}
+                            className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white transition-colors shadow-sm cursor-pointer disabled:opacity-60 ${
+                                saved
+                                    ? 'bg-success-600 hover:bg-success-600'
+                                    : isEditing
+                                        ? 'bg-brand-600 hover:bg-brand-700'
+                                        : 'bg-zinc-900 hover:bg-black'
+                            }`}
+                        >
+                            {saved ? (
+                                <>
+                                    <Check className="h-4 w-4" />
+                                    Saved
+                                </>
+                            ) : isEditing ? (
+                                <>
+                                    <Save className="h-4 w-4" />
+                                    {saving ? 'Saving...' : 'Save Content'}
+                                </>
+                            ) : (
+                                <>
+                                    <Edit3 className="h-4 w-4" />
+                                    Edit Content
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
+
+                {saveError && (
+                    <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                        {saveError}
+                    </div>
+                )}
 
                 <div className="space-y-5">
                     <div>
@@ -158,6 +220,9 @@ const WebsitePageEditorPage = () => {
                             }`}
                             placeholder={`Add content for ${staticMeta.title}`}
                         />
+                        <p className="mt-2 text-xs text-zinc-400">
+                            This is saved as HTML shown directly to visitors. Only these tags are kept: paragraphs, line breaks, bold, italic, underline, lists, headings, quotes, and links — anything else (including scripts) is stripped on save.
+                        </p>
                     </div>
                 </div>
             </section>

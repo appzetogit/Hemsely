@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setStored } from '../constants/discoveryData';
 import apiClient from '../../../shared/services/apiClient';
+import { loadRazorpayScript } from '../../../shared/utils/razorpayLoader';
+import SubscriptionSuccessModal from '../components/SubscriptionSuccessModal';
 
 const DEFAULT_FEATURES = [
     'Unlimited Likes',
@@ -23,6 +25,8 @@ const PremiumPage = () => {
         features: DEFAULT_FEATURES,
     });
     const [subscribing, setSubscribing] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successDetails, setSuccessDetails] = useState(null);
 
     useEffect(() => {
         apiClient.get('/users/plans').then(({ data }) => {
@@ -35,27 +39,92 @@ const PremiumPage = () => {
     const handleSubscribe = async () => {
         setSubscribing(true);
         try {
-            const { data } = await apiClient.post('/users/subscribe', { planId: plan._id });
-            if (data && data.success) {
-                if (data.user) {
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                } else {
-                    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-                    localStorage.setItem('user', JSON.stringify({ ...storedUser, isPremium: true }));
-                }
-                setStored('isPremium', true);
-                alert(data.message || `Subscribed to ${plan.name}! Premium features unlocked.`);
-                navigate(-1);
-            } else {
-                alert(data?.message || 'Could not complete subscription.');
+            // 1. Create Razorpay order on backend
+            const { data, ok } = await apiClient.post('/subscriptions/create-order', { planId: plan._id });
+            if (!ok || !data || !data.success) {
+                alert(data?.message || 'Could not initiate Razorpay payment order');
+                setSubscribing(false);
+                return;
             }
-        } catch {
-            const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-            localStorage.setItem('user', JSON.stringify({ ...storedUser, isPremium: true }));
-            setStored('isPremium', true);
-            alert(`Subscribed to ${plan.name || 'Premium'}! Features unlocked.`);
-            navigate(-1);
-        } finally {
+
+            // 2. Load Razorpay SDK
+            const isLoaded = await loadRazorpayScript();
+            if (!isLoaded) {
+                alert('Razorpay SDK failed to load. Please check your internet connection.');
+                setSubscribing(false);
+                return;
+            }
+
+            // 3. Open Razorpay Checkout Modal
+            const options = {
+                key: data.key,
+                amount: data.amount,
+                currency: data.currency || 'INR',
+                name: 'Hemsely',
+                description: `${data.plan?.name || 'Premium'} Subscription`,
+                order_id: data.orderId,
+                prefill: {
+                    name: data.userDetails?.name || '',
+                    email: data.userDetails?.email || '',
+                    contact: data.userDetails?.phone || '',
+                },
+                notes: {
+                    transactionId: data.transactionId,
+                    subscriptionId: data.subscriptionId,
+                },
+                handler: async function (response) {
+                    try {
+                        // Verify payment signature on backend
+                        const verifyRes = await apiClient.post('/subscriptions/verify-payment', {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            transactionId: data.transactionId,
+                        });
+
+                        if (verifyRes.ok && verifyRes.data?.success) {
+                            const updatedUser = verifyRes.data.user;
+                            if (updatedUser) {
+                                localStorage.setItem('user', JSON.stringify(updatedUser));
+                                sessionStorage.setItem('user', JSON.stringify(updatedUser));
+                            }
+                            localStorage.removeItem('isPremium:v1');
+                            localStorage.removeItem('isPremium');
+                            
+                            setSuccessDetails({
+                                transactionId: data.transactionId,
+                                subscriptionId: data.subscriptionId,
+                            });
+                            setShowSuccessModal(true);
+                        } else {
+                            alert(verifyRes.data?.message || 'Payment verification failed');
+                        }
+                    } catch (err) {
+                        alert('Error verifying payment with server');
+                    } finally {
+                        setSubscribing(false);
+                    }
+                },
+                modal: {
+                    ondismiss: function () {
+                        setSubscribing(false);
+                    },
+                },
+                theme: {
+                    color: '#703DE2',
+                },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                console.error('Razorpay payment failed:', response.error);
+                alert(`Payment Failed: ${response.error?.description || 'Transaction cancelled'}`);
+                setSubscribing(false);
+            });
+            rzp.open();
+        } catch (err) {
+            console.error('Error starting subscription checkout:', err);
+            alert('An unexpected error occurred. Please try again.');
             setSubscribing(false);
         }
     };
@@ -150,6 +219,17 @@ const PremiumPage = () => {
                     {subscribing ? 'SUBSCRIBING...' : 'SUBSCRIBE NOW'}
                 </button>
             </div>
+
+            {/* Success Celebration Animation Modal */}
+            {showSuccessModal && (
+                <SubscriptionSuccessModal
+                    details={successDetails}
+                    onClose={() => {
+                        setShowSuccessModal(false);
+                        navigate('/likes', { replace: true });
+                    }}
+                />
+            )}
 
         </div>
     );

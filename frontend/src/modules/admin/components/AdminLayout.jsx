@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Outlet, useNavigate, Link } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import adminApi from '../services/adminApi';
 import { Menu, Bell, User, LogOut } from 'lucide-react';
@@ -11,12 +11,20 @@ const AdminLayout = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [checkingAuth, setCheckingAuth] = useState(true);
     const [admin, setAdmin] = useState(null);
+    const [authCheckError, setAuthCheckError] = useState('');
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [recentNotifications, setRecentNotifications] = useState([]);
     const navigate = useNavigate();
+    const location = useLocation();
     const userMenuRef = useRef(null);
     const notifRef = useRef(null);
+
+    // Close the full-screen mobile sidebar overlay whenever the route changes,
+    // otherwise it stays open on top of the page the admin just navigated to.
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [location.pathname]);
 
     useEffect(() => {
         const token = localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -26,13 +34,24 @@ const AdminLayout = () => {
         }
 
         (async () => {
-            const { data, ok } = await adminApi.get('/admin/me');
-            if (ok && data.success) {
-                setAdmin(data.admin);
+            try {
+                const { data, ok, status } = await adminApi.get('/admin/me');
+                if (ok && data.success) {
+                    setAdmin(data.admin);
+                    setCheckingAuth(false);
+                } else if (status === 401 || status === 403) {
+                    // Genuinely unauthenticated/unauthorized - clear the stale session and send them to login.
+                    localStorage.removeItem(ADMIN_TOKEN_KEY);
+                    navigate('/admin/login', { replace: true });
+                } else {
+                    // A transient failure (network hiccup, 500, etc.) shouldn't force-logout an
+                    // otherwise-valid session - let the admin retry instead of losing their session.
+                    setAuthCheckError('Could not verify your session. Please retry.');
+                    setCheckingAuth(false);
+                }
+            } catch {
+                setAuthCheckError('Could not verify your session. Please retry.');
                 setCheckingAuth(false);
-            } else {
-                localStorage.removeItem(ADMIN_TOKEN_KEY);
-                navigate('/admin/login', { replace: true });
             }
         })();
     }, [navigate]);
@@ -130,10 +149,15 @@ const AdminLayout = () => {
                                         <p className="px-4 py-4 text-sm text-zinc-400">No notifications sent yet.</p>
                                     ) : (
                                         recentNotifications.map((n) => (
-                                            <div key={n._id} className="px-4 py-3 border-b border-zinc-50 last:border-0">
+                                            <Link
+                                                key={n._id}
+                                                to="/admin/notifications"
+                                                onClick={() => setShowNotifications(false)}
+                                                className="block px-4 py-3 border-b border-zinc-50 last:border-0 hover:bg-zinc-50 transition-colors"
+                                            >
                                                 <p className="text-sm font-semibold text-zinc-900">{n.title}</p>
                                                 <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{n.body}</p>
-                                            </div>
+                                            </Link>
                                         ))
                                     )}
                                     <Link
@@ -188,6 +212,18 @@ const AdminLayout = () => {
 
                 {/* Main Content Area Scrollable */}
                 <main className="flex-1 overflow-y-auto w-full p-4 sm:p-6 lg:p-8 relative z-[1] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    {authCheckError && (
+                        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                            <span>{authCheckError}</span>
+                            <button
+                                type="button"
+                                onClick={() => window.location.reload()}
+                                className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold cursor-pointer border-0"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
                     <Outlet />
                 </main>
             </div>

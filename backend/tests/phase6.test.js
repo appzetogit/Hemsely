@@ -6,7 +6,7 @@ import Admin from '../models/Admin.js';
 import Report from '../models/Report.js';
 import Plan from '../models/Plan.js';
 import AppConfig from '../models/AppConfig.js';
-import { evaluateQueueAccessForUser, isBlockedByQueue } from '../utils/queueService.js';
+import { evaluateQueueAccessForUser, isBlockedByQueue, processQueueReevaluation, getQueueStatusForUser } from '../utils/queueService.js';
 import { rankProfiles } from '../utils/rankingService.js';
 
 const makeUser = async (overrides = {}) => {
@@ -21,6 +21,13 @@ const makeUser = async (overrides = {}) => {
   const token = jwt.sign({ id: user._id.toString(), role: 'user' }, process.env.JWT_SECRET, { expiresIn: '1h' });
   return { user, token };
 };
+
+// GeoJSON location override matching User.location.coordinates' nested shape ({lng, lat}).
+const atLocation = (lng, lat) => ({ location: { coordinates: { type: 'Point', coordinates: [lng, lat] } } });
+
+// Two clusters thousands of km apart, well outside any realistic queueRadiusKm.
+const CLUSTER_A = [77.2, 28.6]; // Delhi
+const CLUSTER_B = [-122.4, 37.7]; // San Francisco
 
 const makeAdminToken = async () => {
   const admin = await Admin.create({
@@ -150,6 +157,135 @@ describe('Phase 6 — moderation, queue, ranking, selfie, static plans', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.user.accessStatus).toBe('active');
+    });
+  });
+
+  describe('Gender-ratio access queue — radius scope (Phase 2)', () => {
+    beforeEach(async () => {
+      await AppConfig.create({
+        genderQueueEnabled: true,
+        queueRatioMale: 1,
+        queueRatioFemale: 4,
+        queueScope: 'radius',
+        queueRadiusKm: 50,
+      });
+    });
+
+    it('promotes/queues based on the local (radius) ratio, not the country-wide count', async () => {
+      // 4 females near cluster A -> allowed males there = floor(4 * 1/4) = 1
+      await User.insertMany(
+        Array.from({ length: 4 }, (_, i) => ({
+          phoneNumber: `+91700000010${i}`,
+          gender: 'female',
+          isProfileComplete: true,
+          ...atLocation(...CLUSTER_A),
+        }))
+      );
+
+      const { user: male1 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_A) });
+      await evaluateQueueAccessForUser(male1._id);
+      expect((await User.findById(male1._id)).accessStatus).toBe('active');
+
+      const { user: male2 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_A) });
+      await evaluateQueueAccessForUser(male2._id);
+      expect((await User.findById(male2._id)).accessStatus).toBe('queued');
+    });
+
+    it('does not let a distant cluster with no local females borrow capacity from another cluster', async () => {
+      // 4 females + 1 active male at cluster A (uses up the only local slot there).
+      await User.insertMany(
+        Array.from({ length: 4 }, (_, i) => ({
+          phoneNumber: `+91700000020${i}`,
+          gender: 'female',
+          isProfileComplete: true,
+          ...atLocation(...CLUSTER_A),
+        }))
+      );
+      const { user: male1 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_A) });
+      await evaluateQueueAccessForUser(male1._id);
+      expect((await User.findById(male1._id)).accessStatus).toBe('active');
+
+      // A male at cluster B has zero local females -> queued, independent of cluster A's active male.
+      const { user: male3 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_B) });
+      await evaluateQueueAccessForUser(male3._id);
+      expect((await User.findById(male3._id)).accessStatus).toBe('queued');
+
+      // Evaluating male3 must not have touched male1's status.
+      expect((await User.findById(male1._id)).accessStatus).toBe('active');
+    });
+
+    it('falls back to country-wide evaluation for a male with no known location', async () => {
+      await User.insertMany(
+        Array.from({ length: 4 }, (_, i) => ({
+          phoneNumber: `+91700000030${i}`,
+          gender: 'female',
+          isProfileComplete: true,
+          ...atLocation(...CLUSTER_B),
+        }))
+      );
+
+      // Default location is [0,0] (unknown) — no override passed.
+      const { user: male4 } = await makeUser({ gender: 'male' });
+      await evaluateQueueAccessForUser(male4._id);
+      expect((await User.findById(male4._id)).accessStatus).toBe('active');
+    });
+
+    it('processQueueReevaluation promotes a queued user once local slots open, leaving an empty-cluster user queued', async () => {
+      await User.insertMany(
+        Array.from({ length: 4 }, (_, i) => ({
+          phoneNumber: `+91700000040${i}`,
+          gender: 'female',
+          isProfileComplete: true,
+          ...atLocation(...CLUSTER_A),
+        }))
+      );
+      const { user: male1 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_A) });
+      await evaluateQueueAccessForUser(male1._id);
+      const { user: male2 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_A) });
+      await evaluateQueueAccessForUser(male2._id);
+      expect((await User.findById(male2._id)).accessStatus).toBe('queued');
+
+      const { user: male5 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_B) });
+      await evaluateQueueAccessForUser(male5._id);
+      expect((await User.findById(male5._id)).accessStatus).toBe('queued');
+
+      // 4 more females join cluster A -> local allowed males = floor(8 * 1/4) = 2.
+      await User.insertMany(
+        Array.from({ length: 4 }, (_, i) => ({
+          phoneNumber: `+91700000050${i}`,
+          gender: 'female',
+          isProfileComplete: true,
+          ...atLocation(...CLUSTER_A),
+        }))
+      );
+
+      await processQueueReevaluation();
+
+      expect((await User.findById(male2._id)).accessStatus).toBe('active');
+      expect((await User.findById(male5._id)).accessStatus).toBe('queued');
+    });
+
+    it('scopes queue position/total to the same local cluster, not a global count', async () => {
+      await User.insertMany(
+        Array.from({ length: 4 }, (_, i) => ({
+          phoneNumber: `+91700000060${i}`,
+          gender: 'female',
+          isProfileComplete: true,
+          ...atLocation(...CLUSTER_A),
+        }))
+      );
+      const { user: male1 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_A) });
+      await evaluateQueueAccessForUser(male1._id);
+      const { user: male2 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_A) });
+      await evaluateQueueAccessForUser(male2._id);
+      const { user: male3 } = await makeUser({ gender: 'male', ...atLocation(...CLUSTER_B) });
+      await evaluateQueueAccessForUser(male3._id);
+
+      const statusA = await getQueueStatusForUser(male2._id);
+      const statusB = await getQueueStatusForUser(male3._id);
+
+      expect(statusA).toEqual({ queued: true, position: 1, totalQueued: 1 });
+      expect(statusB).toEqual({ queued: true, position: 1, totalQueued: 1 });
     });
   });
 

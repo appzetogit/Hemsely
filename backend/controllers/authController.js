@@ -5,13 +5,7 @@ import { generateToken, generateRefreshToken, setCookie, clearCookie } from '../
 import { validateEmail, validatePhoneNumber, validatePassword } from '../utils/validators.js';
 import smsIndiaHubService from '../utils/smsService.js';
 import { getOrCreateConfig } from './appConfigController.js';
-
-const isDefaultOtpPhone = (last10Digits) => {
-  const defaultPhones = (process.env.DEFAULT_OTP_NUMBERS || '9009925021')
-    .split(',')
-    .map(p => p.trim().replace(/\D/g, '').slice(-10));
-  return defaultPhones.includes(last10Digits);
-};
+import { generateOtpCode, getOtpExpiry, isOtpValid } from '../utils/otpService.js';
 
 // @desc Send OTP to phone number
 // @route POST /api/auth/send-otp
@@ -32,11 +26,8 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
   const normalizedPhone = `+91${last10Digits}`;
 
   // Generate OTP (real random 6-digit OTP when OTP_USE_MOCK is false, except default test numbers)
-  const isMockMode = process.env.OTP_USE_MOCK === 'true';
-  const defaultMock = process.env.OTP_MOCK_CODE || '123456';
-  const isDefaultNumber = isDefaultOtpPhone(last10Digits);
-  const otpCode = (isMockMode || isDefaultNumber) ? defaultMock : Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpires = new Date(Date.now() + (parseInt(process.env.OTP_EXPIRY_MINUTES || '5', 10) * 60 * 1000));
+  const otpCode = generateOtpCode(last10Digits);
+  const otpExpires = getOtpExpiry();
 
   let user = await User.findOne({
     $or: [
@@ -62,10 +53,10 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
 
   if (user) {
     if (user.isBanned) {
-      return res.status(200).json({
+      return res.status(403).json({
         success: false,
         isBanned: true,
-        message: 'You are banned by Hemsely',
+        message: user.banReason || 'You are banned by Hemsely',
       });
     }
     user.phoneNumber = normalizedPhone;
@@ -160,14 +151,9 @@ export const verifyOTP = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const isMockMode = process.env.OTP_USE_MOCK === 'true';
-  const defaultMock = process.env.OTP_MOCK_CODE || '123456';
-  const isOtpValid = (user.otpCode && user.otpCode === enteredOtp) ||
-                     enteredOtp === defaultMock ||
-                     enteredOtp === '123456' ||
-                     enteredOtp === '1234';
+  const otpMatches = isOtpValid(user, enteredOtp, last10Digits);
 
-  if (!isOtpValid) {
+  if (!otpMatches) {
     return res.status(400).json({
       success: false,
       message: 'Invalid OTP code. Please enter the correct code sent to your phone.',

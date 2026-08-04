@@ -43,6 +43,7 @@ const ticketSchema = new mongoose.Schema(
     adminResponse: {
       type: String,
       default: '',
+      maxlength: [2000, 'Admin response cannot exceed 2000 characters'],
     },
     respondedAt: {
       type: Date,
@@ -57,11 +58,18 @@ const ticketSchema = new mongoose.Schema(
   }
 );
 
-// Auto-generate human readable Ticket ID before save
-ticketSchema.pre('save', function (next) {
+// Auto-generate a human readable Ticket ID before save, retrying on the rare collision
+// since `unique: true` alone would otherwise surface as a generic duplicate-key error.
+ticketSchema.pre('save', async function (next) {
   if (!this.ticketId) {
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    this.ticketId = `TCK-${randomNum}`;
+    const Ticket = this.constructor;
+    let candidate;
+    let attempts = 0;
+    do {
+      candidate = `TCK-${Math.floor(100000 + Math.random() * 900000)}`;
+      attempts += 1;
+    } while (attempts < 5 && (await Ticket.exists({ ticketId: candidate })));
+    this.ticketId = candidate;
   }
   next();
 });

@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import DiscoveryFilterPopup from '../components/DiscoveryFilterPopup';
 import DiscoveryMatchPopup from '../components/DiscoveryMatchPopup';
 import DiscoveryProfileCard from '../components/DiscoveryProfileCard';
+import AwsSelfieVerificationModal from '../components/AwsSelfieVerificationModal';
 import BottomNavigation from '../components/BottomNavigation';
+
 import { getStored, setStored } from '../constants/discoveryData';
 import apiClient from '../../../shared/services/apiClient';
 import demoPhoto from '../assets/6ee1ef9d2677e06049fb899a7658f4b9ac9c11dc.jpg';
@@ -83,10 +85,52 @@ const DiscoveryPage = () => {
     const [showFilter, setShowFilter] = useState(false);
     const [queueInfo, setQueueInfo] = useState(null);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
+    const [showSelfieModal, setShowSelfieModal] = useState(false);
+    const [isUserVerified, setIsUserVerified] = useState(() => {
+        try {
+            const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+            return Boolean(u.isVerified || u.selfieStatus === 'approved');
+        } catch {
+            return false;
+        }
+    });
+    const [selfieStatus, setSelfieStatus] = useState(() => {
+        try {
+            const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+            return u.selfieStatus || (u.isVerified ? 'approved' : 'not_submitted');
+        } catch {
+            return 'not_submitted';
+        }
+    });
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [checkingStatus, setCheckingStatus] = useState(false);
+
     const hasActiveFilter = filters.distanceKm !== DEFAULT_FILTERS.distanceKm;
     const isProfileComplete = getStored('profile_complete', false);
 
+    const refreshUserVerificationStatus = async () => {
+        setCheckingStatus(true);
+        try {
+            const { ok, data } = await apiClient.get('/users/me');
+            if (ok && data?.user) {
+                const verified = Boolean(data.user.isVerified || data.user.selfieStatus === 'approved');
+                setIsUserVerified(verified);
+                setSelfieStatus(data.user.selfieStatus || (verified ? 'approved' : 'not_submitted'));
+                setRejectionReason(data.user.selfieRejectionReason || '');
+                const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+                localStorage.setItem('user', JSON.stringify({ ...storedUser, ...data.user }));
+            }
+        } catch { }
+        setCheckingStatus(false);
+    };
+
+    // Fetch current user details to check verification status
+    useEffect(() => {
+        refreshUserVerificationStatus();
+    }, []);
+
     // Auto-sync real GPS device location to backend for real-time dynamic distance calculation
+
     useEffect(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
@@ -99,9 +143,9 @@ const DiscoveryPage = () => {
                                 coordinates: [longitude, latitude],
                             },
                         },
-                    }).catch(() => {});
+                    }).catch(() => { });
                 }
-            }, () => {}, { timeout: 10000, enableHighAccuracy: true });
+            }, () => { }, { timeout: 10000, enableHighAccuracy: true });
         }
     }, []);
 
@@ -255,7 +299,85 @@ const DiscoveryPage = () => {
         <div className="h-[100dvh] flex flex-col font-sans overflow-hidden max-w-[414px] mx-auto relative" style={{ background: '#FCFCFC' }}>
 
             <main className="flex-1 overflow-y-auto pt-3 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[15.53px]">
-                {queueInfo ? (
+                {!isUserVerified ? (
+                    selfieStatus === 'pending' ? (
+                        <div className="flex flex-col items-center justify-center min-h-[440px] h-full text-center gap-5 pt-10 px-4">
+                            <div className="w-24 h-24 rounded-full bg-amber-50 border-2 border-amber-500/30 flex items-center justify-center shadow-lg animate-pulse">
+                                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
+                            </div>
+                            <div>
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wider mb-3">
+                                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                                    Profile Under Review
+                                </span>
+                                <h3 className="text-[22px] font-extrabold text-black tracking-tight mb-2">Profile Under Review</h3>
+                                <p className="text-[14px] text-gray-500 max-w-[300px] leading-relaxed font-normal">
+                                    Your live selfie photo is currently under review by our admin team. Please wait for approval.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                disabled={checkingStatus}
+                                onClick={refreshUserVerificationStatus}
+                                className="w-full max-w-[280px] h-[52px] bg-amber-600 text-white font-bold rounded-full text-[15px] shadow-lg hover:bg-amber-700 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                            >
+                                {checkingStatus ? 'Checking Status...' : 'Check Verification Status'}
+                            </button>
+                        </div>
+                    ) : selfieStatus === 'rejected' ? (
+                        <div className="flex flex-col items-center justify-center min-h-[440px] h-full text-center gap-5 pt-10 px-4">
+                            <div className="w-24 h-24 rounded-full bg-red-50 border-2 border-red-500/30 flex items-center justify-center shadow-lg">
+                                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="15" y1="9" x2="9" y2="15" />
+                                    <line x1="9" y1="9" x2="15" y2="15" />
+                                </svg>
+                            </div>
+                            <div>
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-bold uppercase tracking-wider mb-3">
+                                    Verification Rejected
+                                </span>
+                                <h3 className="text-[22px] font-extrabold text-black tracking-tight mb-2">Selfie Verification Failed</h3>
+                                <p className="text-[14px] text-red-600 bg-red-50 p-3 rounded-2xl border border-red-100 max-w-[300px] leading-relaxed font-medium mb-1">
+                                    {rejectionReason || 'Your selfie photo could not be verified automatically.'}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowSelfieModal(true)}
+                                className="w-full max-w-[280px] h-[52px] bg-[#6E36E4] text-white font-bold rounded-full text-[16px] shadow-lg hover:bg-[#5e2cc5] active:scale-95 transition-all cursor-pointer"
+                            >
+                                Re-take Selfie Now
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center min-h-[440px] h-full text-center gap-5 pt-10 px-4">
+                            <div className="w-24 h-24 rounded-full bg-purple-50 border-2 border-[#6E36E4]/20 flex items-center justify-center shadow-lg animate-pulse">
+                                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#6E36E4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                    <path d="M9 12l2 2 4-4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-[22px] font-extrabold text-black tracking-tight mb-2">Selfie Verification Required</h3>
+                                <p className="text-[14px] text-gray-500 max-w-[290px] leading-relaxed font-normal">
+                                    For Activate Account selfie verification is Needed
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowSelfieModal(true)}
+                                className="w-full max-w-[280px] h-[52px] bg-[#6E36E4] text-white font-bold rounded-full text-[16px] shadow-lg hover:bg-[#5e2cc5] active:scale-95 transition-all cursor-pointer"
+                            >
+                                Verify Selfie Now
+                            </button>
+                        </div>
+                    )
+                ) : queueInfo ? (
+
                     <div className="flex flex-col items-center justify-center h-full text-center gap-4 pt-10 px-2">
                         <div className="w-20 h-20 rounded-full bg-[#F7EBFE] flex items-center justify-center">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6F3BCE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -408,8 +530,19 @@ const DiscoveryPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* AWS Rekognition Selfie Verification Modal */}
+            <AwsSelfieVerificationModal
+                isOpen={showSelfieModal}
+                onClose={() => setShowSelfieModal(false)}
+                onVerificationSuccess={(updatedUser) => {
+                    setIsUserVerified(true);
+                    setShowSelfieModal(false);
+                }}
+            />
         </div>
     );
 };
+
 
 export default DiscoveryPage;

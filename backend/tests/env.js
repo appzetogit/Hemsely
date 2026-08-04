@@ -17,3 +17,10 @@ process.env.FRONTEND_URL = 'http://localhost:5173';
 process.env.SMSINDIAHUB_API_KEY = '';
 process.env.SMSINDIAHUB_SENDER_ID = '';
 process.env.SMSINDIAHUB_TEMPLATE_ID = '';
+
+// Never let tests hit the real AWS Rekognition API — same reasoning as SMS above.
+// Blank (not delete) so dotenv's "fill only unset vars" behavior in app.js can't
+// backfill real credentials from backend/.env, keeping awsRekognitionService.js
+// deterministically in mock mode for tests that don't mock the AWS SDK themselves.
+process.env.AWS_ACCESS_KEY_ID = '';
+process.env.AWS_SECRET_ACCESS_KEY = '';

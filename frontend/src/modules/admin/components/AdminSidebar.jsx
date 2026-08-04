@@ -15,6 +15,8 @@ import {
     UserCircle,
     ScanFace,
     LifeBuoy,
+    UserCheck,
+    Zap,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -24,7 +26,9 @@ const NAV_ITEMS = [
     { icon: ScanFace, label: 'Selfie Verification', path: '/admin/selfie-verification' },
     { icon: Flag, label: 'Reports & Flags', path: '/admin/reports' },
     { icon: LifeBuoy, label: 'Support Management', path: '/admin/support' },
-    { icon: CreditCard, label: 'Subscriptions', path: '/admin/subscriptions' },
+    { icon: CreditCard, label: 'Subscriptions Edit', path: '/admin/subscriptions' },
+    { icon: Zap, label: 'Boost Edit', path: '/admin/boost-edit' },
+    { icon: UserCheck, label: 'Subscription Users', path: '/admin/subscription-users' },
     { icon: Receipt, label: 'Transactions', path: '/admin/transactions' },
     { icon: Clock3, label: 'Queue Management', path: '/admin/queue-management' },
     { icon: Bell, label: 'Notifications', path: '/admin/notifications' },

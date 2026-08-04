@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import checkMarkIcon from '../assets/icons/tick.png';
-import { deleteUserProfile, updateUserProfile } from '../services/userApi';
+import { deleteUserProfile, requestAccountDeletionOtp, updateUserProfile } from '../services/userApi';
 import apiClient from '../../../shared/services/apiClient';
 import { devError } from '../../../shared/utils/logger';
 
@@ -145,6 +145,10 @@ const SettingsPage = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [email, setEmail] = useState('Not added');
     const [isDeleting, setIsDeleting] = useState(false);
+    const [sendingDeleteOtp, setSendingDeleteOtp] = useState(false);
+    const [showDeleteOtpModal, setShowDeleteOtpModal] = useState(false);
+    const [deleteOtp, setDeleteOtp] = useState('');
+    const [deleteOtpError, setDeleteOtpError] = useState('');
 
     // Email Modal state
     const [showEmailModal, setShowEmailModal] = useState(false);
@@ -334,19 +338,50 @@ const SettingsPage = () => {
             return;
         }
 
-        setIsDeleting(true);
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+
+        setSendingDeleteOtp(true);
         try {
-            const userId = localStorage.getItem('userId');
-            if (userId) {
-                await deleteUserProfile(userId);
+            const { ok, data } = await requestAccountDeletionOtp(userId);
+            if (!ok || data?.success === false) {
+                alert(data?.message || "Couldn't send a confirmation code. Please try again.");
+                return;
+            }
+            setDeleteOtp('');
+            setDeleteOtpError('');
+            setShowDeleteOtpModal(true);
+        } catch (error) {
+            devError('Failed to send account deletion OTP:', error);
+            alert("Couldn't send a confirmation code. Please try again.");
+        } finally {
+            setSendingDeleteOtp(false);
+        }
+    };
+
+    const handleConfirmDeleteAccount = async (e) => {
+        e.preventDefault();
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+
+        if (!deleteOtp.trim()) {
+            setDeleteOtpError('Enter the code sent to your phone.');
+            return;
+        }
+
+        setIsDeleting(true);
+        setDeleteOtpError('');
+        try {
+            const { ok, data } = await deleteUserProfile(userId, deleteOtp.trim());
+            if (!ok || data?.success === false) {
+                setDeleteOtpError(data?.message || 'Incorrect code. Please try again.');
+                return;
             }
             localStorage.clear();
-            alert("Your account has been deleted successfully.");
             navigate('/phone-input');
         } catch (error) {
             devError('Delete account error:', error);
-            localStorage.clear();
-            navigate('/phone-input');
+            setDeleteOtpError('Something went wrong. Please try again.');
         } finally {
             setIsDeleting(false);
         }
@@ -421,10 +456,10 @@ const SettingsPage = () => {
                     <button
                         type="button"
                         onClick={handleDeleteAccount}
-                        disabled={isDeleting}
+                        disabled={sendingDeleteOtp}
                         className="w-full h-[50px] bg-red-50 hover:bg-red-100 active:scale-[0.99] transition-all rounded-[14px] border border-red-100 text-[15px] font-bold text-red-600 cursor-pointer shadow-xs disabled:opacity-50"
                     >
-                        {isDeleting ? 'Deleting Account...' : 'Delete account'}
+                        {sendingDeleteOtp ? 'Sending code...' : 'Delete account'}
                     </button>
                 </div>
             </main>
@@ -471,6 +506,62 @@ const SettingsPage = () => {
                                     className="flex-1 h-11 rounded-xl bg-[#733FE0] hover:bg-[#6232c7] text-white font-semibold text-[14px] border-0 cursor-pointer transition-colors shadow-xs disabled:opacity-50"
                                 >
                                     {savingEmail ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Account Confirmation Modal */}
+            {showDeleteOtpModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+                    onClick={() => !isDeleting && setShowDeleteOtpModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl w-full max-w-[340px] p-6 shadow-xl relative animate-in fade-in zoom-in duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="text-[18px] font-bold text-gray-900 mb-1">
+                            Confirm account deletion
+                        </h3>
+                        <p className="text-[12px] text-gray-500 mb-4">
+                            Enter the code we sent to {phoneNumber || 'your phone'} to permanently delete your account.
+                        </p>
+
+                        <form onSubmit={handleConfirmDeleteAccount} className="flex flex-col gap-4">
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                autoFocus
+                                placeholder="6-digit code"
+                                value={deleteOtp}
+                                onChange={(e) => {
+                                    setDeleteOtpError('');
+                                    setDeleteOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                                }}
+                                className="w-full h-12 px-4 rounded-xl border border-gray-200 focus:border-red-400 focus:outline-none text-[15px] font-medium text-gray-900 bg-gray-50/50 tracking-widest text-center"
+                            />
+                            {deleteOtpError && (
+                                <p className="text-[12px] text-red-500 -mt-2">{deleteOtpError}</p>
+                            )}
+
+                            <div className="flex gap-2 mt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDeleteOtpModal(false)}
+                                    disabled={isDeleting}
+                                    className="flex-1 h-11 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-[14px] border-0 cursor-pointer transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isDeleting}
+                                    className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-[14px] border-0 cursor-pointer transition-colors shadow-xs disabled:opacity-50"
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Delete account'}
                                 </button>
                             </div>
                         </form>

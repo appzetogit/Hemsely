@@ -9,6 +9,10 @@ import { evaluateQueueAccessForUser, isBlockedByQueue, getQueueStatusForUser, pr
 import { getOrCreateConfig } from './appConfigController.js';
 import { rankProfiles } from '../utils/rankingService.js';
 import { haversineKm, EARTH_RADIUS_KM } from '../utils/geoService.js';
+import { stripAllHtml } from '../utils/sanitize.js';
+import { generateOtpCode, getOtpExpiry, isOtpValid, lastTenDigits } from '../utils/otpService.js';
+import { compareFacesWithAWS } from '../services/awsRekognitionService.js';
+
 
 // @desc Get the current user's gender-ratio queue status
 // @route GET /api/users/queue-status
@@ -23,7 +27,7 @@ export const getQueueStatus = asyncHandler(async (req, res, next) => {
 // @access Private
 export const getUserProfile = asyncHandler(async (req, res, next) => {
   const targetId = req.params.id === 'me' ? req.user.id : req.params.id;
-  const user = await User.findById(targetId);
+  const user = await User.findById(targetId).select('-otpCode -otpExpires -fcmtokenweb -fcmtokenmobile -fcmtokenios');
 
   if (!user) {
     return res.status(404).json({
@@ -32,10 +36,42 @@ export const getUserProfile = asyncHandler(async (req, res, next) => {
     });
   }
 
+  if (user.isPremium && user.premiumExpiry && new Date(user.premiumExpiry) < new Date()) {
+    user.isPremium = false;
+    await User.findByIdAndUpdate(user._id, { isPremium: false });
+  }
+
+  if (user.isBoosted && (!user.boostUntil || new Date(user.boostUntil) < new Date())) {
+    user.isBoosted = false;
+    await User.findByIdAndUpdate(user._id, { isBoosted: false });
+  }
+
   res.status(200).json({
     success: true,
     user,
   });
+});
+
+// @desc Consume 1 boost credit and activate a 30-minute profile boost window
+// @route POST /api/users/boost/activate
+// @access Private
+export const activateBoost = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  if (!user.boostCount || user.boostCount < 1) {
+    return res.status(400).json({ success: false, message: 'No boost credits available' });
+  }
+
+  user.boostCount -= 1;
+  user.boostUntil = new Date(Date.now() + 30 * 60 * 1000);
+  user.isBoosted = true;
+  await user.save();
+
+  res.status(200).json({ success: true, user, boostCount: user.boostCount, boostUntil: user.boostUntil });
 });
 
 // @desc Update user profile
@@ -125,6 +161,16 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
     }
   });
 
+  if (updates.bio !== undefined) {
+    updates.bio = stripAllHtml(updates.bio);
+  }
+  if (Array.isArray(updates.prompts)) {
+    updates.prompts = updates.prompts.map((p) => ({
+      question: stripAllHtml(p.question || ''),
+      answer: stripAllHtml(p.answer || ''),
+    }));
+  }
+
   if (updates.firstName || req.body.isProfileComplete !== undefined || req.body.gender || req.body.interests) {
     updates.isProfileComplete = true;
   }
@@ -200,13 +246,19 @@ export const submitSelfie = asyncHandler(async (req, res, next) => {
     });
   }
 
+  const profileInput = req.user.profilePicture || (req.user.galleryImages && req.user.galleryImages[0]?.url) || null;
+  const result = await compareFacesWithAWS(profileInput, req.file.path, true);
+  const isVerified = Boolean(result.verified);
+  const selfieStatus = isVerified ? 'approved' : 'pending';
+
   const user = await User.findByIdAndUpdate(
     req.params.id,
     {
       selfiePhoto: req.file.path,
-      selfieStatus: 'pending',
-      selfieReviewedBy: null,
-      selfieReviewedAt: null,
+      selfieStatus,
+      isVerified: isVerified || Boolean(req.user.isVerified),
+      selfieReviewedBy: isVerified ? req.user._id : null,
+      selfieReviewedAt: isVerified ? new Date() : null,
       selfieRejectionReason: '',
     },
     { new: true }
@@ -214,10 +266,140 @@ export const submitSelfie = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: 'Selfie submitted for review',
+    message: isVerified ? 'Selfie photo verified successfully!' : 'Selfie submitted for review',
     user,
   });
 });
+
+// @desc Verify selfie using AWS Rekognition Facial Recognition API
+// @route POST /api/users/selfie-verify-aws
+// @access Private
+export const verifySelfieAWS = asyncHandler(async (req, res, next) => {
+  const userId = req.user.id;
+  const user = await User.findById(userId);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User profile not found',
+    });
+  }
+
+  // Determine selfie photo input (uploaded file or base64 selfie data)
+  let selfieInput = null;
+  let selfiePhotoPath = user.selfiePhoto || null;
+
+  if (req.file) {
+    // Prefer the compressed on-disk copy (req.file.path) over the raw upload buffer:
+    // uploadSelfieMiddleware compresses to max 800x800/q75 before saving, but leaves
+    // req.file.buffer as the original, uncompressed bytes — a modern phone-camera photo
+    // easily exceeds AWS Rekognition's 5MB image-bytes limit and fails the API call.
+    selfieInput = req.file.path || req.file.buffer;
+    selfiePhotoPath = req.file.path || req.file.filename;
+  } else if (req.body?.selfieData) {
+    selfieInput = req.body.selfieData;
+  }
+
+  if (!selfieInput) {
+    return res.status(400).json({
+      success: false,
+      message: 'No selfie photo provided for AWS Rekognition verification',
+    });
+  }
+
+  // Save selfie photo path on user object
+  if (selfiePhotoPath) {
+    user.selfiePhoto = selfiePhotoPath;
+  }
+
+  // Profile image input from user document
+  const profileInput = user.profilePicture || (user.galleryImages && user.galleryImages[0]?.url) || null;
+
+  // Extract frame color state (green vs red) when selfie was captured
+  const isFaceInFrame = req.body?.isFaceInFrame !== 'false' && req.body?.isFaceInFrame !== false;
+
+  try {
+    // Perform face matching via AWS Rekognition Service
+    const result = await compareFacesWithAWS(profileInput, selfieInput, isFaceInFrame);
+
+    if (result.verified) {
+      user.isVerified = true;
+      user.selfieStatus = 'approved';
+      user.selfiePhoto = selfiePhotoPath || user.selfiePhoto || profileInput;
+      user.selfieReviewedAt = new Date();
+      user.selfieRejectionReason = '';
+      await user.save();
+
+      return res.status(200).json({
+        success: true,
+        verified: true,
+        selfieStatus: 'approved',
+        similarity: result.similarity,
+        isMock: result.isMock,
+        message: result.message || 'Account activated and verified!',
+        user,
+      });
+    } else {
+      // If no face detected at all, reject immediately so user gets feedback to retake
+      if (result.noFaceDetected) {
+        user.isVerified = false;
+        user.selfieStatus = 'rejected';
+        user.selfiePhoto = selfiePhotoPath || user.selfiePhoto || profileInput;
+        user.selfieRejectionReason = result.message || 'No human face detected in selfie photo.';
+        await user.save();
+
+        return res.status(200).json({
+          success: true,
+          verified: false,
+          noFaceDetected: true,
+          selfieStatus: 'rejected',
+          similarity: 0,
+          isMock: result.isMock,
+          message: result.message || 'No human face detected in selfie photo. Please try again with a clear photo showing your face.',
+          user,
+        });
+      }
+
+      // Auto verification failed (no match, or AWS service error) — route to pending for manual admin review
+      if (result.error) {
+        console.error(`[Selfie Verification] AWS Rekognition service error for user ${userId}: ${result.message}`);
+      }
+      user.isVerified = false;
+      user.selfieStatus = 'pending';
+      user.selfiePhoto = selfiePhotoPath || user.selfiePhoto || profileInput;
+      user.selfieRejectionReason = '';
+      await user.save();
+
+      return res.status(200).json({
+        success: true,
+        verified: false,
+        pending: true,
+        selfieStatus: 'pending',
+        similarity: result.similarity || 0,
+        isMock: result.isMock,
+        message: result.message || 'Your selfie has been submitted for manual admin verification and is currently under review.',
+        user,
+      });
+    }
+  } catch (err) {
+    // On any service error, save captured photo and route to pending for manual admin review
+    user.isVerified = false;
+    user.selfieStatus = 'pending';
+    user.selfiePhoto = selfiePhotoPath || user.selfiePhoto || profileInput;
+    user.selfieRejectionReason = '';
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      verified: false,
+      pending: true,
+      selfieStatus: 'pending',
+      message: 'Your selfie has been submitted for manual admin verification and is currently under review.',
+      user,
+    });
+  }
+});
+
 
 // @desc Add gallery images
 // @route POST /api/users/:id/gallery
@@ -556,6 +738,35 @@ export const reportUser = asyncHandler(async (req, res, next) => {
 // @desc Delete user profile
 // @route DELETE /api/users/:id
 // @access Private
+// @desc Send a fresh OTP that must be entered to confirm account deletion
+// @route POST /api/users/:id/request-delete-otp
+// @access Private
+export const requestAccountDeletionOtp = asyncHandler(async (req, res, next) => {
+  if (req.params.id !== req.user.id) {
+    return res.status(403).json({
+      success: false,
+      message: 'You can only request this for your own account',
+    });
+  }
+
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  const last10Digits = lastTenDigits(user.phoneNumber);
+  user.otpCode = generateOtpCode(last10Digits);
+  user.otpExpires = getOtpExpiry();
+  await user.save();
+
+  console.log(`📱 [ACCOUNT DELETION OTP] Phone: ${user.phoneNumber} | OTP: ${user.otpCode}`);
+
+  res.status(200).json({
+    success: true,
+    message: 'A confirmation code has been sent to your registered phone number',
+  });
+});
+
 export const deleteUserProfile = asyncHandler(async (req, res, next) => {
   if (req.params.id !== req.user.id) {
     return res.status(403).json({
@@ -570,6 +781,15 @@ export const deleteUserProfile = asyncHandler(async (req, res, next) => {
     return res.status(404).json({
       success: false,
       message: 'User not found',
+    });
+  }
+
+  const enteredOtp = req.body?.otp ? String(req.body.otp).trim() : '';
+  const last10Digits = lastTenDigits(user.phoneNumber);
+  if (!enteredOtp || !isOtpValid(user, enteredOtp, last10Digits)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please confirm this action with the code sent to your phone',
     });
   }
 

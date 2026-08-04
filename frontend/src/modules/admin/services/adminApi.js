@@ -33,8 +33,24 @@ const request = async (endpoint, options = {}) => {
     return { data, status: response.status, ok: response.ok };
 };
 
+const withQueryParams = (endpoint, params) => {
+    if (!params) return endpoint;
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+            query.append(key, value);
+        }
+    });
+    const queryString = query.toString();
+    if (!queryString) return endpoint;
+    return `${endpoint}${endpoint.includes('?') ? '&' : '?'}${queryString}`;
+};
+
 export const adminApi = {
-    get: (endpoint, options = {}) => request(endpoint, { ...options, method: 'GET' }),
+    get: (endpoint, options = {}) => {
+        const { params, ...rest } = options;
+        return request(withQueryParams(endpoint, params), { ...rest, method: 'GET' });
+    },
     post: (endpoint, body, options = {}) => {
         const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
         return request(endpoint, { ...options, method: 'POST', body: isFormData ? body : JSON.stringify(body) });

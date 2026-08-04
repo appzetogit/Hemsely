@@ -3,8 +3,10 @@ import { isUserOnline } from '../socket/index.js';
 // Weights per the product spec: tier=30%, online status=20%, time-spent=50%.
 const WEIGHTS = { tier: 0.3, online: 0.2, timeSpent: 0.5 };
 
-// Priority 1-4: Super User > Premium+Verified > Verified > Premium (plain, unverified users score 0).
+// Priority: Active Boosted User (1.5) > Super User (1.0) > Premium+Verified (0.75) > Verified (0.5) > Premium (0.25).
 const tierScore = (user) => {
+  if (user.boostUntil && new Date(user.boostUntil) > new Date()) return 1.5;
+  if (user.isBoosted && user.boostUntil && new Date(user.boostUntil) > new Date()) return 1.5;
   if (user.isSuperUser) return 1;
   if (user.isPremium && user.isVerified) return 0.75;
   if (user.isVerified) return 0.5;

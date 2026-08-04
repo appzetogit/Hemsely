@@ -86,10 +86,20 @@ const LikesYouPage = () => {
 
     const [isPremium, setIsPremium] = useState(() => {
         try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            return !!(user.isPremium || user.isSuperSubscriber || user.isSuperUser || getStored('isPremium', false));
+            localStorage.removeItem('isPremium:v1');
+            localStorage.removeItem('isPremium');
+        } catch {}
+
+        try {
+            const storedUser = JSON.parse(
+                localStorage.getItem('user') ||
+                sessionStorage.getItem('user') ||
+                localStorage.getItem('Hemsely_user:v1') ||
+                '{}'
+            );
+            return !!(storedUser.isPremium || storedUser.isSuperSubscriber || storedUser.isSuperUser);
         } catch {
-            return getStored('isPremium', false);
+            return false;
         }
     });
 
@@ -97,17 +107,20 @@ const LikesYouPage = () => {
         let cancelled = false;
         (async () => {
             try {
-                const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+                const storedUser = JSON.parse(
+                    localStorage.getItem('user') ||
+                    sessionStorage.getItem('user') ||
+                    '{}'
+                );
                 const myId = storedUser._id || storedUser.id || localStorage.getItem('userId');
                 if (myId) {
                     const { data: userRes, ok: userOk } = await apiClient.get(`/users/${myId}`);
                     if (!cancelled && userOk && userRes?.user) {
                         const u = userRes.user;
-                        if (u.isPremium !== undefined) {
-                            const activePrem = !!(u.isPremium || u.isSuperSubscriber || u.isSuperUser);
-                            setIsPremium(activePrem);
-                            localStorage.setItem('user', JSON.stringify(u));
-                        }
+                        const activePrem = !!(u.isPremium || u.isSuperSubscriber || u.isSuperUser);
+                        setIsPremium(activePrem);
+                        localStorage.setItem('user', JSON.stringify(u));
+                        sessionStorage.setItem('user', JSON.stringify(u));
                     }
                 }
             } catch {}

@@ -1,6 +1,8 @@
 import Ticket from '../models/Ticket.js';
 import AppConfig from '../models/AppConfig.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { escapeRegex } from '../utils/regexUtils.js';
+import { stripAllHtml } from '../utils/sanitize.js';
 
 // @desc Get support config (support email)
 // @route GET /api/support/config
@@ -30,9 +32,9 @@ export const createTicket = asyncHandler(async (req, res) => {
 
   const ticket = await Ticket.create({
     user: req.user.id,
-    subject,
+    subject: stripAllHtml(subject),
     category: category || 'general',
-    message,
+    message: stripAllHtml(message),
     priority: priority || 'medium',
   });
 
@@ -75,10 +77,11 @@ export const getAdminTickets = asyncHandler(async (req, res) => {
   }
 
   if (search) {
+    const safeSearch = escapeRegex(search).slice(0, 100);
     query.$or = [
-      { ticketId: { $regex: search, $options: 'i' } },
-      { subject: { $regex: search, $options: 'i' } },
-      { message: { $regex: search, $options: 'i' } },
+      { ticketId: { $regex: safeSearch, $options: 'i' } },
+      { subject: { $regex: safeSearch, $options: 'i' } },
+      { message: { $regex: safeSearch, $options: 'i' } },
     ];
   }
 
@@ -136,7 +139,7 @@ export const updateTicketAdmin = asyncHandler(async (req, res) => {
   if (priority) ticket.priority = priority;
 
   if (adminResponse !== undefined) {
-    ticket.adminResponse = adminResponse;
+    ticket.adminResponse = stripAllHtml(adminResponse);
     ticket.respondedAt = new Date();
     ticket.respondedBy = req.admin?._id || req.admin?.id;
   }

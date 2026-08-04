@@ -103,6 +103,7 @@ const VerifyOTPPage = () => {
                 } else {
                     sessionStorage.setItem('profile_complete:v1', 'false');
                     localStorage.setItem('profile_complete:v1', 'false');
+                    navigate('/profile-details');
                 }
                 return;
             } else {
@@ -134,9 +135,30 @@ const VerifyOTPPage = () => {
         }
     };
 
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        if (!pastedData) return;
+        const newOtp = ['', '', '', '', '', ''];
+        for (let i = 0; i < pastedData.length; i++) {
+            newOtp[i] = pastedData[i];
+        }
+        setOtp(newOtp);
+        setError('');
+        const nextIndex = Math.min(pastedData.length, 5);
+        if (nextIndex < 6) {
+            inputRefs.current[nextIndex]?.focus();
+        }
+    };
+
     const handleKeyDown = (index, e) => {
         if (e.key === 'Backspace' && otp[index] === '' && index > 0) {
             inputRefs.current[index - 1]?.focus();
+        } else if (e.key === 'Enter') {
+            const enteredOtp = otp.join('');
+            if (enteredOtp.length === 6 && !loading) {
+                handleSubmit();
+            }
         }
     };
 
@@ -184,6 +206,7 @@ const VerifyOTPPage = () => {
                             value={digit}
                             onChange={(e) => handleChange(index, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(index, e)}
+                            onPaste={handlePaste}
                             className="w-[40px] h-[46px] border-[1.5px] border-[#733FE0] rounded-xl text-center text-[18px] font-bold text-black outline-none focus:shadow-md focus:border-[#5f2ebd] transition-colors bg-purple-50/20"
                         />
                     ))}

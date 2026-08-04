@@ -16,8 +16,11 @@ const SupportManagementPage = () => {
     const [tickets, setTickets] = useState([]);
     const [counts, setCounts] = useState({ total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 });
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [selectedTicket, setSelectedTicket] = useState(null);
 
     // Modal state for editing/responding
@@ -25,11 +28,13 @@ const SupportManagementPage = () => {
     const [editPriority, setEditPriority] = useState('medium');
     const [adminResponseInput, setAdminResponseInput] = useState('');
     const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
 
     const fetchTickets = useCallback(async () => {
         setLoading(true);
+        setLoadError('');
         try {
-            const params = {};
+            const params = { page };
             if (statusFilter !== 'all') params.status = statusFilter;
             if (search.trim()) params.search = search.trim();
 
@@ -37,13 +42,17 @@ const SupportManagementPage = () => {
             if (ok && data?.success) {
                 setTickets(data.tickets || []);
                 if (data.counts) setCounts(data.counts);
+                setTotalPages(data.pages || 1);
+            } else {
+                setLoadError(data?.message || 'Could not load support tickets.');
             }
         } catch (err) {
             devError('Failed to fetch admin support tickets:', err);
+            setLoadError('Could not load support tickets. Please try again.');
         } finally {
             setLoading(false);
         }
-    }, [statusFilter, search]);
+    }, [statusFilter, search, page]);
 
     useEffect(() => {
         fetchTickets();
@@ -54,6 +63,7 @@ const SupportManagementPage = () => {
         setEditStatus(ticket.status || 'open');
         setEditPriority(ticket.priority || 'medium');
         setAdminResponseInput(ticket.adminResponse || '');
+        setSaveError('');
     };
 
     const handleSaveTicket = async (e) => {
@@ -61,6 +71,7 @@ const SupportManagementPage = () => {
         if (!selectedTicket) return;
 
         setSaving(true);
+        setSaveError('');
         try {
             const { data, ok } = await adminApi.patch(`/admin/tickets/${selectedTicket._id}`, {
                 status: editStatus,
@@ -69,15 +80,14 @@ const SupportManagementPage = () => {
             });
 
             if (ok && data?.success) {
-                alert('Ticket updated successfully!');
                 setSelectedTicket(null);
                 fetchTickets();
             } else {
-                alert(data?.message || 'Failed to update ticket');
+                setSaveError(data?.message || 'Failed to update ticket');
             }
         } catch (err) {
             devError('Error updating ticket:', err);
-            alert('Failed to update ticket');
+            setSaveError('Failed to update ticket. Please try again.');
         } finally {
             setSaving(false);
         }
@@ -160,7 +170,7 @@ const SupportManagementPage = () => {
                         type="text"
                         placeholder="Search by Ticket ID or Subject..."
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                         className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-300 rounded-lg text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-[#733FE0] focus:ring-1 focus:ring-[#733FE0]"
                     />
                 </div>
@@ -169,7 +179,7 @@ const SupportManagementPage = () => {
                     <Filter className="w-4 h-4 text-zinc-400 shrink-0" />
                     <select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
                         className="w-full sm:w-48 py-2 px-3 bg-white border border-zinc-300 rounded-lg text-sm font-semibold text-zinc-800 focus:outline-none focus:border-[#733FE0]"
                     >
                         <option value="all">All Statuses</option>
@@ -180,6 +190,12 @@ const SupportManagementPage = () => {
                     </select>
                 </div>
             </div>
+
+            {loadError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm font-semibold px-4 py-3">
+                    {loadError}
+                </div>
+            )}
 
             {/* Tickets Table */}
             <div className="rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden">
@@ -264,6 +280,29 @@ const SupportManagementPage = () => {
                         </tbody>
                     </table>
                 </div>
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-200 text-xs font-semibold text-zinc-600">
+                        <span>Page {page} of {totalPages}</span>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page <= 1}
+                                className="px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                Prev
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Ticket Response Modal */}
@@ -322,21 +361,56 @@ const SupportManagementPage = () => {
                         </div>
 
                         <form onSubmit={handleSaveTicket} className="space-y-3 pt-2 border-t border-zinc-100">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
+                                        Update Status
+                                    </label>
+                                    <select
+                                        value={editStatus}
+                                        onChange={(e) => setEditStatus(e.target.value)}
+                                        className="w-full py-2 px-3 bg-white border border-zinc-300 rounded-xl text-xs font-bold text-zinc-900 focus:outline-none focus:border-[#733FE0]"
+                                    >
+                                        <option value="open">Open</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="resolved">Resolved</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
+                                        Priority
+                                    </label>
+                                    <select
+                                        value={editPriority}
+                                        onChange={(e) => setEditPriority(e.target.value)}
+                                        className="w-full py-2 px-3 bg-white border border-zinc-300 rounded-xl text-xs font-bold text-zinc-900 focus:outline-none focus:border-[#733FE0]"
+                                    >
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
-                                    Update Status
+                                    Admin Response
                                 </label>
-                                <select
-                                    value={editStatus}
-                                    onChange={(e) => setEditStatus(e.target.value)}
-                                    className="w-full py-2 px-3 bg-white border border-zinc-300 rounded-xl text-xs font-bold text-zinc-900 focus:outline-none focus:border-[#733FE0]"
-                                >
-                                    <option value="open">Open</option>
-                                    <option value="in_progress">In Progress</option>
-                                    <option value="resolved">Resolved</option>
-                                    <option value="closed">Closed</option>
-                                </select>
+                                <textarea
+                                    value={adminResponseInput}
+                                    onChange={(e) => setAdminResponseInput(e.target.value)}
+                                    rows={4}
+                                    placeholder="Write a response for the user..."
+                                    maxLength={2000}
+                                    className="w-full py-2 px-3 bg-white border border-zinc-300 rounded-xl text-xs font-medium text-zinc-900 focus:outline-none focus:border-[#733FE0] resize-none"
+                                />
                             </div>
+
+                            {saveError && (
+                                <p className="text-xs font-semibold text-red-600">{saveError}</p>
+                            )}
 
                             <div className="pt-1">
                                 <button

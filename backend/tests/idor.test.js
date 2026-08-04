@@ -48,6 +48,28 @@ describe('IDOR regressions — a user must never mutate another user\'s data by 
     });
   });
 
+  describe('GET /api/users/:id (field-exposure regression)', () => {
+    it('never leaks another user\'s otpCode or FCM push tokens in the profile response', async () => {
+      const { token: viewerToken } = await makeUser();
+      const { user: victim } = await makeUser({
+        otpCode: '999999',
+        fcmtokenweb: 'secret_web_push_token',
+        fcmtokenmobile: 'secret_mobile_push_token',
+      });
+
+      const res = await request(app)
+        .get(`/api/users/${victim._id}`)
+        .set('Authorization', `Bearer ${viewerToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.otpCode).toBeUndefined();
+      expect(res.body.user.otpExpires).toBeUndefined();
+      expect(res.body.user.fcmtokenweb).toBeUndefined();
+      expect(res.body.user.fcmtokenmobile).toBeUndefined();
+      expect(res.body.user.fcmtokenios).toBeUndefined();
+    });
+  });
+
   describe('DELETE /api/users/:id (account deletion)', () => {
     it('rejects deleting another user\'s account', async () => {
       const { token: attackerToken } = await makeUser();
@@ -59,6 +81,37 @@ describe('IDOR regressions — a user must never mutate another user\'s data by 
 
       expect(res.status).toBe(403);
       expect(await User.findById(victim._id)).not.toBeNull();
+    });
+
+    it('rejects deleting your own account without a confirmation OTP (re-auth regression)', async () => {
+      const { user, token } = await makeUser();
+
+      const res = await request(app)
+        .delete(`/api/users/${user._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+
+      expect(res.status).toBe(400);
+      expect(await User.findById(user._id)).not.toBeNull();
+    });
+
+    it('deletes your own account after requesting and submitting the confirmation OTP', async () => {
+      const { user, token } = await makeUser();
+
+      const otpRes = await request(app)
+        .post(`/api/users/${user._id}/request-delete-otp`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(otpRes.status).toBe(200);
+
+      const withOtp = await User.findById(user._id);
+
+      const res = await request(app)
+        .delete(`/api/users/${user._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ otp: withOtp.otpCode });
+
+      expect(res.status).toBe(200);
+      expect(await User.findById(user._id)).toBeNull();
     });
   });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye, Search, Star, UserRound, Crown, Gem, Pencil, ShieldCheck, Ban, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Search, Star, UserRound, Crown, Gem, Pencil, ShieldCheck, Ban, Trash2, X, Zap } from 'lucide-react';
 import adminApi from '../services/adminApi';
 import { Table, TableHead, TableRow, TableHeader, TableCell } from '../components/Table';
 import { Button } from '../../../shared/components/ui/Button';
@@ -25,6 +25,9 @@ const EditUserModal = ({ user, onClose, onSave }) => {
         age: user.age || '',
         profession: user.profession || '',
         bio: user.bio || '',
+        city: user.location?.city || '',
+        state: user.location?.state || '',
+        boostCount: user.boostCount !== undefined ? user.boostCount : 0,
         isPremium: Boolean(user.isPremium),
         isBanned: Boolean(user.isBanned),
     });
@@ -127,6 +130,29 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                         </div>
                     </div>
 
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">City</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Mumbai"
+                                value={formData.city}
+                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">State</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Maharashtra"
+                                value={formData.state}
+                                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                            />
+                        </div>
+                    </div>
+
                     <div>
                         <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Profession</label>
                         <input
@@ -144,6 +170,17 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                             value={formData.bio}
                             onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                             className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 resize-none font-medium"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Boost Credits</label>
+                        <input
+                            type="number"
+                            min="0"
+                            value={formData.boostCount}
+                            onChange={(e) => setFormData({ ...formData, boostCount: e.target.value })}
+                            className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
                         />
                     </div>
 
@@ -282,6 +319,8 @@ const UserDetailModal = ({ user, onClose, onToggleStatus, statusSaving, onEdit, 
                     <DetailRow label="Smoking" value={user.smokingStatus} />
                     <DetailRow label="Drinking" value={user.drinkingStatus} />
                     <DetailRow label="Verified" value={user.isVerified ? 'Yes' : 'No'} />
+                    <DetailRow label="Boost Balance" value={`${user.boostCount || 0} Boosts`} />
+                    <DetailRow label="Premium Expiry Date" value={user.premiumExpiry ? new Date(user.premiumExpiry).toLocaleDateString() : 'N/A'} />
                     <DetailRow label="Join Date" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''} />
                 </div>
 
@@ -431,9 +470,16 @@ const UsersPage = () => {
         }
         const { data, ok } = await adminApi.delete(`/admin/users/${user._id}`);
         if (ok && data.success) {
-            setUsers((prev) => prev.filter((u) => u._id !== user._id));
             if (selectedUser && selectedUser._id === user._id) {
                 setSelectedUser(null);
+            }
+            // Refetch rather than just filtering locally, so the KPI totals stay
+            // accurate and deleting the last user on a page doesn't leave the
+            // admin stranded with no rows and no pagination controls.
+            if (users.length === 1 && page > 1) {
+                setPage((p) => p - 1);
+            } else {
+                fetchUsers();
             }
             alert(`User ${user.firstName} ${user.lastName} deleted successfully.`);
         } else {
@@ -517,6 +563,7 @@ const UsersPage = () => {
                             <TableHeader>Gender & Age</TableHeader>
                             <TableHeader>Status</TableHeader>
                             <TableHeader>Subscription</TableHeader>
+                            <TableHeader>Boost Count</TableHeader>
                             <TableHeader>Joined</TableHeader>
                             <TableHeader className="text-right">Actions</TableHeader>
                         </TableRow>
@@ -525,7 +572,7 @@ const UsersPage = () => {
                     {loading ? (
                         <tbody>
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-zinc-500 font-medium">
+                                <TableCell colSpan={7} className="text-center py-12 text-zinc-500 font-medium">
                                     Loading users...
                                 </TableCell>
                             </TableRow>
@@ -533,7 +580,7 @@ const UsersPage = () => {
                     ) : users.length === 0 ? (
                         <tbody>
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-zinc-500 font-medium">
+                                <TableCell colSpan={7} className="text-center py-12 text-zinc-500 font-medium">
                                     No users found matching search query.
                                 </TableCell>
                             </TableRow>
@@ -581,9 +628,54 @@ const UsersPage = () => {
                                     </TableCell>
 
                                     <TableCell>
-                                        <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${user.subscriptionName === 'Premium' || user.isPremium ? 'bg-amber-100 text-amber-800' : 'bg-zinc-100 text-zinc-700'}`}>
-                                            {(user.subscriptionName === 'Premium' || user.isPremium) && <Star className="w-3 h-3 fill-current" />}
-                                            {user.isPremium ? 'Premium' : 'Free'}
+                                        {(() => {
+                                            const isPrem = Boolean(user.isPremium || user.subscriptionName === 'Premium');
+                                            if (!isPrem && !user.isSuperUser && !user.isSuperSubscriber) {
+                                                return (
+                                                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase bg-zinc-100 text-zinc-700">
+                                                        Free
+                                                    </span>
+                                                );
+                                            }
+                                            if (user.isSuperUser || user.isSuperSubscriber) {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase bg-purple-100 text-purple-800">
+                                                        <Crown className="w-3 h-3 fill-current" /> Super
+                                                    </span>
+                                                );
+                                            }
+                                            if (user.premiumExpiry) {
+                                                const now = new Date();
+                                                const expiry = new Date(user.premiumExpiry);
+                                                const diffMs = expiry - now;
+                                                const remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                                                if (remainingDays > 0) {
+                                                    return (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs" title={`Expires on: ${expiry.toLocaleDateString()}`}>
+                                                            <Star className="w-3.5 h-3.5 fill-current text-amber-600 shrink-0" />
+                                                            Premium ({remainingDays}d left)
+                                                        </span>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase bg-red-100 text-red-700">
+                                                            Expired
+                                                        </span>
+                                                    );
+                                                }
+                                            }
+                                            return (
+                                                <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase bg-amber-100 text-amber-800">
+                                                    <Star className="w-3 h-3 fill-current" /> Premium
+                                                </span>
+                                            );
+                                        })()}
+                                    </TableCell>
+
+                                    <TableCell>
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold shadow-2xs">
+                                            <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-600 shrink-0" />
+                                            {user.boostCount || 0} {user.boostCount === 1 ? 'Boost' : 'Boosts'}
                                         </span>
                                     </TableCell>
 
@@ -599,20 +691,18 @@ const UsersPage = () => {
                                                 type="button"
                                                 title="View Details"
                                                 onClick={() => setSelectedUser(user)}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-white text-zinc-700 text-xs font-bold hover:bg-zinc-50 transition-colors shadow-sm"
+                                                className="w-8 h-8 rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
                                             >
-                                                <Eye className="w-3.5 h-3.5" />
-                                                View
+                                                <Eye className="w-4 h-4" />
                                             </button>
 
                                             <button
                                                 type="button"
                                                 title="Edit User"
                                                 onClick={() => setEditingUser(user)}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-white text-zinc-700 text-xs font-bold hover:bg-zinc-50 transition-colors shadow-sm"
+                                                className="w-8 h-8 rounded-lg border border-zinc-200 bg-white text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
                                             >
-                                                <Pencil className="w-3.5 h-3.5" />
-                                                Edit
+                                                <Pencil className="w-4 h-4" />
                                             </button>
 
                                             {user.isBanned ? (
@@ -620,20 +710,18 @@ const UsersPage = () => {
                                                     type="button"
                                                     title="Unban User"
                                                     onClick={() => handleUnban(user)}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors shadow-sm"
+                                                    className="w-8 h-8 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
                                                 >
-                                                    <ShieldCheck className="w-3.5 h-3.5" />
-                                                    Unban
+                                                    <ShieldCheck className="w-4 h-4" />
                                                 </button>
                                             ) : (
                                                 <button
                                                     type="button"
                                                     title="Ban User"
                                                     onClick={() => handleBan(user)}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-bold hover:bg-red-100 transition-colors shadow-sm"
+                                                    className="w-8 h-8 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
                                                 >
-                                                    <Ban className="w-3.5 h-3.5" />
-                                                    Ban
+                                                    <Ban className="w-4 h-4" />
                                                 </button>
                                             )}
 
@@ -641,10 +729,9 @@ const UsersPage = () => {
                                                 type="button"
                                                 title="Delete User"
                                                 onClick={() => handleDelete(user)}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 transition-colors shadow-sm"
+                                                className="w-8 h-8 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
                                             >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                Delete
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </TableCell>

@@ -29,6 +29,7 @@ export const updateAppConfig = asyncHandler(async (req, res) => {
     'maintenanceMode', 'signupsEnabled', 'holdLikesQueue', 'dailyLikeLimit',
     'discoveryRadiusKm', 'maxAgeGapYears', 'minAppVersion', 'supportEmail',
     'genderQueueEnabled', 'queueRatioMale', 'queueRatioFemale', 'queueScope', 'queueRadiusKm',
+    'boostPrice1', 'boostPrice5',
   ];
   const updates = { updatedBy: req.admin.id };
   allowedFields.forEach((field) => {

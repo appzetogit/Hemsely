@@ -1,0 +1,22 @@
+{
+  "short_name": "Hemsely",
+  "name": "Hemsely - Online Dating App",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FCFCFC",
+  "theme_color": "#733FE0",
+  "display": "standalone"
+}

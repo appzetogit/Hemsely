@@ -5,30 +5,42 @@ import { PageSpinner } from '../../../shared/components/ui/Spinner';
 import GrowthChart from '../components/GrowthChart';
 
 const StatCard = ({ title, value, icon: Icon, iconBg, iconColor, ringColor, actionButton }) => (
-    <div className={`${iconBg} rounded-xl shadow-sm border border-white p-4 xl:p-5 flex flex-col justify-between hover:shadow-md transition-shadow`}>
-        <div className="flex items-center justify-between mb-3">
-            <p className={`text-sm font-medium tracking-wide ${iconColor}`}>{title}</p>
-            <div className="flex items-center gap-2">
+    <div className={`${iconBg} rounded-xl shadow-xs border border-white/80 p-3 flex flex-col justify-between hover:shadow-sm transition-all`}>
+        <div className="flex items-center justify-between mb-2">
+            <p className={`text-xs font-semibold tracking-tight ${iconColor}`}>{title}</p>
+            <div className="flex items-center gap-1.5">
                 {actionButton}
-                <div className={`p-2 rounded-xl bg-white shadow-sm ring-1 ${ringColor} flex items-center justify-center`}>
-                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${iconColor}`} />
+                <div className={`p-1.5 rounded-lg bg-white shadow-2xs ring-1 ${ringColor} flex items-center justify-center`}>
+                    <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${iconColor}`} />
                 </div>
             </div>
         </div>
         <div>
-            <h3 className="text-2xl sm:text-3xl font-medium tracking-tight leading-none text-zinc-900">{value}</h3>
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight leading-none text-zinc-900">{value}</h3>
         </div>
     </div>
 );
 
+const CURRENT_YEAR = new Date().getFullYear();
+
+const getDisplayLocation = (loc) => {
+    if (!loc) return '';
+    if (typeof loc === 'string') return loc.trim();
+    const parts = [loc.city, loc.state].filter(Boolean);
+    if (parts.length > 0) return parts.join(', ');
+    if (loc.address) return loc.address;
+    return '';
+};
+
 const DashboardPage = () => {
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [chartLoading, setChartLoading] = useState(false);
     const [stats, setStats] = useState(null);
     const [growth, setGrowth] = useState([]);
-    const [selectedYear, setSelectedYear] = useState(2026);
+    const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
     const [availableYears, setAvailableYears] = useState(
-        Array.from({ length: 2099 - 2026 + 1 }, (_, i) => 2026 + i)
+        Array.from({ length: 6 }, (_, i) => CURRENT_YEAR + i)
     );
     const [recentUsers, setRecentUsers] = useState([]);
     const [resettingMatches, setResettingMatches] = useState(false);
@@ -64,25 +76,46 @@ const DashboardPage = () => {
 
     useEffect(() => {
         (async () => {
-            const [statsRes, usersRes] = await Promise.all([
-                adminApi.get(`/admin/dashboard/stats?year=${selectedYear}`),
-                adminApi.get('/admin/users?page=1&limit=5'),
-            ]);
+            try {
+                const [statsRes, usersRes] = await Promise.all([
+                    adminApi.get(`/admin/dashboard/stats?year=${selectedYear}`),
+                    adminApi.get('/admin/users?page=1&limit=5'),
+                ]);
 
-            if (statsRes.ok && statsRes.data.success) {
-                setStats(statsRes.data.stats);
-                setGrowth(statsRes.data.growth || []);
-                if (statsRes.data.selectedYear) setSelectedYear(statsRes.data.selectedYear);
-                if (statsRes.data.availableYears?.length) setAvailableYears(statsRes.data.availableYears);
-            }
-            if (usersRes.ok && usersRes.data.success) {
-                setRecentUsers(usersRes.data.users);
+                if (statsRes.ok && statsRes.data.success) {
+                    setStats(statsRes.data.stats);
+                    setGrowth(statsRes.data.growth || []);
+                    if (statsRes.data.selectedYear) setSelectedYear(statsRes.data.selectedYear);
+                    if (statsRes.data.availableYears?.length) setAvailableYears(statsRes.data.availableYears);
+                } else {
+                    setLoadError(statsRes.data?.message || 'Could not load dashboard stats.');
+                }
+                if (usersRes.ok && usersRes.data.success) {
+                    setRecentUsers(usersRes.data.users);
+                }
+            } catch {
+                setLoadError('Could not load dashboard stats. Please try again.');
             }
             setLoading(false);
         })();
     }, []);
 
     if (loading) return <PageSpinner />;
+
+    if (!stats) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                <p className="text-sm font-semibold text-zinc-700">{loadError || 'Could not load dashboard stats.'}</p>
+                <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 rounded-lg bg-[#733FE0] text-white text-xs font-bold cursor-pointer border-0"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -93,8 +126,8 @@ const DashboardPage = () => {
                 </p>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Stats Grid - All 6 cards in a single row on desktop */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
                 <StatCard
                     title="Total Users" value={stats.totalUsers.toLocaleString()} icon={Users}
                     iconBg="bg-blue-50" iconColor="text-blue-600" ringColor="ring-blue-100/50"
@@ -112,9 +145,9 @@ const DashboardPage = () => {
                             onClick={handleResetMatches}
                             disabled={resettingMatches}
                             title="Reset All Active Matches"
-                            className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white transition-all border-0 cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1"
+                            className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white transition-all border-0 cursor-pointer shadow-2xs disabled:opacity-50 flex items-center gap-1"
                         >
-                            <RotateCcw className={`w-3 h-3 ${resettingMatches ? 'animate-spin' : ''}`} />
+                            <RotateCcw className={`w-2.5 h-2.5 ${resettingMatches ? 'animate-spin' : ''}`} />
                             Reset
                         </button>
                     }
@@ -123,9 +156,6 @@ const DashboardPage = () => {
                     title="Total Revenue" value={`₹${stats.totalRevenue.toLocaleString()}`} icon={TrendingUp}
                     iconBg="bg-amber-50" iconColor="text-amber-600" ringColor="ring-amber-100/50"
                 />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <StatCard
                     title="Total Messages" value={stats.totalMessages.toLocaleString()} icon={MessageCircle}
                     iconBg="bg-violet-50" iconColor="text-violet-600" ringColor="ring-violet-100/50"
@@ -192,7 +222,9 @@ const DashboardPage = () => {
                                         </div>
                                         <div>
                                             <p className="text-[13px] font-semibold text-zinc-900 leading-tight">{user.firstName || 'User'}{user.age ? `, ${user.age}` : ''}</p>
-                                            <p className="text-[11px] text-zinc-500 mt-0.5">{user.location?.city || 'Unknown location'}</p>
+                                            {getDisplayLocation(user.location) ? (
+                                                <p className="text-[11px] text-zinc-500 mt-0.5">{getDisplayLocation(user.location)}</p>
+                                            ) : null}
                                         </div>
                                     </div>
                                     <div className="text-right">

@@ -80,6 +80,8 @@ export const syncFullOnboardingData = async () => {
                     coordinates: [locationData.lng, locationData.lat],
                 },
                 address: locationData.address || '',
+                city: locationData.city || '',
+                state: locationData.state || '',
             };
         }
 
@@ -92,9 +94,20 @@ export const syncFullOnboardingData = async () => {
     }
 };
 
-export const deleteUserProfile = async (userId) => {
+export const requestAccountDeletionOtp = async (userId) => {
     try {
-        const res = await apiClient.delete(`/users/${userId}`);
+        return await apiClient.post(`/users/${userId}/request-delete-otp`, {});
+    } catch (error) {
+        devError('Error requesting account deletion OTP:', error);
+        throw error;
+    }
+};
+
+export const deleteUserProfile = async (userId, otp) => {
+    try {
+        const res = await apiClient.delete(`/users/${userId}`, {
+            body: JSON.stringify({ otp }),
+        });
         return res;
     } catch (error) {
         devError('Error deleting user profile:', error);

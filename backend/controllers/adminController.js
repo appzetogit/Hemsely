@@ -2,8 +2,8 @@ import User from '../models/User.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logAdminAction } from '../utils/auditLog.js';
 import { releaseFromQueue, getQueueAdminSnapshot } from '../utils/queueService.js';
-
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+import { escapeRegex } from '../utils/regexUtils.js';
+import { stripAllHtml } from '../utils/sanitize.js';
 
 // @desc Get paginated users for moderation
 // @route GET /api/admin/users
@@ -29,7 +29,7 @@ export const getModerationUsers = asyncHandler(async (req, res) => {
   const [users, totalUsers] = await Promise.all([
     User.find(query)
       .select(
-        'firstName lastName email phoneNumber profilePicture galleryImages isPremium premiumExpiry isVerified isActive isBanned banReason bannedAt createdAt age gender bio interests relationshipGoal education profession smokingStatus drinkingStatus location.address location.city location.state isSuperUser isSuperSubscriber selfiePhoto selfieStatus accessStatus queuedAt'
+        'firstName lastName email phoneNumber profilePicture galleryImages isPremium premiumExpiry isVerified isActive isBanned banReason bannedAt createdAt age gender bio interests relationshipGoal education profession smokingStatus drinkingStatus location.address location.city location.state isSuperUser isSuperSubscriber selfiePhoto selfieStatus accessStatus queuedAt boostCount'
       )
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -37,10 +37,22 @@ export const getModerationUsers = asyncHandler(async (req, res) => {
     User.countDocuments(query),
   ]);
 
-  const normalizedUsers = users.map((user) => ({
-    ...user.toObject(),
-    subscriptionName: user.isPremium ? 'Premium' : 'Free',
-  }));
+  const now = new Date();
+  const normalizedUsers = await Promise.all(
+    users.map(async (user) => {
+      let isPrem = user.isPremium;
+      if (isPrem && user.premiumExpiry && new Date(user.premiumExpiry) < now) {
+        isPrem = false;
+        user.isPremium = false;
+        await User.findByIdAndUpdate(user._id, { isPremium: false });
+      }
+      return {
+        ...user.toObject(),
+        isPremium: isPrem,
+        subscriptionName: isPrem ? 'Premium' : 'Free',
+      };
+    })
+  );
 
   res.status(200).json({
     success: true,
@@ -133,7 +145,7 @@ export const unbanUser = asyncHandler(async (req, res) => {
 // @route PUT /api/admin/users/:id
 // @access Private/Admin
 export const updateUserByAdmin = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, phoneNumber, gender, age, profession, isPremium, isBanned, bio } = req.body;
+  const { firstName, lastName, email, phoneNumber, gender, age, profession, isPremium, isBanned, bio, city, state, boostCount } = req.body;
 
   const user = await User.findById(req.params.id);
 
@@ -149,10 +161,48 @@ export const updateUserByAdmin = asyncHandler(async (req, res) => {
   if (email !== undefined) user.email = email.trim();
   if (phoneNumber !== undefined) user.phoneNumber = phoneNumber.trim();
   if (gender !== undefined) user.gender = gender;
-  if (age !== undefined) user.age = Number(age);
+  if (age !== undefined) {
+    const numericAge = Number(age);
+    if (Number.isNaN(numericAge)) {
+      return res.status(400).json({
+        success: false,
+        message: 'age must be a number',
+      });
+    }
+    user.age = numericAge;
+  }
   if (profession !== undefined) user.profession = profession.trim();
-  if (bio !== undefined) user.bio = bio.trim();
-  if (isPremium !== undefined) user.isPremium = Boolean(isPremium);
+  if (bio !== undefined) user.bio = stripAllHtml(bio.trim());
+
+  if (city !== undefined || state !== undefined) {
+    if (!user.location) user.location = {};
+    if (city !== undefined) user.location.city = city.trim();
+    if (state !== undefined) user.location.state = state.trim();
+  }
+  if (boostCount !== undefined) {
+    const numBoosts = Number(boostCount);
+    if (!Number.isNaN(numBoosts)) {
+      user.boostCount = Math.max(0, numBoosts);
+    }
+  }
+  if (isPremium !== undefined) {
+    const wantsPremium = Boolean(isPremium);
+    user.isPremium = wantsPremium;
+    if (wantsPremium) {
+      // Keep isPremium/premiumExpiry consistent - without this, granting premium
+      // to a user whose expiry already lapsed left isPremium:true with a stale
+      // past expiry, so the subscription-users view showed "Active" and
+      // "Expired" for the same person at the same time.
+      const hasActiveExpiry = user.premiumExpiry && new Date(user.premiumExpiry) > new Date();
+      if (!hasActiveExpiry) {
+        const expiry = new Date();
+        expiry.setDate(expiry.getDate() + 30);
+        user.premiumExpiry = expiry;
+      }
+    } else {
+      user.premiumExpiry = null;
+    }
+  }
   if (isBanned !== undefined) {
     user.isBanned = Boolean(isBanned);
     if (user.isBanned) {
@@ -228,7 +278,7 @@ export const getSelfieVerifications = asyncHandler(async (req, res) => {
 
   const [users, total] = await Promise.all([
     User.find(query)
-      .select('firstName lastName phoneNumber profilePicture selfiePhoto selfieStatus selfieRejectionReason selfieReviewedAt createdAt')
+      .select('firstName lastName phoneNumber email profilePicture selfiePhoto selfieStatus selfieRejectionReason selfieReviewedAt createdAt age gender bio profession relationshipGoal location galleryImages isVerified interests')
       .populate('selfieReviewedBy', 'firstName lastName username')
       .sort({ updatedAt: -1 })
       .skip(skip)

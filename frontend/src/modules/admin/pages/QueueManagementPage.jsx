@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Clock3, ShieldCheck, ToggleLeft, ToggleRight, Users, Activity, UsersRound, Save, Globe } from 'lucide-react';
 import adminApi from '../services/adminApi';
 import { PageSpinner } from '../../../shared/components/ui/Spinner';
-import { Input, Label } from '../../../shared/components/ui/Input';
+import { Input, Label, Select } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
+
+const QUEUE_RADIUS_MIN = 1;
+const QUEUE_RADIUS_MAX = 20000;
 
 const ToggleRow = ({ icon: Icon, title, description, checked, onChange, disabled }) => (
     <div className="rounded-xl bg-white border border-zinc-200 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-5 hover:shadow-md transition-shadow">
@@ -42,22 +45,33 @@ const QueueManagementPage = () => {
     const [snapshot, setSnapshot] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [ratioForm, setRatioForm] = useState({ queueRatioMale: 1, queueRatioFemale: 4 });
+    const [queueForm, setQueueForm] = useState({ queueRatioMale: 1, queueRatioFemale: 4, queueScope: 'country', queueRadiusKm: 25 });
     const [savedMessage, setSavedMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [loadError, setLoadError] = useState('');
 
     const loadAll = async () => {
-        const [configRes, snapshotRes] = await Promise.all([
-            adminApi.get('/admin/app-config'),
-            adminApi.get('/admin/queue-status'),
-        ]);
-        if (configRes.ok && configRes.data.success) {
-            setConfig(configRes.data.config);
-            setRatioForm({
-                queueRatioMale: configRes.data.config.queueRatioMale,
-                queueRatioFemale: configRes.data.config.queueRatioFemale,
-            });
+        setLoadError('');
+        try {
+            const [configRes, snapshotRes] = await Promise.all([
+                adminApi.get('/admin/app-config'),
+                adminApi.get('/admin/queue-status'),
+            ]);
+            if (configRes.ok && configRes.data.success) {
+                setConfig(configRes.data.config);
+                setQueueForm({
+                    queueRatioMale: configRes.data.config.queueRatioMale,
+                    queueRatioFemale: configRes.data.config.queueRatioFemale,
+                    queueScope: configRes.data.config.queueScope,
+                    queueRadiusKm: configRes.data.config.queueRadiusKm,
+                });
+            } else {
+                setLoadError(configRes.data?.message || 'Could not load queue settings.');
+            }
+            if (snapshotRes.ok && snapshotRes.data.success) setSnapshot(snapshotRes.data);
+        } catch {
+            setLoadError('Could not load queue settings. Please try again.');
         }
-        if (snapshotRes.ok && snapshotRes.data.success) setSnapshot(snapshotRes.data);
         setLoading(false);
     };
 
@@ -65,36 +79,81 @@ const QueueManagementPage = () => {
         loadAll();
     }, []);
 
+    // Turning these two OFF has an immediate, hard-to-undo effect on real users -
+    // releasing the entire queue, or locking out all new signups - so they get a
+    // confirmation, matching how AppConfigPage already guards maintenance mode.
+    const DESTRUCTIVE_OFF_CONFIRM = {
+        genderQueueEnabled: 'Turning this OFF immediately releases every queued male user into active status. Continue?',
+        signupsEnabled: 'Turning this OFF immediately blocks all new user signups platform-wide. Continue?',
+    };
+
     const updateSetting = async (key) => {
+        const nextValue = !config[key];
+        if (!nextValue && DESTRUCTIVE_OFF_CONFIRM[key] && !window.confirm(DESTRUCTIVE_OFF_CONFIRM[key])) {
+            return;
+        }
+
         setSaving(true);
-        const { data, ok } = await adminApi.put('/admin/app-config', { [key]: !config[key] });
-        if (ok && data.success) {
-            setConfig(data.config);
-            const snapshotRes = await adminApi.get('/admin/queue-status');
-            if (snapshotRes.ok && snapshotRes.data.success) setSnapshot(snapshotRes.data);
-            setSavedMessage('Queue settings updated successfully.');
-            setTimeout(() => setSavedMessage(''), 3000);
+        setErrorMessage('');
+        try {
+            const { data, ok } = await adminApi.put('/admin/app-config', { [key]: nextValue });
+            if (ok && data.success) {
+                setConfig(data.config);
+                const snapshotRes = await adminApi.get('/admin/queue-status');
+                if (snapshotRes.ok && snapshotRes.data.success) setSnapshot(snapshotRes.data);
+                setSavedMessage('Queue settings updated successfully.');
+                setTimeout(() => setSavedMessage(''), 3000);
+            } else {
+                setErrorMessage(data?.message || 'Could not update this setting.');
+            }
+        } catch {
+            setErrorMessage('Could not update this setting. Please try again.');
         }
         setSaving(false);
     };
 
-    const handleSaveRatio = async () => {
+    const handleSaveQueueSettings = async () => {
+        setErrorMessage('');
+
+        const radiusKm = Number(queueForm.queueRadiusKm);
+        if (queueForm.queueScope === 'radius' && (!Number.isFinite(radiusKm) || radiusKm < QUEUE_RADIUS_MIN || radiusKm > QUEUE_RADIUS_MAX)) {
+            setErrorMessage(`Radius must be between ${QUEUE_RADIUS_MIN} and ${QUEUE_RADIUS_MAX} km.`);
+            return;
+        }
+
         setSaving(true);
-        const { data, ok } = await adminApi.put('/admin/app-config', {
-            queueRatioMale: Number(ratioForm.queueRatioMale),
-            queueRatioFemale: Number(ratioForm.queueRatioFemale),
-        });
-        if (ok && data.success) {
-            setConfig(data.config);
-            const snapshotRes = await adminApi.get('/admin/queue-status');
-            if (snapshotRes.ok && snapshotRes.data.success) setSnapshot(snapshotRes.data);
-            setSavedMessage('Gender ratio updated successfully.');
-            setTimeout(() => setSavedMessage(''), 3000);
+        try {
+            const { data, ok } = await adminApi.put('/admin/app-config', {
+                queueRatioMale: Number(queueForm.queueRatioMale),
+                queueRatioFemale: Number(queueForm.queueRatioFemale),
+                queueScope: queueForm.queueScope,
+                queueRadiusKm: radiusKm,
+            });
+            if (ok && data.success) {
+                setConfig(data.config);
+                const snapshotRes = await adminApi.get('/admin/queue-status');
+                if (snapshotRes.ok && snapshotRes.data.success) setSnapshot(snapshotRes.data);
+                setSavedMessage('Queue ratio and scope updated successfully.');
+                setTimeout(() => setSavedMessage(''), 3000);
+            } else {
+                setErrorMessage(data?.message || 'Could not update the queue settings.');
+            }
+        } catch {
+            setErrorMessage('Could not update the queue settings. Please try again.');
         }
         setSaving(false);
     };
 
-    if (loading || !config) return <PageSpinner />;
+    if (loading) return <PageSpinner />;
+
+    if (!config) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                <p className="text-sm font-semibold text-zinc-700">{loadError || 'Could not load queue settings.'}</p>
+                <Button onClick={loadAll}>Retry</Button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -113,7 +172,7 @@ const QueueManagementPage = () => {
                     </div>
                     <div>
                         <h2 className="text-base font-semibold text-zinc-900">Gender Ratio Access Queue</h2>
-                        <p className="text-xs text-zinc-500 mt-0.5">New male users beyond the ratio wait in queue or buy instant access. Phase 1: country-wide.</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">New male users beyond the ratio wait in queue or buy instant access. Scope can be country-wide or radius-based.</p>
                     </div>
                 </div>
 
@@ -129,21 +188,42 @@ const QueueManagementPage = () => {
                 <div className="flex flex-wrap items-end gap-3 mb-5">
                     <div>
                         <Label htmlFor="ratio-male">Male</Label>
-                        <Input id="ratio-male" type="number" min="1" value={ratioForm.queueRatioMale} onChange={(e) => setRatioForm((p) => ({ ...p, queueRatioMale: e.target.value }))} className="w-24" />
+                        <Input id="ratio-male" type="number" min="1" value={queueForm.queueRatioMale} onChange={(e) => setQueueForm((p) => ({ ...p, queueRatioMale: e.target.value }))} className="w-24" />
                     </div>
                     <span className="text-zinc-400 font-bold pb-2.5">:</span>
                     <div>
                         <Label htmlFor="ratio-female">Female</Label>
-                        <Input id="ratio-female" type="number" min="1" value={ratioForm.queueRatioFemale} onChange={(e) => setRatioForm((p) => ({ ...p, queueRatioFemale: e.target.value }))} className="w-24" />
+                        <Input id="ratio-female" type="number" min="1" value={queueForm.queueRatioFemale} onChange={(e) => setQueueForm((p) => ({ ...p, queueRatioFemale: e.target.value }))} className="w-24" />
                     </div>
-                    <Button disabled={saving} onClick={handleSaveRatio}>
-                        <Save className="w-4 h-4" /> Save Ratio
+                    <div>
+                        <Label htmlFor="queue-scope">Scope</Label>
+                        <Select id="queue-scope" value={queueForm.queueScope} onChange={(e) => setQueueForm((p) => ({ ...p, queueScope: e.target.value }))} className="w-40">
+                            <option value="country">Country-wide</option>
+                            <option value="radius">Radius-based</option>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label htmlFor="queue-radius">Radius (km)</Label>
+                        <Input
+                            id="queue-radius"
+                            type="number"
+                            min={QUEUE_RADIUS_MIN}
+                            max={QUEUE_RADIUS_MAX}
+                            disabled={queueForm.queueScope !== 'radius'}
+                            value={queueForm.queueRadiusKm}
+                            onChange={(e) => setQueueForm((p) => ({ ...p, queueRadiusKm: e.target.value }))}
+                            className="w-28"
+                        />
+                    </div>
+                    <Button disabled={saving} onClick={handleSaveQueueSettings}>
+                        <Save className="w-4 h-4" /> Save Ratio & Scope
                     </Button>
                 </div>
 
                 <div className="flex items-center gap-2 text-xs font-medium text-zinc-500 bg-zinc-50 rounded-lg px-3 py-2">
                     <Globe className="w-3.5 h-3.5" />
-                    Scope: <span className="font-bold text-zinc-700 capitalize">{config.queueScope}</span> (Phase 2 — radius-based, e.g. {config.queueRadiusKm}km — not yet enforced)
+                    Scope: <span className="font-bold text-zinc-700 capitalize">{config.queueScope}</span>
+                    {config.queueScope === 'radius' && <> — {config.queueRadiusKm}km around each male&apos;s own location</>}. The stat tiles above are always country-wide totals; an individual male&apos;s actual eligibility can differ when scope is radius.
                 </div>
 
                 <div className="mt-4">
@@ -185,6 +265,9 @@ const QueueManagementPage = () => {
                         <ShieldCheck className="w-4 h-4" />
                         {savedMessage}
                     </div>
+                )}
+                {errorMessage && (
+                    <div className="text-sm font-bold text-danger-600">{errorMessage}</div>
                 )}
             </div>
         </div>

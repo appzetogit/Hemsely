@@ -1,27 +1,19 @@
-// In-memory sliding window rate limiter middleware
+// MongoDB-backed sliding window rate limiter middleware.
+// Counters live in the RateLimitCounter collection (see models/RateLimitCounter.js)
+// so limits are correctly shared across multiple app instances and survive a restart,
+// unlike a plain in-memory Map which only ever rate-limits its own process.
 
-const rateLimitStore = new Map();
+import RateLimitCounter from '../models/RateLimitCounter.js';
 
-// Cleanup expired entries periodically (every 10 minutes). unref() so this
-// timer alone never keeps the Node process (or a test runner) alive.
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of rateLimitStore.entries()) {
-    if (now > record.resetTime) {
-      rateLimitStore.delete(key);
-    }
-  }
-}, 10 * 60 * 1000).unref();
-
-// Test-only escape hatch: each Jest test file otherwise shares this module's
-// in-memory store across every test in the file, so a handful of tests that
-// legitimately need many requests to the same endpoint (e.g. an admin-login
-// lockout test) can silently exhaust another, unrelated test's rate-limit
-// budget. Not used by any request-handling path.
-export const resetRateLimitStoreForTests = () => rateLimitStore.clear();
+// Test-only escape hatch: clears all counters between tests so one test's
+// requests never eat into another, unrelated test's rate-limit budget.
+// Not used by any request-handling path.
+export const resetRateLimitStoreForTests = async () => {
+  await RateLimitCounter.deleteMany({});
+};
 
 export const createRateLimiter = ({ windowMs = 15 * 60 * 1000, max = 100, message = 'Too many requests, please try again later.' }) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     // Generate key based on IP and route path. When this limiter is bound to a
     // specific route (e.g. router.post('/login', adminAuthRateLimiter, ...)),
     // req.route is already set by the time this middleware runs, so combine it
@@ -33,23 +25,47 @@ export const createRateLimiter = ({ windowMs = 15 * 60 * 1000, max = 100, messag
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown-ip';
     const routeKey = req.route ? `${req.baseUrl}${req.route.path}` : (req.baseUrl || req.path);
     const key = `${clientIp}:${routeKey}`;
-    const now = Date.now();
+    const now = new Date();
+    const newResetTime = new Date(now.getTime() + windowMs);
 
-    let record = rateLimitStore.get(key);
-
-    if (!record || now > record.resetTime) {
-      record = {
-        count: 1,
-        resetTime: now + windowMs,
-      };
-      rateLimitStore.set(key, record);
-    } else {
-      record.count += 1;
+    let record;
+    try {
+      // Atomic per-document pipeline update: if the window has expired (or this
+      // is a brand new key) reset to count 1 with a fresh window, otherwise
+      // increment - all in one op, so concurrent requests across instances
+      // can't race each other into under-counting.
+      record = await RateLimitCounter.findOneAndUpdate(
+        { key },
+        [
+          {
+            $set: {
+              count: {
+                $cond: [
+                  { $or: [{ $eq: ['$resetTime', null] }, { $lt: ['$resetTime', now] }] },
+                  1,
+                  { $add: ['$count', 1] },
+                ],
+              },
+              resetTime: {
+                $cond: [
+                  { $or: [{ $eq: ['$resetTime', null] }, { $lt: ['$resetTime', now] }] },
+                  newResetTime,
+                  '$resetTime',
+                ],
+              },
+            },
+          },
+        ],
+        { upsert: true, new: true }
+      );
+    } catch (err) {
+      // Fail open: a rate-limit store outage should never take the whole API down with it.
+      console.error('Rate limiter store error, allowing request through:', err.message);
+      return next();
     }
 
-    // Set rate limit headers
     const remaining = Math.max(0, max - record.count);
-    const resetSeconds = Math.ceil((record.resetTime - now) / 1000);
+    const resetSeconds = Math.ceil((record.resetTime.getTime() - now.getTime()) / 1000);
 
     res.setHeader('X-RateLimit-Limit', max);
     res.setHeader('X-RateLimit-Remaining', remaining);
@@ -90,4 +106,10 @@ export const adminAuthRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 10, // Max 10 admin login/register attempts per 15 mins per IP
   message: 'Too many admin login attempts from this IP. Please wait 15 minutes before trying again.',
+});
+
+export const selfieVerificationRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // Max 10 selfie verification attempts per 15 mins per IP
+  message: 'Too many selfie verification attempts. Please wait 15 minutes before trying again.',
 });

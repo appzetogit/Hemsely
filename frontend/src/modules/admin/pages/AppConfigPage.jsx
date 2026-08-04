@@ -2,17 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Settings, ToggleLeft, ToggleRight, Save } from 'lucide-react';
 import adminApi from '../services/adminApi';
 import { PageSpinner } from '../../../shared/components/ui/Spinner';
-import { Input, Label } from '../../../shared/components/ui/Input';
+import { Input } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
 
-const ToggleRow = ({ label, desc, configKey, isChecked, onToggle }) => (
+const ToggleRow = ({ label, desc, configKey, isChecked, isSavedActive, onToggle }) => (
     <div className="flex items-center justify-between gap-4 py-4 border-b border-zinc-100 last:border-0">
         <div>
             <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-zinc-900">{label}</p>
-                {configKey === 'maintenanceMode' && isChecked && (
+                {configKey === 'maintenanceMode' && isSavedActive && (
                     <span className="text-[10px] font-extrabold uppercase bg-red-100 text-red-700 px-2 py-0.5 rounded-md">
                         ⚠️ Active
+                    </span>
+                )}
+                {configKey === 'maintenanceMode' && isChecked && !isSavedActive && (
+                    <span className="text-[10px] font-extrabold uppercase bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md">
+                        Pending save
                     </span>
                 )}
             </div>
@@ -61,13 +66,27 @@ const NumberField = ({ label, desc, name, min, max, unit, value, onChange }) => 
 
 const AppConfigPage = () => {
     const [config, setConfig] = useState(null);
+    // Tracks the last value actually persisted by the server, separate from the
+    // in-progress draft in `config` - so badges like "Active" for maintenance
+    // mode reflect reality, not an unsaved local toggle.
+    const [savedConfig, setSavedConfig] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
         adminApi.get('/admin/app-config').then(({ data, ok }) => {
-            if (ok && data.success) setConfig(data.config);
+            if (ok && data.success) {
+                setConfig(data.config);
+                setSavedConfig(data.config);
+            } else {
+                setLoadError(data?.message || 'Could not load app configuration.');
+            }
+            setLoading(false);
+        }).catch(() => {
+            setLoadError('Could not load app configuration. Please try again.');
             setLoading(false);
         });
     }, []);
@@ -88,36 +107,54 @@ const AppConfigPage = () => {
 
     const handleSave = async () => {
         setSaving(true);
-        const { data, ok } = await adminApi.put('/admin/app-config', {
-            maintenanceMode: config.maintenanceMode,
-            signupsEnabled: config.signupsEnabled,
-            dailyLikeLimit: Number(config.dailyLikeLimit),
-            discoveryRadiusKm: Number(config.discoveryRadiusKm),
-            maxAgeGapYears: Number(config.maxAgeGapYears),
-            minAppVersion: config.minAppVersion,
-        });
-        setSaving(false);
-
-        if (ok && data.success) {
-            setConfig(data.config);
-            setSaved(true);
-            setTimeout(() => setSaved(false), 3000);
+        setSaveError('');
+        try {
+            const { data, ok } = await adminApi.put('/admin/app-config', {
+                maintenanceMode: config.maintenanceMode,
+                signupsEnabled: config.signupsEnabled,
+                dailyLikeLimit: Number(config.dailyLikeLimit),
+                discoveryRadiusKm: Number(config.discoveryRadiusKm),
+                maxAgeGapYears: Number(config.maxAgeGapYears),
+            });
+            if (ok && data.success) {
+                setConfig(data.config);
+                setSavedConfig(data.config);
+                setSaved(true);
+                setTimeout(() => setSaved(false), 3000);
+            } else {
+                setSaveError(data?.message || 'Could not save app configuration.');
+            }
+        } catch {
+            setSaveError('Could not save app configuration. Please try again.');
         }
+        setSaving(false);
     };
 
-    if (loading || !config) return <PageSpinner />;
+    if (loading) return <PageSpinner />;
+
+    if (!config) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                <p className="text-sm font-semibold text-zinc-700">{loadError || 'Could not load app configuration.'}</p>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <h1 className="text-2xl font-medium text-zinc-900 tracking-tight">App Configuration</h1>
-                    <p className="text-sm text-zinc-500 mt-1">Control platform-wide settings without touching code. Changes apply instantly.</p>
+                    <p className="text-sm text-zinc-500 mt-1">Control platform-wide settings without touching code. Toggle or edit below, then click Save to apply.</p>
                 </div>
-                <Button onClick={handleSave} disabled={saving}>
-                    <Save className="w-4 h-4" />
-                    {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
-                </Button>
+                <div className="flex flex-col items-end gap-1.5">
+                    <Button onClick={handleSave} disabled={saving}>
+                        <Save className="w-4 h-4" />
+                        {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
+                    </Button>
+                    {saveError && <p className="text-xs font-semibold text-danger-600">{saveError}</p>}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -137,6 +174,7 @@ const AppConfigPage = () => {
                         desc="When ON, all non-admin API traffic is blocked with a maintenance message."
                         configKey="maintenanceMode"
                         isChecked={config.maintenanceMode}
+                        isSavedActive={savedConfig?.maintenanceMode}
                         onToggle={handleToggle}
                     />
                 </section>

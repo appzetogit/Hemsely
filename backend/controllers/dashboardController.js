@@ -4,6 +4,7 @@ import Like from '../models/Like.js';
 import Message from '../models/Message.js';
 import Transaction from '../models/Transaction.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { logAdminAction } from '../utils/auditLog.js';
 
 // @desc Get dashboard stats + growth chart data
 // @route GET /api/admin/dashboard/stats
@@ -68,9 +69,9 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   }));
 
   const existingYears = yearListAgg.map((y) => y._id).filter(Boolean);
-  const minYear = existingYears.length ? Math.min(2026, ...existingYears) : 2026;
+  const minYear = existingYears.length ? Math.min(currentYear, ...existingYears) : currentYear;
   const availableYears = [];
-  for (let y = minYear; y <= 2099; y++) {
+  for (let y = minYear; y <= currentYear + 5; y++) {
     availableYears.push(y);
   }
 
@@ -95,10 +96,25 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 // @route DELETE /api/admin/dashboard/reset-matches
 // @access Private/Admin
 export const resetMatches = asyncHandler(async (req, res) => {
-  await Promise.all([
+  if (req.admin?.role !== 'superadmin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Only a superadmin can reset all matches and likes',
+    });
+  }
+
+  const [matchResult, likeResult] = await Promise.all([
     Match.deleteMany({}),
     Like.deleteMany({}),
   ]);
+
+  await logAdminAction({
+    adminId: req.admin.id,
+    action: 'reset_matches',
+    targetType: 'System',
+    details: { matchesDeleted: matchResult.deletedCount, likesDeleted: likeResult.deletedCount },
+    ip: req.ip,
+  });
 
   res.status(200).json({
     success: true,

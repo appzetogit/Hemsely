@@ -5,16 +5,19 @@ import { PageSpinner } from '../../../shared/components/ui/Spinner';
 import { Input } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
 
-const PlanCard = ({ plan, onSavePlan, saving }) => {
+const PlanCard = ({ plan, onSavePlan }) => {
     const [editing, setEditing] = useState(false);
     const [price, setPrice] = useState(plan.price);
     const [description, setDescription] = useState(plan.description || '');
+    const [saving, setSaving] = useState(false);
 
     const handleSave = async () => {
+        setSaving(true);
         const ok = await onSavePlan(plan, {
             price: Number(price),
             description: description.trim(),
         });
+        setSaving(false);
         if (ok) setEditing(false);
     };
 
@@ -114,12 +117,19 @@ const PlanCard = ({ plan, onSavePlan, saving }) => {
 const SubscriptionsPage = () => {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [loadError, setLoadError] = useState('');
     const [message, setMessage] = useState('');
 
     useEffect(() => {
         adminApi.get('/admin/subscriptions/plans').then(({ data, ok }) => {
-            if (ok && data.success) setPlans(data.plans);
+            if (ok && data.success) {
+                setPlans(data.plans);
+            } else {
+                setLoadError(data?.message || 'Could not load subscription plans.');
+            }
+            setLoading(false);
+        }).catch(() => {
+            setLoadError('Could not load subscription plans. Please try again.');
             setLoading(false);
         });
     }, []);
@@ -129,21 +139,32 @@ const SubscriptionsPage = () => {
             setMessage('Price must be a positive number.');
             return false;
         }
-        setSaving(true);
-        const { data, ok } = await adminApi.patch(`/admin/subscriptions/plans/${plan._id}`, payload);
-        setSaving(false);
-
-        if (ok && data.success) {
-            setPlans((prev) => prev.map((p) => (p._id === plan._id ? data.plan : p)));
-            setMessage(`${plan.name} updated successfully.`);
-            setTimeout(() => setMessage(''), 2500);
-            return true;
+        try {
+            const { data, ok } = await adminApi.patch(`/admin/subscriptions/plans/${plan._id}`, payload);
+            if (ok && data.success) {
+                setPlans((prev) => prev.map((p) => (p._id === plan._id ? data.plan : p)));
+                setMessage(`${plan.name} updated successfully.`);
+                setTimeout(() => setMessage(''), 2500);
+                return true;
+            }
+            setMessage(data.message || 'Could not update plan.');
+            return false;
+        } catch {
+            setMessage('Could not update plan. Please try again.');
+            return false;
         }
-        setMessage(data.message || 'Could not update plan.');
-        return false;
     };
 
     if (loading) return <PageSpinner />;
+
+    if (loadError && plans.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                <p className="text-sm font-semibold text-zinc-700">{loadError}</p>
+                <Button onClick={() => window.location.reload()}>Retry</Button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -183,7 +204,7 @@ const SubscriptionsPage = () => {
 
             <div className={plans.length === 1 ? "max-w-lg mx-auto w-full" : "grid grid-cols-1 md:grid-cols-3 gap-4"}>
                 {plans.map((plan) => (
-                    <PlanCard key={plan._id} plan={plan} onSavePlan={handleSavePlan} saving={saving} />
+                    <PlanCard key={plan._id} plan={plan} onSavePlan={handleSavePlan} />
                 ))}
             </div>
         </div>

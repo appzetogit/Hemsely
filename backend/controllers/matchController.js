@@ -7,6 +7,14 @@ import { emitToUser } from '../socket/index.js';
 import { getOrCreateConfig } from './appConfigController.js';
 import { isBlockedByQueue, getQueueStatusForUser } from '../utils/queueService.js';
 
+// Canonical (smaller id first) pair ordering so the unique (user1, user2) index
+// actually prevents duplicate Match docs regardless of who acted first.
+const canonicalPair = (idA, idB) => {
+  const a = idA.toString();
+  const b = idB.toString();
+  return a < b ? [idA, idB] : [idB, idA];
+};
+
 // @desc Like a user
 // @route POST /api/matches/like/:userId
 // @access Private
@@ -21,7 +29,7 @@ export const likeUser = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const likingUser = await User.findById(likedBy).select('accessStatus isPremium isSuperUser isSuperSubscriber');
+  const likingUser = await User.findById(likedBy).select('accessStatus isPremium isSuperUser isSuperSubscriber blockedUsers');
   if (likingUser && isBlockedByQueue(likingUser)) {
     const queueStatus = await getQueueStatusForUser(likedBy);
     return res.status(403).json({
@@ -29,6 +37,23 @@ export const likeUser = asyncHandler(async (req, res, next) => {
       queued: true,
       ...queueStatus,
       message: 'You are in the access queue. Get a subscription for instant access, or wait for your turn.',
+    });
+  }
+
+  const targetUser = await User.findById(likedUser).select('blockedUsers');
+  if (!targetUser) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found',
+    });
+  }
+
+  const likingBlockedTarget = (likingUser?.blockedUsers || []).some((id) => String(id) === String(likedUser));
+  const targetBlockedLiking = (targetUser.blockedUsers || []).some((id) => String(id) === String(likedBy));
+  if (likingBlockedTarget || targetBlockedLiking) {
+    return res.status(403).json({
+      success: false,
+      message: 'You cannot like this user',
     });
   }
 
@@ -78,9 +103,10 @@ export const likeUser = asyncHandler(async (req, res, next) => {
 
   if (mutualLike) {
     if (!match) {
+      const [user1, user2] = canonicalPair(likedByObj, likedUserObj);
       match = await Match.create({
-        user1: likedByObj,
-        user2: likedUserObj,
+        user1,
+        user2,
         initiatedBy: likedByObj,
         status: 'accepted',
       });
@@ -141,9 +167,10 @@ export const unmatchUser = asyncHandler(async (req, res, next) => {
         match.unmatchedAt = new Date();
         await match.save();
       } else {
+        const [user1, user2] = canonicalPair(userObjId, targetObjId);
         await Match.create({
-          user1: userObjId,
-          user2: targetObjId,
+          user1,
+          user2,
           initiatedBy: userObjId,
           status: 'unmatched',
           unmatchedBy: userObjId,
@@ -188,12 +215,20 @@ export const unlikeUser = asyncHandler(async (req, res, next) => {
   try {
     if (likedBy && likedUser && mongoose.Types.ObjectId.isValid(likedUser) && mongoose.Types.ObjectId.isValid(likedBy)) {
       await Like.findOneAndDelete({ likedBy, likedUser });
-      await Match.deleteMany({
-        $or: [
-          { user1: likedBy, user2: likedUser },
-          { user1: likedUser, user2: likedBy },
-        ],
-      });
+      // Mark any existing match unmatched (rather than deleting it) so chat
+      // history stays consistent with how unmatchUser() handles this pair.
+      await Match.updateMany(
+        {
+          $or: [
+            { user1: likedBy, user2: likedUser },
+            { user1: likedUser, user2: likedBy },
+          ],
+          status: { $ne: 'unmatched' },
+        },
+        {
+          $set: { status: 'unmatched', unmatchedBy: likedBy, unmatchedAt: new Date() },
+        }
+      );
     }
   } catch (err) {
     console.error('Error in unlikeUser:', err);
@@ -299,6 +334,13 @@ export const acceptMatch = asyncHandler(async (req, res, next) => {
     });
   }
 
+  if (match.status !== 'pending') {
+    return res.status(400).json({
+      success: false,
+      message: `Match is already ${match.status} and cannot be accepted`,
+    });
+  }
+
   match.status = 'accepted';
   await match.save();
 
@@ -326,6 +368,13 @@ export const rejectMatch = asyncHandler(async (req, res, next) => {
     return res.status(403).json({
       success: false,
       message: 'You are not a participant in this match',
+    });
+  }
+
+  if (match.status !== 'pending') {
+    return res.status(400).json({
+      success: false,
+      message: `Match is already ${match.status} and cannot be rejected`,
     });
   }
 

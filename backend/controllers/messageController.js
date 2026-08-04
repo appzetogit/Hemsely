@@ -22,11 +22,24 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const receiverExists = await User.exists({ _id: receiver });
-  if (!receiverExists) {
+  const [senderDoc, receiverDoc] = await Promise.all([
+    User.findById(sender).select('blockedUsers'),
+    User.findById(receiver).select('blockedUsers'),
+  ]);
+
+  if (!receiverDoc) {
     return res.status(404).json({
       success: false,
       message: 'Receiver not found',
+    });
+  }
+
+  const senderBlockedReceiver = (senderDoc?.blockedUsers || []).some((id) => String(id) === String(receiver));
+  const receiverBlockedSender = (receiverDoc.blockedUsers || []).some((id) => String(id) === String(sender));
+  if (senderBlockedReceiver || receiverBlockedSender) {
+    return res.status(403).json({
+      success: false,
+      message: 'Cannot send message to this user',
     });
   }
 

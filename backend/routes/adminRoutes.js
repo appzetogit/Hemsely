@@ -20,9 +20,9 @@ import {
 } from '../controllers/adminController.js';
 import { getDashboardStats, resetMatches } from '../controllers/dashboardController.js';
 import { getReports, updateReportStatus } from '../controllers/reportController.js';
-import { getPlans, createPlan, updatePlan, deletePlan, setUserPremium } from '../controllers/subscriptionController.js';
+import { getPlans, createPlan, updatePlan, deletePlan, setUserPremium, getSubscriptionUsers } from '../controllers/subscriptionController.js';
 import { getTransactions } from '../controllers/transactionController.js';
-import { sendNotification, getNotifications } from '../controllers/notificationController.js';
+import { sendNotification, getNotifications, deleteNotification } from '../controllers/notificationController.js';
 import { getAppConfig, updateAppConfig } from '../controllers/appConfigController.js';
 import { getWebsitePages, getWebsitePageBySlug, updateWebsitePage } from '../controllers/websitePageController.js';
 import { getAdminTickets, updateTicketAdmin } from '../controllers/ticketController.js';
@@ -83,6 +83,7 @@ router.post('/subscriptions/plans', adminProtect, createPlan);
 router.patch('/subscriptions/plans/:id', adminProtect, updatePlanValidator, validate, updatePlan);
 router.delete('/subscriptions/plans/:id', adminProtect, mongoIdParam('id'), validate, deletePlan);
 router.patch('/subscriptions/users/:id', adminProtect, setUserPremiumValidator, validate, setUserPremium);
+router.get('/subscription-users', adminProtect, getSubscriptionUsers);
 
 // Transactions
 router.get('/transactions', adminProtect, getTransactions);
@@ -90,6 +91,7 @@ router.get('/transactions', adminProtect, getTransactions);
 // Notifications
 router.get('/notifications', adminProtect, getNotifications);
 router.post('/notifications', adminProtect, sendNotificationValidator, validate, sendNotification);
+router.delete('/notifications/:id', adminProtect, deleteNotification);
 
 // App Config
 router.get('/app-config', adminProtect, getAppConfig);

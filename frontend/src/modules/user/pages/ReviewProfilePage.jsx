@@ -103,7 +103,7 @@ const ReviewProfilePage = () => {
         } catch (e) {
             devError('Error syncing profile activation:', e);
         } finally {
-            navigate('/match-success');
+            navigate('/discovery');
         }
     };
 

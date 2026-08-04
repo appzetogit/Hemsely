@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { User, Lock, Eye, EyeOff, ShieldCheck, Save, Mail } from 'lucide-react';
+import { Lock, Eye, EyeOff, ShieldCheck, Save, Mail } from 'lucide-react';
 import adminApi from '../services/adminApi';
 import { Input, Label } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
@@ -32,6 +32,7 @@ const PasswordInput = ({ label, name, placeholder, value, onChange, isVisible, o
 
 const AdminProfilePage = () => {
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [profile, setProfile] = useState({ firstName: '', lastName: '', email: '', role: '', username: '' });
     const [profileSaving, setProfileSaving] = useState(false);
     const [profileMsg, setProfileMsg] = useState({ text: '', type: '' });
@@ -46,25 +47,37 @@ const AdminProfilePage = () => {
     const [supportMsg, setSupportMsg] = useState({ text: '', type: '' });
 
     useEffect(() => {
-        adminApi.get('/admin/me').then(({ data, ok }) => {
-            if (ok && data.success) {
-                const a = data.admin;
-                setProfile({
-                    firstName: a.firstName || '',
-                    lastName: a.lastName || '',
-                    email: a.email || '',
-                    role: a.role || '',
-                    username: a.username || '',
-                });
+        (async () => {
+            try {
+                const { data, ok } = await adminApi.get('/admin/me');
+                if (ok && data.success) {
+                    const a = data.admin;
+                    setProfile({
+                        firstName: a.firstName || '',
+                        lastName: a.lastName || '',
+                        email: a.email || '',
+                        role: a.role || '',
+                        username: a.username || '',
+                    });
+                } else {
+                    setLoadError(data?.message || 'Could not load your admin profile.');
+                }
+            } catch {
+                setLoadError('Could not load your admin profile. Please refresh the page.');
             }
             setLoading(false);
-        });
+        })();
 
-        adminApi.get('/admin/app-config').then(({ data, ok }) => {
-            if (ok && data.success && data.config?.supportEmail) {
-                setSupportEmail(data.config.supportEmail);
+        (async () => {
+            try {
+                const { data, ok } = await adminApi.get('/admin/app-config');
+                if (ok && data.success && data.config?.supportEmail) {
+                    setSupportEmail(data.config.supportEmail);
+                }
+            } catch {
+                // Non-fatal - the support email form just starts blank; its own save flow will surface errors.
             }
-        });
+        })();
     }, []);
 
     const avatarInitials = `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase() || profile.username?.[0]?.toUpperCase() || 'A';
@@ -84,17 +97,21 @@ const AdminProfilePage = () => {
 
         setProfileSaving(true);
         setProfileMsg({ text: '', type: '' });
-        const { data, ok } = await adminApi.put('/admin/profile', {
-            firstName: profile.firstName,
-            lastName: profile.lastName,
-            email: profile.email,
-        });
-        setProfileSaving(false);
-
-        if (ok && data.success) {
-            setProfileMsg({ text: 'Profile saved successfully!', type: 'success' });
-        } else {
-            setProfileMsg({ text: data.message || 'Could not save profile.', type: 'error' });
+        try {
+            const { data, ok } = await adminApi.put('/admin/profile', {
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                email: profile.email,
+            });
+            if (ok && data.success) {
+                setProfileMsg({ text: 'Profile saved successfully!', type: 'success' });
+            } else {
+                setProfileMsg({ text: data.message || 'Could not save profile.', type: 'error' });
+            }
+        } catch {
+            setProfileMsg({ text: 'Could not save profile. Please try again.', type: 'error' });
+        } finally {
+            setProfileSaving(false);
         }
         setTimeout(() => setProfileMsg({ text: '', type: '' }), 3000);
     };
@@ -125,17 +142,22 @@ const AdminProfilePage = () => {
         }
 
         setPwSaving(true);
-        const { data, ok } = await adminApi.put('/admin/password', {
-            currentPassword: passwords.current,
-            newPassword: passwords.newPass,
-        });
-        setPwSaving(false);
-
-        if (ok && data.success) {
-            setPwMsg({ text: 'Password updated successfully!', type: 'success' });
-            setPasswords({ current: '', newPass: '', confirm: '' });
-        } else {
-            setPwMsg({ text: data.message || 'Could not update password.', type: 'error' });
+        setPwMsg({ text: '', type: '' });
+        try {
+            const { data, ok } = await adminApi.put('/admin/password', {
+                currentPassword: passwords.current,
+                newPassword: passwords.newPass,
+            });
+            if (ok && data.success) {
+                setPwMsg({ text: 'Password updated successfully!', type: 'success' });
+                setPasswords({ current: '', newPass: '', confirm: '' });
+            } else {
+                setPwMsg({ text: data.message || 'Could not update password.', type: 'error' });
+            }
+        } catch {
+            setPwMsg({ text: 'Could not update password. Please try again.', type: 'error' });
+        } finally {
+            setPwSaving(false);
         }
         setTimeout(() => setPwMsg({ text: '', type: '' }), 3000);
     };
@@ -148,13 +170,17 @@ const AdminProfilePage = () => {
         }
         setSupportSaving(true);
         setSupportMsg({ text: '', type: '' });
-        const { data, ok } = await adminApi.put('/admin/app-config', { supportEmail });
-        setSupportSaving(false);
-
-        if (ok && data.success) {
-            setSupportMsg({ text: 'Support email updated successfully!', type: 'success' });
-        } else {
-            setSupportMsg({ text: data.message || 'Could not update support email.', type: 'error' });
+        try {
+            const { data, ok } = await adminApi.put('/admin/app-config', { supportEmail });
+            if (ok && data.success) {
+                setSupportMsg({ text: 'Support email updated successfully!', type: 'success' });
+            } else {
+                setSupportMsg({ text: data.message || 'Could not update support email.', type: 'error' });
+            }
+        } catch {
+            setSupportMsg({ text: 'Could not update support email. Please try again.', type: 'error' });
+        } finally {
+            setSupportSaving(false);
         }
         setTimeout(() => setSupportMsg({ text: '', type: '' }), 3000);
     };
@@ -168,12 +194,18 @@ const AdminProfilePage = () => {
                 <p className="text-sm text-zinc-500 mt-1">Manage your admin account details and password.</p>
             </div>
 
+            {loadError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm font-semibold px-4 py-3">
+                    {loadError}
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 {/* Profile Info */}
                 <section className="rounded-2xl bg-white border border-zinc-200 shadow-sm p-6">
                     <div className="flex items-center gap-3 border-b border-zinc-100 pb-4 mb-5">
-                        <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center">
-                            <User className="w-5 h-5 text-brand-600" />
+                        <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center text-sm font-bold text-brand-600">
+                            {avatarInitials}
                         </div>
                         <div>
                             <h2 className="text-base font-semibold text-zinc-900">Profile Information</h2>

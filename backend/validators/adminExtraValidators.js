@@ -38,15 +38,16 @@ export const appConfigValidator = [
   body('maintenanceMode').optional().isBoolean(),
   body('signupsEnabled').optional().isBoolean(),
   body('holdLikesQueue').optional().isBoolean(),
-  body('dailyLikeLimit').optional().isInt({ min: 1 }),
-  body('discoveryRadiusKm').optional().isInt({ min: 1 }),
-  body('maxAgeGapYears').optional().isInt({ min: 1 }),
+  body('dailyLikeLimit').optional().isInt({ min: 1, max: 10000 }),
+  body('discoveryRadiusKm').optional().isInt({ min: 1, max: 20000 }),
+  body('maxAgeGapYears').optional().isInt({ min: 1, max: 100 }),
   body('minAppVersion').optional().isString(),
+  body('supportEmail').optional().isEmail(),
   body('genderQueueEnabled').optional().isBoolean(),
-  body('queueRatioMale').optional().isInt({ min: 1 }),
-  body('queueRatioFemale').optional().isInt({ min: 1 }),
+  body('queueRatioMale').optional().isInt({ min: 1, max: 100 }),
+  body('queueRatioFemale').optional().isInt({ min: 1, max: 100 }),
   body('queueScope').optional().isIn(['country', 'radius']),
-  body('queueRadiusKm').optional().isInt({ min: 1 }),
+  body('queueRadiusKm').optional().isInt({ min: 1, max: 20000 }),
 ];
 
 export const websitePageValidator = [

@@ -17,3 +17,7 @@ build/
 *~
 .env.production
 .env.test
+
+# Firebase Admin SDK service-account keys must never be committed
+config/*firebase-adminsdk*.json
+config/*serviceAccountKey*.json

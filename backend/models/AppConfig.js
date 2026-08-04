@@ -64,6 +64,16 @@ const appConfigSchema = new mongoose.Schema(
       type: String,
       default: 'support@hemeshly.app',
     },
+    boostPrice1: {
+      type: Number,
+      default: 199,
+      min: 1,
+    },
+    boostPrice5: {
+      type: Number,
+      default: 399,
+      min: 1,
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',

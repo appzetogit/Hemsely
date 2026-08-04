@@ -28,13 +28,37 @@ const notificationSchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
+    recipientUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     sentBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',
-      required: true,
+      default: null,
     },
     deliveryStats: {
       recipientCount: { type: Number, default: 0 },
+      successCount: { type: Number, default: 0 },
+      failureCount: { type: Number, default: 0 },
+      invalidTokensRemoved: { type: Number, default: 0 },
+    },
+    type: {
+      type: String,
+      default: 'broadcast',
+    },
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
+    readAt: {
+      type: Date,
+      default: null,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
   },
   {
@@ -43,5 +67,7 @@ const notificationSchema = new mongoose.Schema(
 );
 
 notificationSchema.index({ createdAt: -1 });
+notificationSchema.index({ recipientUserId: 1, createdAt: -1 });
+notificationSchema.index({ target: 1, segment: 1, createdAt: -1 });
 
 export default mongoose.model('Notification', notificationSchema);

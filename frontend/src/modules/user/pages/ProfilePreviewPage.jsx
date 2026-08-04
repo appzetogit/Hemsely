@@ -9,22 +9,125 @@ import thumbIcon from '../assets/icons/thumb.png';
 import crossIcon from '../assets/icons/cross.png';
 import premiumBg from '../../../assets/premiumbackground.png';
 import BottomNavigation from '../components/BottomNavigation';
+import VerifiedBadge from '../components/VerifiedBadge';
+import BoostAnimationOverlay from '../components/BoostAnimationOverlay';
+import { loadRazorpayScript } from '../../../shared/utils/razorpayLoader';
 import { devError } from '../../../shared/utils/logger';
 
 /* ─── Premium Purchase Popup ─── */
-const PremiumPopup = ({ type, onClose }) => {
+const PremiumPopup = ({ type, onClose, onSuccess }) => {
     const isComments = type === 'comments';
     const [selectedPlan, setSelectedPlan] = useState('right');
+    const [loading, setLoading] = useState(false);
+    const [plans, setPlans] = useState(() => (
+        isComments
+            ? [
+                { id: 'left', count: 1, label: 'Comment', price: 199 },
+                { id: 'right', count: 5, label: 'Comments', price: 399 },
+            ]
+            : [
+                { id: 'left', count: 1, label: 'Boost', price: 199 },
+                { id: 'right', count: 5, label: 'Boosts', price: 399 },
+            ]
+    ));
 
-    const plans = isComments
-        ? [
-            { id: 'left', count: '1', label: 'Comments', price: '199.00' },
-            { id: 'right', count: '5', label: 'Comments', price: '399.00' },
-        ]
-        : [
-            { id: 'left', count: '1', label: 'Boost', price: '199.00' },
-            { id: 'right', count: '5', label: 'Boosts', price: '399.00' },
-        ];
+    useEffect(() => {
+        if (!isComments) {
+            apiClient.get('/subscriptions/boost-plans')
+                .then(({ data, ok }) => {
+                    if (ok && data?.success && Array.isArray(data.plans) && data.plans.length > 0) {
+                        setPlans(data.plans);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [isComments]);
+
+    const selectedPlanObj = plans.find(p => p.id === selectedPlan) || plans[1] || plans[0];
+
+    const handleBuyNow = async () => {
+        setLoading(true);
+        try {
+            const { data, ok } = await apiClient.post('/subscriptions/boost/create-order', {
+                optionId: selectedPlan,
+                count: selectedPlanObj.count,
+                price: selectedPlanObj.price,
+            });
+
+            if (!ok || !data || !data.success) {
+                alert(data?.message || 'Could not initiate Razorpay payment');
+                setLoading(false);
+                return;
+            }
+
+            const isLoaded = await loadRazorpayScript();
+            if (!isLoaded) {
+                alert('Razorpay SDK failed to load. Please check your internet connection.');
+                setLoading(false);
+                return;
+            }
+
+            const options = {
+                key: data.key,
+                amount: data.amount,
+                currency: data.currency || 'INR',
+                name: 'Hemsely',
+                description: `${selectedPlanObj.count} Profile ${selectedPlanObj.count === 1 ? 'Boost' : 'Boosts'}`,
+                order_id: data.orderId,
+                prefill: {
+                    name: data.userDetails?.name || '',
+                    email: data.userDetails?.email || '',
+                    contact: data.userDetails?.phone || '',
+                },
+                handler: async function (response) {
+                    try {
+                        const verifyRes = await apiClient.post('/subscriptions/boost/verify', {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            transactionId: data.transactionId,
+                            count: selectedPlanObj.count,
+                        });
+
+                        if (verifyRes.ok && verifyRes.data?.success) {
+                            const updatedUser = verifyRes.data.user;
+                            if (updatedUser) {
+                                localStorage.setItem('user', JSON.stringify(updatedUser));
+                                sessionStorage.setItem('user', JSON.stringify(updatedUser));
+                                if (onSuccess) onSuccess(updatedUser);
+                            }
+                            alert(`🎉 ${selectedPlanObj.count} Boost(s) added successfully!`);
+                            onClose();
+                        } else {
+                            alert(verifyRes.data?.message || 'Payment verification failed');
+                        }
+                    } catch (err) {
+                        alert('Error verifying payment with server');
+                    } finally {
+                        setLoading(false);
+                    }
+                },
+                modal: {
+                    ondismiss: function () {
+                        setLoading(false);
+                    },
+                },
+                theme: {
+                    color: '#703DE2',
+                },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                alert(`Payment failed: ${response.error?.description || 'Transaction declined'}`);
+                setLoading(false);
+            });
+            rzp.open();
+        } catch (err) {
+            alert('Payment failed to initiate');
+            setLoading(false);
+        }
+    };
 
     return (
         <div
@@ -84,11 +187,10 @@ const PremiumPopup = ({ type, onClose }) => {
                                     type="button"
                                     aria-pressed={isSelected}
                                     onClick={() => setSelectedPlan(plan.id)}
-                                    className={`relative flex flex-col items-center justify-center p-2 rounded-[16px] h-[92px] transition-all cursor-pointer border ${
-                                        isSelected
-                                            ? 'bg-[#FF7365] text-white border-[#FF7365] shadow-2xs scale-[1.01]'
-                                            : 'bg-white text-gray-900 border-gray-200 hover:border-gray-300'
-                                    }`}
+                                    className={`relative flex flex-col items-center justify-center p-2 rounded-[16px] h-[92px] transition-all cursor-pointer border ${isSelected
+                                        ? 'bg-[#FF7365] text-white border-[#FF7365] shadow-2xs scale-[1.01]'
+                                        : 'bg-white text-gray-900 border-gray-200 hover:border-gray-300'
+                                        }`}
                                 >
                                     <span className={`text-[16px] font-extrabold leading-tight ${isSelected ? 'text-white' : 'text-black'}`}>
                                         {plan.count}
@@ -97,20 +199,21 @@ const PremiumPopup = ({ type, onClose }) => {
                                         {plan.label}
                                     </span>
                                     <span className={`text-[12.5px] font-bold mt-1.5 ${isSelected ? 'text-white' : 'text-black'}`}>
-                                        ₹ {plan.price}
+                                        ₹ {plan.price}.00
                                     </span>
                                 </button>
                             );
                         })}
                     </div>
 
-                    {/* Submit Button */}
+                    {/* Buy Now Button */}
                     <button
                         type="button"
-                        onClick={onClose}
-                        className="w-full h-[42px] rounded-full bg-[#703DE2] hover:bg-[#602ec3] text-white font-extrabold text-[13.5px] shadow-md shadow-purple-200/80 active:scale-[0.98] transition-all cursor-pointer border-0 tracking-wide"
+                        disabled={loading}
+                        onClick={handleBuyNow}
+                        className="w-full h-[42px] rounded-full bg-[#703DE2] hover:bg-[#602ec3] disabled:opacity-50 text-white font-extrabold text-[13.5px] shadow-md shadow-purple-200/80 active:scale-[0.98] transition-all cursor-pointer border-0 tracking-wide flex items-center justify-center"
                     >
-                        Continue
+                        {loading ? 'Processing...' : 'Buy Now'}
                     </button>
                 </div>
             </div>
@@ -155,7 +258,7 @@ const calculateAge = (dobString) => {
     return age > 0 ? age : null;
 };
 
-const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerified, onEditClick, onPremiumClick }) => (
+const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerified, isPremium, onEditClick, onPremiumClick }) => (
     <section className="flex flex-col items-center shrink-0">
         {/* Avatar Ring */}
         <div className="relative">
@@ -189,15 +292,15 @@ const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerifi
             </span>
         </div>
 
-        {/* User Name & Verification */}
-        <div className="mt-3 flex items-center gap-1">
+        {/* User Name & Blue Verified Badge (Exclusive for Premium users) */}
+        <div className="mt-3 flex items-center gap-1.5 justify-center">
             <h2 className="text-[18px] font-extrabold text-gray-900 tracking-tight leading-none">
-                {name}{age ? `, ${age}` : ''}
+                {name}
             </h2>
-            {isVerified && <img src={tickIcon} alt="" className="w-4 h-4 object-contain" />}
+            {isPremium && <VerifiedBadge size={20} />}
         </div>
 
-        {/* Unlock Premium Banner */}
+        {/* Premium Banner */}
         <div className="w-full flex items-center justify-center gap-2 mt-4 px-1">
             <div className="flex-1 h-[1px] bg-gray-100/80" />
             <button
@@ -206,7 +309,11 @@ const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerifi
                 className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full bg-[#FFF6F3] border border-[#FFE8DF] hover:bg-[#FFEAE3] transition-colors cursor-pointer shrink-0 max-w-[340px] shadow-2xs"
             >
                 <span className="text-[12.5px] font-semibold text-gray-900 tracking-tight whitespace-nowrap">
-                    Unlock All <span className="text-[#FF6B4A] font-extrabold">Premium</span> Features
+                    {isPremium ? (
+                        <>You have <span className="text-[#FF6B4A] font-extrabold">Premium Access</span></>
+                    ) : (
+                        <>Unlock All <span className="text-[#FF6B4A] font-extrabold">Premium</span> Features</>
+                    )}
                 </span>
                 <img src={tickProfileIcon} alt="" className="w-4.5 h-4.5 object-contain shrink-0" />
             </button>
@@ -215,23 +322,43 @@ const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerifi
     </section>
 );
 
-const QuickActionCards = ({ onOpenPopup }) => (
-    <section className="mt-4 mb-4 w-full shrink-0">
-        <button
-            type="button"
-            onClick={() => onOpenPopup('boost')}
-            className="w-full text-left px-3 py-3 rounded-[20px] bg-[#FFF6F4] border border-[#FFEBE5] flex items-center gap-2.5 transition-transform active:scale-[0.98] cursor-pointer shadow-2xs hover:border-orange-200"
-        >
-            <div className="w-9 h-9 rounded-full bg-[#FFE5DF] flex items-center justify-center shrink-0">
-                <img src={thumbIcon} alt="" className="w-4 h-4 object-contain" />
-            </div>
-            <div className="min-w-0 flex-1">
-                <p className="font-extrabold text-[13px] text-gray-900 leading-tight tracking-tight">Boost</p>
-                <p className="text-[11px] text-gray-400 font-normal mt-0.5">Get now</p>
-            </div>
-        </button>
-    </section>
-);
+const QuickActionCards = ({ isPremium, boostCount, onOpenPopup, onUseBoost, boosting }) => {
+    const totalBoosts = isPremium ? (boostCount !== undefined && boostCount !== null ? boostCount : 1) : (boostCount || 0);
+    const hasBoosts = totalBoosts > 0;
+
+    return (
+        <section className="mt-4 mb-4 w-full shrink-0">
+            <button
+                type="button"
+                disabled={boosting}
+                onClick={() => (hasBoosts ? onUseBoost() : onOpenPopup('boost'))}
+                className="w-full text-left px-3.5 py-3 rounded-[20px] bg-[#FFEBE4] border border-[#FFD2C6] flex items-center justify-between transition-transform active:scale-[0.98] cursor-pointer shadow-2xs hover:border-orange-300 disabled:opacity-60"
+            >
+                <div className="flex items-center gap-2.5">
+                    <div className="w-9.5 h-9.5 rounded-full bg-[#FFD4CA] flex items-center justify-center shrink-0">
+                        <img src={thumbIcon} alt="" className="w-4 h-4 object-contain" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="font-extrabold text-[13px] text-gray-900 leading-tight tracking-tight">Boost</p>
+                        <p className="text-[11px] text-[#FF6B4A] font-semibold mt-0.5">
+                            {isPremium
+                                ? `${totalBoosts} ${totalBoosts === 1 ? 'Boost you have' : 'Boosts you have'}`
+                                : hasBoosts
+                                    ? `${totalBoosts} ${totalBoosts === 1 ? 'Boost' : 'Boosts'} available`
+                                    : 'Get now'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="shrink-0">
+                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-[#703DE2] text-white text-[11px] font-extrabold shadow-2xs active:scale-95 transition-all">
+                        {boosting ? 'Boosting...' : hasBoosts ? 'Use Boost' : 'Get Now'}
+                    </span>
+                </div>
+            </button>
+        </section>
+    );
+};
 
 const PremiumOfferCard = ({ onUpgradeClick }) => (
     <section className="w-full shrink-0">
@@ -265,15 +392,17 @@ const PremiumOfferCard = ({ onUpgradeClick }) => (
 );
 
 const ProfilePreviewPage = () => {
+    const navigate = useNavigate();
     const [popup, setPopup] = useState(null);
+    const [boosting, setBoosting] = useState(false);
+    const [showBoostAnim, setShowBoostAnim] = useState(false);
     const [userProfile, setUserProfile] = useState(() => {
         try {
-            return JSON.parse(localStorage.getItem('user') || '{}');
+            return JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
         } catch {
             return {};
         }
     });
-    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchUserProfile = async () => {
@@ -292,6 +421,26 @@ const ProfilePreviewPage = () => {
         fetchUserProfile();
     }, []);
 
+    const handleUseBoost = async () => {
+        if (boosting) return;
+        setBoosting(true);
+        try {
+            const { data, ok } = await apiClient.post('/users/boost/activate');
+            if (ok && data?.success) {
+                setUserProfile(data.user);
+                sessionStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('user', JSON.stringify(data.user));
+                setShowBoostAnim(true);
+            } else {
+                alert(data?.message || 'Could not activate boost');
+            }
+        } catch {
+            alert('Error activating boost');
+        } finally {
+            setBoosting(false);
+        }
+    };
+
     // Compute real user profile details dynamically
     const profileState = React.useMemo(() => {
         const storedOnboardingProfile = (() => {
@@ -303,7 +452,8 @@ const ProfilePreviewPage = () => {
         })();
 
         // Real Name
-        const name = userProfile.firstName || userProfile.name || storedOnboardingProfile.name || 'User';
+        const fullName = [userProfile.firstName, userProfile.lastName].filter(Boolean).join(' ');
+        const name = fullName || userProfile.name || storedOnboardingProfile.name || 'User';
 
         // Real Age
         let age = '';
@@ -332,7 +482,7 @@ const ProfilePreviewPage = () => {
                         const found = photoData.photos.find(p => p !== null && typeof p === 'string' && !p.includes('wallet') && !p.includes('svg'));
                         if (found) photo = found;
                     }
-                } catch {}
+                } catch { }
             }
         }
 
@@ -353,6 +503,7 @@ const ProfilePreviewPage = () => {
             photo,
             completionPercentage,
             isVerified: !!userProfile.isVerified,
+            isPremium: !!userProfile.isPremium || userProfile.subscriptionName === 'Premium',
         };
     }, [userProfile]);
 
@@ -370,16 +521,33 @@ const ProfilePreviewPage = () => {
                     photo={profileState.photo}
                     completionPercentage={profileState.completionPercentage}
                     isVerified={profileState.isVerified}
+                    isPremium={profileState.isPremium}
                     onEditClick={() => navigate('/edit-profile')}
                     onPremiumClick={() => navigate('/premium')}
                 />
-                <QuickActionCards onOpenPopup={setPopup} />
+                <QuickActionCards
+                    isPremium={profileState.isPremium}
+                    boostCount={userProfile.boostCount}
+                    onOpenPopup={setPopup}
+                    onUseBoost={handleUseBoost}
+                    boosting={boosting}
+                />
                 <PremiumOfferCard onUpgradeClick={() => navigate('/premium')} />
             </main>
 
             <BottomNavigation activeTab="profile" />
 
-            {popup && <PremiumPopup type={popup} onClose={() => setPopup(null)} />}
+            {popup && (
+                <PremiumPopup
+                    type={popup}
+                    onClose={() => setPopup(null)}
+                    onSuccess={(updatedUser) => setUserProfile(updatedUser)}
+                />
+            )}
+
+            {showBoostAnim && (
+                <BoostAnimationOverlay onClose={() => setShowBoostAnim(false)} />
+            )}
         </div>
     );
 };

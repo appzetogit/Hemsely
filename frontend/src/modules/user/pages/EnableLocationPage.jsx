@@ -32,12 +32,26 @@ const EnableLocationPage = () => {
         }
 
         navigator.geolocation.getCurrentPosition(
-            (position) => {
+            async (position) => {
                 const { latitude, longitude } = position.coords;
+                let city = '';
+                let state = '';
+                try {
+                    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        city = data.city || data.locality || '';
+                        state = data.principalSubdivision || '';
+                    }
+                } catch {
+                    // Ignore geocode error
+                }
                 saveLocationAndNext({
                     granted: true,
                     lat: latitude,
                     lng: longitude,
+                    city,
+                    state,
                     timestamp: Date.now()
                 });
             },

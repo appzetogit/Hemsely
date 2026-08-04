@@ -7,6 +7,7 @@ import drinkIcon from '../assets/icons/drink.png';
 import smokeIcon from '../assets/icons/cigratee.png';
 import studyIcon from '../assets/icons/study.png';
 import heartIcon from '../assets/icons/heart.png';
+import VerifiedBadge from './VerifiedBadge';
 import { Pill, renderInterestIcon } from '../constants/discoveryData';
 
 const DiscoveryProfileCard = ({
@@ -30,11 +31,8 @@ const DiscoveryProfileCard = ({
                     <h2 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: '26px', lineHeight: '32px', letterSpacing: '-0.01em', color: '#000' }}>
                         {profile.name}, {profile.age}
                     </h2>
-                    {profile.verified && (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                            <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.38-1.93-4.31-4.31-4.31-.495 0-.965.084-1.4.238C14.23 2.155 12.86 1.28 11.28 1.28c-1.58 0-2.95.875-3.6 2.148-.435-.154-.905-.238-1.4-.238-2.38 0-4.31 1.93-4.31 4.31 0 .495.084.965.238 1.4C.875 9.55 0 10.92 0 12.5c0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.38 1.93 4.31 4.31 4.31.495 0 .965-.084 1.4-.238 1.28 1.273 2.65 2.148 4.23 2.148 1.58 0 2.95-.875 3.6-2.148.435.154.905.238 1.4.238 2.38 0 4.31-1.93 4.31-4.31 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6z" fill="#4099FF"/>
-                            <path d="M9.75 16.5l-4.5-4.5 1.5-1.5 3 3 7.5-7.5 1.5 1.5-9 9z" fill="#FFF"/>
-                        </svg>
+                    {(profile.isPremium || profile.subscriptionName === 'Premium') && (
+                        <VerifiedBadge size={22} />
                     )}
                     {profile.isNew && (
                         <span className="shrink-0 bg-[#FF7C67] text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full ml-1">

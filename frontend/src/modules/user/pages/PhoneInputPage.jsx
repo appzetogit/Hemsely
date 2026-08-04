@@ -47,13 +47,7 @@ const PhoneInputPage = () => {
                 }
             }
         } catch {
-            // Local fallback
-            localStorage.setItem(PHONE_STORAGE_KEY, JSON.stringify({
-                countryCode,
-                phone,
-                fullPhone,
-            }));
-            navigate('/verify');
+            setError('Could not reach the server. Please check your connection and try again.');
         } finally {
             setLoading(false);
         }

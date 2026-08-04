@@ -10,11 +10,13 @@ const adminSchema = new mongoose.Schema(
       minlength: 3,
     },
     email: {
+      // Format is validated at the route layer (express-validator's isEmail()) -
+      // a second, stricter regex here previously rejected valid addresses like
+      // "name+tag@domain.com" or a TLD longer than 3 characters.
       type: String,
       required: [true, 'Please provide an email'],
       unique: true,
       lowercase: true,
-      match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
     },
     password: {
       type: String,

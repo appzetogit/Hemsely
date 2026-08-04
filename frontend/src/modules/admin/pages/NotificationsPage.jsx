@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, Send, Users, Crown, Clock, CheckCircle2, Plus, X } from 'lucide-react';
+import { Bell, Send, Users, Crown, Clock, CheckCircle2, Plus, X, Trash2 } from 'lucide-react';
 import adminApi from '../services/adminApi';
 import { PageSpinner } from '../../../shared/components/ui/Spinner';
 
 const AUDIENCES = [
     { value: 'all', label: 'All Users', icon: Users, desc: 'Every registered user on the platform' },
     { value: 'premium', label: 'Premium Users', icon: Crown, desc: 'Only users with an active subscription' },
+    { value: 'free', label: 'Free Users', icon: Users, desc: 'Users without an active subscription' },
     { value: 'inactive', label: 'Inactive Users', icon: Clock, desc: 'Users who paused their profile' },
 ];
 
@@ -19,21 +20,38 @@ const audienceLabel = (n) => {
 
 const NotificationsPage = () => {
     const [history, setHistory] = useState([]);
+    const [counts, setCounts] = useState({ total: 0, broadcast: 0, targeted: 0 });
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [form, setForm] = useState(defaultForm);
     const [error, setError] = useState('');
     const [sending, setSending] = useState(false);
 
     const loadHistory = async () => {
-        const { data, ok } = await adminApi.get('/admin/notifications');
-        if (ok && data.success) setHistory(data.notifications);
+        setLoading(true);
+        setLoadError('');
+        try {
+            const { data, ok } = await adminApi.get('/admin/notifications', { params: { page } });
+            if (ok && data.success) {
+                setHistory(data.notifications);
+                if (data.counts) setCounts(data.counts);
+                setTotalPages(data.pagination?.totalPages || 1);
+            } else {
+                setLoadError(data?.message || 'Could not load notification history.');
+            }
+        } catch {
+            setLoadError('Could not load notification history. Please try again.');
+        }
         setLoading(false);
     };
 
     useEffect(() => {
         loadHistory();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page]);
 
     const openModal = () => { setForm(defaultForm); setError(''); setShowModal(true); };
     const closeModal = () => { setShowModal(false); setError(''); };
@@ -51,24 +69,40 @@ const NotificationsPage = () => {
         }
 
         setSending(true);
+        setError('');
         const payload = form.audience === 'all'
             ? { title: form.title.trim(), body: form.body.trim(), target: 'all' }
             : { title: form.title.trim(), body: form.body.trim(), target: 'segment', segment: form.audience };
 
-        const { data, ok } = await adminApi.post('/admin/notifications', payload);
-        setSending(false);
-
-        if (ok && data.success) {
-            setHistory((prev) => [data.notification, ...prev]);
-            closeModal();
-        } else {
-            setError(data.message || 'Could not send notification.');
+        try {
+            const { data, ok } = await adminApi.post('/admin/notifications', payload);
+            if (ok && data.success) {
+                closeModal();
+                setPage(1);
+                loadHistory();
+            } else {
+                setError(data.message || 'Could not send notification.');
+            }
+        } catch {
+            setError('Could not send notification. Please try again.');
+        } finally {
+            setSending(false);
         }
     };
 
-    const totalSent = history.length;
-    const broadcastCount = history.filter((h) => h.target === 'all').length;
-    const targetedCount = history.filter((h) => h.target !== 'all').length;
+    const handleDeleteHistory = async (id) => {
+        if (!window.confirm('Delete this notification history record?')) return;
+        try {
+            const { data, ok } = await adminApi.delete(`/admin/notifications/${id}`);
+            if (ok && data.success) {
+                loadHistory();
+            } else {
+                alert(data?.message || 'Could not delete this notification record.');
+            }
+        } catch {
+            alert('Could not delete this notification record. Please try again.');
+        }
+    };
 
     if (loading) return <PageSpinner />;
 
@@ -98,7 +132,7 @@ const NotificationsPage = () => {
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Sent</p>
-                        <h3 className="text-xl font-medium text-zinc-900 leading-none">{totalSent}</h3>
+                        <h3 className="text-xl font-medium text-zinc-900 leading-none">{counts.total}</h3>
                     </div>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border border-zinc-200 p-4 flex items-center">
@@ -107,7 +141,7 @@ const NotificationsPage = () => {
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Broadcast</p>
-                        <h3 className="text-xl font-medium text-zinc-900 leading-none">{broadcastCount}</h3>
+                        <h3 className="text-xl font-medium text-zinc-900 leading-none">{counts.broadcast}</h3>
                     </div>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border border-zinc-200 p-4 flex items-center">
@@ -116,10 +150,16 @@ const NotificationsPage = () => {
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Targeted</p>
-                        <h3 className="text-xl font-medium text-zinc-900 leading-none">{targetedCount}</h3>
+                        <h3 className="text-xl font-medium text-zinc-900 leading-none">{counts.targeted}</h3>
                     </div>
                 </div>
             </div>
+
+            {loadError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm font-semibold px-4 py-3">
+                    {loadError}
+                </div>
+            )}
 
             {/* Sent History */}
             <section className="rounded-2xl bg-white border border-zinc-200 shadow-sm p-6">
@@ -142,15 +182,49 @@ const NotificationsPage = () => {
                                         <p className="text-sm font-bold text-zinc-900 truncate">{h.title}</p>
                                         <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{h.body}</p>
                                         <div className="flex flex-wrap gap-3 mt-2">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">→ {audienceLabel(h)} ({h.deliveryStats?.recipientCount || 0})</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">→ {audienceLabel(h)} ({h.deliveryStats?.recipientCount || 0} users)</span>
+                                            {h.deliveryStats?.successCount > 0 && (
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">✓ {h.deliveryStats.successCount} push delivered</span>
+                                            )}
                                             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                                                 {new Date(h.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteHistory(h._id)}
+                                    title="Delete Record"
+                                    className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-zinc-200/50 transition-colors bg-transparent border-0 cursor-pointer opacity-0 group-hover:opacity-100"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
                             </div>
                         ))}
+                    </div>
+                )}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-zinc-100 text-xs font-semibold text-zinc-600">
+                        <span>Page {page} of {totalPages}</span>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page <= 1}
+                                className="px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                Prev
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                Next
+                            </button>
+                        </div>
                     </div>
                 )}
             </section>
@@ -183,7 +257,7 @@ const NotificationsPage = () => {
                         <form onSubmit={handleSend} className="space-y-5">
                             <div>
                                 <span className="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-3">Target Audience</span>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                     {AUDIENCES.map(({ value, label, icon: Icon, desc }) => (
                                         <label
                                             key={value}

@@ -1,7 +1,7 @@
 import Admin from '../models/Admin.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { generateToken, generateRefreshToken, setCookie, clearCookie } from '../utils/tokenUtils.js';
-import { validateEmail, validatePassword } from '../utils/validators.js';
+import { validatePassword } from '../utils/validators.js';
 
 // @desc Admin Register (Create additional admin accounts)
 // @route POST /api/admin/register
@@ -22,13 +22,6 @@ export const adminRegister = asyncHandler(async (req, res, next) => {
     return res.status(400).json({
       success: false,
       message: 'Please provide all required fields',
-    });
-  }
-
-  if (!validateEmail(email)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Please provide a valid email',
     });
   }
 
@@ -184,13 +177,6 @@ export const getCurrentAdmin = asyncHandler(async (req, res, next) => {
 // @access Private
 export const updateAdminProfile = asyncHandler(async (req, res, next) => {
   const { firstName, lastName, email } = req.body;
-
-  if (email && !validateEmail(email)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Please provide a valid email',
-    });
-  }
 
   if (email) {
     const existing = await Admin.findOne({ email, _id: { $ne: req.admin.id } });

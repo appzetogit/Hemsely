@@ -38,7 +38,8 @@ const StatusBadge = ({ status }) => {
 
 const userName = (u) => u ? [u.firstName, u.lastName].filter(Boolean).join(' ') || 'User' : 'Deleted user';
 
-const ReportDetailModal = ({ report, onClose, onUpdateStatus, updating }) => {
+const ReportDetailModal = ({ report, onClose, onUpdateStatus, updating, updateError }) => {
+    const [notes, setNotes] = useState(report?.notes || '');
     if (!report) return null;
     return (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 sm:p-6">
@@ -91,23 +92,42 @@ const ReportDetailModal = ({ report, onClose, onUpdateStatus, updating }) => {
                             <div className="text-sm font-medium text-zinc-800 leading-relaxed">{report.reason}</div>
                         </div>
                     )}
+
+                    <div>
+                        <label htmlFor="report-admin-notes" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                            Admin Notes
+                        </label>
+                        <textarea
+                            id="report-admin-notes"
+                            rows={3}
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            maxLength={1000}
+                            placeholder="Internal moderation notes (not shown to users)..."
+                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-800 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 resize-none"
+                        />
+                    </div>
                 </div>
+
+                {updateError && (
+                    <p className="text-xs font-semibold text-danger-600 mt-3">{updateError}</p>
+                )}
 
                 <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-zinc-100">
                     {report.status === 'pending' && (
-                        <Button variant="secondary" disabled={updating} onClick={() => onUpdateStatus(report._id, 'reviewed')}>
+                        <Button variant="secondary" disabled={updating} onClick={() => onUpdateStatus(report._id, 'reviewed', false, notes)}>
                             <ShieldCheck className="w-4 h-4" />
                             Mark Reviewed
                         </Button>
                     )}
                     {report.status !== 'actioned' && !report.reportedUser?.isBanned && (
-                        <Button variant="danger" disabled={updating} onClick={() => onUpdateStatus(report._id, 'actioned', true)}>
+                        <Button variant="danger" disabled={updating} onClick={() => onUpdateStatus(report._id, 'actioned', true, notes)}>
                             <Ban className="w-4 h-4" />
                             Ban User
                         </Button>
                     )}
                     {report.status !== 'dismissed' && (
-                        <Button variant="outline" disabled={updating} onClick={() => onUpdateStatus(report._id, 'dismissed')}>
+                        <Button variant="outline" disabled={updating} onClick={() => onUpdateStatus(report._id, 'dismissed', false, notes)}>
                             Dismiss
                         </Button>
                     )}
@@ -123,18 +143,29 @@ const ReportsPage = () => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1, totalReports: 0 });
+    const [counts, setCounts] = useState({ pending: 0, reviewed: 0, actioned: 0, dismissed: 0 });
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [selectedReport, setSelectedReport] = useState(null);
     const [updating, setUpdating] = useState(false);
+    const [updateError, setUpdateError] = useState('');
 
     const loadReports = async () => {
         setLoading(true);
-        const query = new URLSearchParams({ page: String(page), limit: '10' });
-        if (statusFilter !== 'all') query.set('status', statusFilter);
-        const { data, ok } = await adminApi.get(`/admin/reports?${query.toString()}`);
-        if (ok && data.success) {
-            setReports(data.reports);
-            setPagination(data.pagination);
+        setLoadError('');
+        try {
+            const query = new URLSearchParams({ page: String(page), limit: '10' });
+            if (statusFilter !== 'all') query.set('status', statusFilter);
+            const { data, ok } = await adminApi.get(`/admin/reports?${query.toString()}`);
+            if (ok && data.success) {
+                setReports(data.reports);
+                setPagination(data.pagination);
+                if (data.counts) setCounts(data.counts);
+            } else {
+                setLoadError(data?.message || 'Could not load reports.');
+            }
+        } catch {
+            setLoadError('Could not load reports. Please try again.');
         }
         setLoading(false);
     };
@@ -144,20 +175,22 @@ const ReportsPage = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, statusFilter]);
 
-    const updateStatus = async (id, status, banReportedUser = false) => {
+    const updateStatus = async (id, status, banReportedUser = false, notes) => {
         setUpdating(true);
-        const { data, ok } = await adminApi.patch(`/admin/reports/${id}/status`, { status, banReportedUser });
-        setUpdating(false);
-        if (ok && data.success) {
-            setReports((prev) => prev.map((r) => (r._id === id ? data.report : r)));
-            setSelectedReport((prev) => (prev?._id === id ? data.report : prev));
+        setUpdateError('');
+        try {
+            const { data, ok } = await adminApi.patch(`/admin/reports/${id}/status`, { status, banReportedUser, notes });
+            if (ok && data.success) {
+                setReports((prev) => prev.map((r) => (r._id === id ? data.report : r)));
+                setSelectedReport((prev) => (prev?._id === id ? data.report : prev));
+                loadReports();
+            } else {
+                setUpdateError(data?.message || 'Could not update this report.');
+            }
+        } catch {
+            setUpdateError('Could not update this report. Please try again.');
         }
-    };
-
-    const counts = {
-        pending: reports.filter((r) => r.status === 'pending').length,
-        reviewed: reports.filter((r) => r.status === 'reviewed').length,
-        actioned: reports.filter((r) => r.status === 'actioned').length,
+        setUpdating(false);
     };
 
     return (
@@ -176,7 +209,7 @@ const ReportsPage = () => {
                         <Flag className="w-5 h-5 text-zinc-600" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">This Page</p>
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Reports</p>
                         <h3 className="text-xl font-medium text-zinc-900 leading-none">{pagination.totalReports}</h3>
                     </div>
                 </div>
@@ -223,6 +256,12 @@ const ReportsPage = () => {
                     </select>
                 </div>
             </div>
+
+            {loadError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm font-semibold px-4 py-3">
+                    {loadError}
+                </div>
+            )}
 
             {/* Table */}
             <div className="rounded-2xl bg-white border border-zinc-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
@@ -316,10 +355,12 @@ const ReportsPage = () => {
             </div>
 
             <ReportDetailModal
+                key={selectedReport?._id || 'none'}
                 report={selectedReport}
                 onClose={() => setSelectedReport(null)}
                 onUpdateStatus={updateStatus}
                 updating={updating}
+                updateError={updateError}
             />
         </div>
     );
