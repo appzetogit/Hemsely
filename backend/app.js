@@ -57,12 +57,40 @@ uploadFolders.forEach((folder) => {
   }
 });
 
-// Serve static assets using strict absolute paths (supports both /uploads and /api/uploads prefixes)
+// Serve static assets using strict absolute paths (supports both /uploads, /api/uploads, /amora, and /public/uploads prefixes)
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/public/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/amora', express.static(path.join(__dirname, 'public', 'uploads', 'amora')));
+app.use('/amora', express.static(path.join(__dirname, 'uploads', 'amora')));
+app.use(express.static(path.join(__dirname, 'public', 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Smart static file fallback for uploads (guarantees image delivery regardless of Nginx proxy path rewriting)
+app.get(['/uploads/*', '/api/uploads/*', '/amora/*', '/public/uploads/*'], (req, res, next) => {
+  const cleanPath = req.path
+    .replace(/^\/api\/uploads\//, '')
+    .replace(/^\/uploads\//, '')
+    .replace(/^\/public\/uploads\//, '')
+    .replace(/^\/amora\//, 'amora/');
+
+  const candidatePaths = [
+    path.join(__dirname, 'public', 'uploads', cleanPath),
+    path.join(__dirname, 'uploads', cleanPath),
+    path.join(__dirname, 'public', 'uploads', 'amora', 'profiles', path.basename(cleanPath)),
+    path.join(__dirname, 'public', 'uploads', 'amora', 'chats', path.basename(cleanPath)),
+    path.join(__dirname, 'public', 'uploads', 'amora', 'selfies', path.basename(cleanPath)),
+  ];
+
+  for (const filePath of candidatePaths) {
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      return res.sendFile(filePath);
+    }
+  }
+  next();
+});
 
 // Maintenance mode: short-circuits all non-admin API traffic while the flag is on,
 // so admins can still log in and flip it back off.
