@@ -49,6 +49,8 @@ app.set('view engine', 'ejs');
 
 // Serve static assets using strict absolute path
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // Maintenance mode: short-circuits all non-admin API traffic while the flag is on,
 // so admins can still log in and flip it back off.
