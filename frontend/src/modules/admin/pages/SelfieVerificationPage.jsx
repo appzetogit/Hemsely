@@ -6,7 +6,7 @@ import { Button } from '../../../shared/components/ui/Button';
 import { Textarea, Label } from '../../../shared/components/ui/Input';
 import { Table, TableHead, TableRow, TableHeader, TableCell } from '../components/Table';
 
-const STATUS_FILTERS = ['pending', 'approved', 'rejected', 'all'];
+const STATUS_FILTERS = ['all', 'approved', 'rejected'];
 
 const STATUS_BADGE = {
     pending: { cls: 'bg-amber-100 text-amber-700 border border-amber-200', icon: Clock, label: 'Pending' },
@@ -186,7 +186,7 @@ const UserDetailModal = ({ user, onClose, onApprove, onReject, submitting }) => 
 };
 
 const SelfieVerificationPage = () => {
-    const [status, setStatus] = useState('pending');
+    const [status, setStatus] = useState('all');
     const [users, setUsers] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
     const [page, setPage] = useState(1);

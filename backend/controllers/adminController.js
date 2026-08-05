@@ -272,7 +272,7 @@ export const getSelfieVerifications = asyncHandler(async (req, res) => {
   const page = Math.max(parseInt(req.query.page || '1', 10), 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
   const skip = (page - 1) * limit;
-  const status = req.query.status || 'pending';
+  const status = req.query.status || 'all';
 
   const query = status === 'all' ? { selfieStatus: { $ne: 'not_submitted' } } : { selfieStatus: status };
 
