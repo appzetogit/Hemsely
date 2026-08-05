@@ -31,9 +31,18 @@ export const resolveUploadsUrls = (obj, origin = BACKEND_ORIGIN) => {
     if (obj === null || obj === undefined) return obj;
 
     if (typeof obj === 'string') {
-        if (obj.startsWith('/uploads/') && !obj.startsWith('//') && !obj.startsWith('data:')) {
+        const isUploadPath =
+            (obj.startsWith('/uploads/') ||
+                obj.startsWith('uploads/') ||
+                obj.startsWith('/api/uploads/') ||
+                obj.startsWith('api/uploads/')) &&
+            !obj.startsWith('//') &&
+            !obj.startsWith('data:');
+
+        if (isUploadPath) {
+            const cleanPath = obj.startsWith('/') ? obj : `/${obj}`;
             const baseOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
-            return `${baseOrigin}${obj}`;
+            return `${baseOrigin}${cleanPath}`;
         }
         return obj;
     }

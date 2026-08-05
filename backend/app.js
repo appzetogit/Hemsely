@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import mongoSanitize from 'express-mongo-sanitize';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -47,10 +48,21 @@ app.use(csrfProtection);
 
 app.set('view engine', 'ejs');
 
-// Serve static assets using strict absolute path
-app.use(express.static(path.join(__dirname, 'public')));
+// Ensure required public/uploads subdirectories exist at startup
+const uploadFolders = ['amora/profiles', 'amora/chats', 'amora/selfies', 'test-fixtures'];
+uploadFolders.forEach((folder) => {
+  const dirPath = path.join(__dirname, 'public', 'uploads', folder);
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+});
+
+// Serve static assets using strict absolute paths (supports both /uploads and /api/uploads prefixes)
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Maintenance mode: short-circuits all non-admin API traffic while the flag is on,
 // so admins can still log in and flip it back off.

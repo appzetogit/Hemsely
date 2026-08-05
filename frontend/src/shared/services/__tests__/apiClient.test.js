@@ -7,6 +7,15 @@ describe('resolveUploadsUrls', () => {
         expect(result).toBe('http://localhost:5000/uploads/amora/profiles/photo.png');
     });
 
+    it('rewrites uploads paths without leading slash or with /api/uploads prefix', () => {
+        expect(resolveUploadsUrls('uploads/amora/profiles/photo.png', 'http://localhost:5000')).toBe(
+            'http://localhost:5000/uploads/amora/profiles/photo.png'
+        );
+        expect(resolveUploadsUrls('/api/uploads/amora/profiles/photo.png', 'http://localhost:5000')).toBe(
+            'http://localhost:5000/api/uploads/amora/profiles/photo.png'
+        );
+    });
+
     it('leaves non-upload strings untouched', () => {
         expect(resolveUploadsUrls('hello world')).toBe('hello world');
         expect(resolveUploadsUrls('data:image/png;base64,abc')).toBe('data:image/png;base64,abc');

@@ -54,8 +54,26 @@ server {
         proxy_send_timeout 86400s;
     }
 
-    # 3. Uploaded Images & Media Files Proxy (OR static alias)
+    # 3. Uploaded Images & Media Files Proxy (OR Static Alias)
+    # IMPORTANT: Notice proxy_pass does NOT have a trailing slash after port 5000!
+    # A trailing slash (e.g. http://127.0.0.1:5000/) will strip "/uploads/" and cause 404 errors!
     location /uploads/ {
+        # Option A: Proxy to Node.js express static handler (Recommended)
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Option B: High-performance direct static file serving by Nginx (Alternative)
+        # alias /var/www/hemsely/backend/public/uploads/;
+        # expires 30d;
+        # add_header Cache-Control "public, no-transform";
+        # try_files $uri $uri/ @backend_uploads;
+    }
+
+    location @backend_uploads {
         proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
