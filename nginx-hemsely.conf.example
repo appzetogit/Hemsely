@@ -1,88 +1,77 @@
-# Nginx Configuration Example for Hemsely (hemsely.com)
+# Perfect Production Nginx Configuration for Hemsely (hemsely.com)
 # Place this file in /etc/nginx/sites-available/hemsely and link to /etc/nginx/sites-enabled/
 
+# 1. HTTP → HTTPS Automatic Redirect
 server {
     listen 80;
     listen [::]:80;
     server_name hemsely.com www.hemsely.com;
 
-    # Redirect all HTTP traffic to HTTPS
     return 301 https://$host$request_uri;
 }
 
+# 2. HTTPS Main Server
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name hemsely.com www.hemsely.com;
 
-    # SSL Certificate Paths (managed by certbot or your SSL provider)
-    # ssl_certificate /etc/letsencrypt/live/hemsely.com/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/hemsely.com/privkey.pem;
+    # Global Max Upload Payload Limit (Required for profile photos & selfies)
+    client_max_body_size 50M;
 
-    # Frontend Static Files / SPA Build
-    root /var/www/hemsely/frontend/dist;
+    # SSL Certificates (Managed by Certbot / Let's Encrypt)
+    ssl_certificate /etc/letsencrypt/live/hemsely.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hemsely.com/privkey.pem;
+
+    # Frontend Static Build Location (Update if your dist folder is at /var/www/html or /var/www/hemsely/frontend/dist)
+    root /var/www/html;
     index index.html;
 
+    # SPA Routing (React Router Support)
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Maximum upload payload size (Required for photo/selfie uploads up to 50MB)
-    client_max_body_size 50M;
-
-    # 1. API Route Proxy to Node.js Backend (Port 5000)
+    # 1. API Proxy to Node.js Backend (Port 5000)
+    # IMPORTANT: DO NOT add a trailing slash after 5000! (e.g. http://127.0.0.1:5000)
     location /api/ {
         proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;
-        client_max_body_size 50M;
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # 2. Socket.io WebSockets & HTTP Polling Proxy (REQUIRED FOR REAL-TIME CHAT & NOTIFICATIONS)
+    # 2. Uploaded Images & Media Files Proxy
+    # IMPORTANT: DO NOT add a trailing slash after 5000! (e.g. http://127.0.0.1:5000)
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50M;
+    }
+
+    # 3. Socket.io WebSockets & HTTP Polling Proxy (Real-Time Chat & Notifications)
     location /socket.io/ {
         proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;
+
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "Upgrade";
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
 
-        # WebSocket Timeout settings
         proxy_read_timeout 86400s;
         proxy_send_timeout 86400s;
-    }
-
-    # 3. Uploaded Images & Media Files Proxy (OR Static Alias)
-    # IMPORTANT: Notice proxy_pass does NOT have a trailing slash after port 5000!
-    # A trailing slash (e.g. http://127.0.0.1:5000/) will strip "/uploads/" and cause 404 errors!
-    location /uploads/ {
-        # Option A: Proxy to Node.js express static handler (Recommended)
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Option B: High-performance direct static file serving by Nginx (Alternative)
-        # alias /var/www/hemsely/backend/public/uploads/;
-        # expires 30d;
-        # add_header Cache-Control "public, no-transform";
-        # try_files $uri $uri/ @backend_uploads;
-    }
-
-    location @backend_uploads {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
