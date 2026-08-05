@@ -1,15 +1,26 @@
 const normalizeBaseUrl = (value) => value.replace(/\/+$/, '');
 
-export const API_BASE_URL = normalizeBaseUrl(
-    import.meta.env.VITE_API_URL?.trim() || 'http://localhost:5000/api'
-);
+export const API_BASE_URL = (() => {
+    const envUrl = import.meta.env.VITE_API_URL?.trim();
+    if (envUrl) return normalizeBaseUrl(envUrl);
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return `${window.location.origin}/api`;
+    }
+    return 'http://localhost:5000/api';
+})();
 
 export const BACKEND_ORIGIN = (() => {
     try {
         return new URL(API_BASE_URL).origin;
     } catch {
-        return 'http://localhost:5000';
+        return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000';
     }
+})();
+
+export const SOCKET_URL = (() => {
+    const envSocketUrl = import.meta.env.VITE_SOCKET_URL?.trim();
+    if (envSocketUrl) return normalizeBaseUrl(envSocketUrl);
+    return BACKEND_ORIGIN;
 })();
 
 /**

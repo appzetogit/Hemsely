@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { BACKEND_ORIGIN } from '../../../shared/services/apiClient';
+import { BACKEND_ORIGIN, SOCKET_URL } from '../../../shared/services/apiClient';
 
 const SocketContext = createContext(null);
 
@@ -40,7 +40,7 @@ export const SocketProvider = ({ children }) => {
             return;
         }
 
-        const socket = io(BACKEND_ORIGIN, {
+        const socket = io(SOCKET_URL, {
             auth: { token: currentToken },
             transports: ['websocket', 'polling'],
             reconnection: true,
