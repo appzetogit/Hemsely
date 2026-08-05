@@ -5,6 +5,8 @@ import { otpRateLimiter, authRateLimiter } from '../middleware/rateLimiter.js';
 import { validate } from '../middleware/validate.js';
 import { sendOtpValidator, verifyOtpValidator, registerValidator, loginValidator } from '../validators/authValidators.js';
 
+import { registerToken } from '../controllers/fcmController.js';
+
 const router = express.Router();
 
 router.post('/send-otp', otpRateLimiter, sendOtpValidator, validate, sendOTP);
@@ -14,5 +16,6 @@ router.post('/login', authRateLimiter, loginValidator, validate, login);
 router.post('/logout', protect, logout);
 router.post('/refresh', authRateLimiter, refreshAccessToken);
 router.get('/me', protect, getCurrentUser);
+router.post('/fcm-token', protect, registerToken);
 
 export default router;

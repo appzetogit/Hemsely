@@ -8,12 +8,14 @@ import User from '../models/User.js';
  * @access Private
  */
 export const registerToken = asyncHandler(async (req, res) => {
-  const { fcmToken, platform = 'web' } = req.body || {};
+  const { fcmToken, fcmTokenMobile, platform = 'web' } = req.body || {};
 
-  if (!fcmToken || typeof fcmToken !== 'string') {
+  const tokenToSave = fcmToken || fcmTokenMobile;
+
+  if (!tokenToSave || (typeof tokenToSave !== 'string' && typeof fcmTokenMobile !== 'string')) {
     return res.status(400).json({
       success: false,
-      message: 'fcmToken is required and must be a string',
+      message: 'fcmToken or fcmTokenMobile is required and must be a string',
     });
   }
 
@@ -25,11 +27,30 @@ export const registerToken = asyncHandler(async (req, res) => {
     });
   }
 
-  const user = await saveFcmToken({
-    userId,
-    fcmToken: fcmToken.trim(),
-    platform: String(platform || 'web').toLowerCase(),
-  });
+  let user;
+
+  // Save mobile token if fcmTokenMobile is provided
+  if (fcmTokenMobile && typeof fcmTokenMobile === 'string') {
+    user = await saveFcmToken({
+      userId,
+      fcmToken: fcmTokenMobile.trim(),
+      platform: 'mobile',
+    });
+  }
+
+  // Save web/platform token if fcmToken is provided
+  if (fcmToken && typeof fcmToken === 'string') {
+    const targetPlatform = (fcmTokenMobile && fcmToken) ? 'web' : String(platform || 'web').toLowerCase();
+    user = await saveFcmToken({
+      userId,
+      fcmToken: fcmToken.trim(),
+      platform: targetPlatform,
+    });
+  }
+
+  if (!user) {
+    user = await User.findById(userId);
+  }
 
   return res.status(200).json({
     success: true,

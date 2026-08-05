@@ -88,6 +88,23 @@ describe('FCM Push Notification Service & Routes', () => {
       expect(dbUser.fcmtokenweb).toBe('api_registered_token_111');
     });
 
+    it('POST /api/auth/fcm-token registers both web and mobile tokens for authenticated user', async () => {
+      const res = await request(app)
+        .post('/api/auth/fcm-token')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          fcmToken: 'web_token_123',
+          fcmTokenMobile: 'mobile_token_456',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const dbUser = await User.findById(user._id);
+      expect(dbUser.fcmtokenweb).toBe('web_token_123');
+      expect(dbUser.fcmtokenmobile).toBe('mobile_token_456');
+    });
+
     it('POST /fcm/register-token registers token on bare route (proxy prefix stripped)', async () => {
       const res = await request(app)
         .post('/fcm/register-token')
