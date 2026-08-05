@@ -89,7 +89,8 @@ app.get(['/uploads/*', '/api/uploads/*', '/amora/*', '/public/uploads/*'], (req,
       return res.sendFile(filePath);
     }
   }
-  next();
+  console.warn(`[Upload Fallback] File not found on disk for URL: ${req.url}`);
+  res.status(404).send('Image file not found on server disk');
 });
 
 // Maintenance mode: short-circuits all non-admin API traffic while the flag is on,
