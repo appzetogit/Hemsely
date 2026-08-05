@@ -1,5 +1,5 @@
 import { app } from './firebase.js';
-import { API_BASE_URL } from '../shared/services/apiClient.js';
+import { API_BASE_URL, apiClient } from '../shared/services/apiClient.js';
 
 let messagingInstance = null;
 
@@ -106,32 +106,30 @@ export async function registerFcmToken(tokenOrAuthToken, options = {}) {
     const fcmToken = providedFcmToken || (await getFcmToken());
     if (!fcmToken) return;
 
-    // Get Auth token from argument, localStorage, or cookies
+    // Get Auth token from argument, sessionStorage, or localStorage
     const jwtToken =
       typeof tokenOrAuthToken === 'string' && !providedFcmToken
         ? tokenOrAuthToken
-        : localStorage.getItem('token') || localStorage.getItem('authToken');
+        : sessionStorage.getItem('token') ||
+          localStorage.getItem('token') ||
+          sessionStorage.getItem('authToken') ||
+          localStorage.getItem('authToken');
 
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}),
-    };
+    const customHeaders = jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {};
 
-    const response = await fetch(`${API_BASE_URL}/fcm/register-token`, {
+    const { data } = await apiClient.request('/fcm/register-token', {
       method: 'POST',
-      headers,
+      headers: customHeaders,
       body: JSON.stringify({
         fcmToken,
         platform,
       }),
-      credentials: 'include',
     });
 
-    const data = await response.json();
-    if (data.success) {
+    if (data && data.success) {
       console.log('✅ [FCM] Registered token with backend successfully');
     } else {
-      console.warn('⚠️ [FCM] Backend token registration message:', data.message);
+      console.warn('⚠️ [FCM] Backend token registration message:', data?.message || 'Failed');
     }
   } catch (err) {
     console.warn('[FCM] Failed to register token with backend:', err.message);
@@ -157,11 +155,9 @@ export async function removeFcmToken(customFcmToken = null) {
     const fcmToken = customFcmToken || (await getFcmToken());
     if (!fcmToken) return;
 
-    await fetch(`${API_BASE_URL}/fcm/remove-token`, {
+    await apiClient.request('/fcm/remove-token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fcmToken }),
-      credentials: 'include',
     });
     console.log('✅ [FCM] Token removed on logout');
   } catch (err) {
