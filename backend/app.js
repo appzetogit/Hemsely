@@ -52,8 +52,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Maintenance mode: short-circuits all non-admin API traffic while the flag is on,
 // so admins can still log in and flip it back off.
-app.use('/api', async (req, res, next) => {
-  if (req.path.startsWith('/admin') || req.path === '/health') {
+app.use(async (req, res, next) => {
+  if (
+    req.path.startsWith('/admin') ||
+    req.path.startsWith('/api/admin') ||
+    req.path === '/health' ||
+    req.path === '/api/health'
+  ) {
     return next();
   }
   try {
@@ -72,20 +77,20 @@ app.use('/api', async (req, res, next) => {
 
 import { getPublicWebsitePageBySlug } from './controllers/websitePageController.js';
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/users', apiRateLimiter, userRoutes);
-app.use('/api/subscriptions', apiRateLimiter, userRoutes);
-app.use('/api/matches', apiRateLimiter, matchRoutes);
-app.use('/api/messages', apiRateLimiter, messageRoutes);
-app.use('/api/support', supportRoutes);
-app.use('/api/fcm', fcmRoutes);
-app.use('/api/notifications', apiRateLimiter, notificationRoutes);
-app.get('/api/pages/:slug', getPublicWebsitePageBySlug);
+// Routes (supports both /api/* and direct /* paths for flexible reverse proxy setups)
+app.use(['/api/auth', '/auth'], authRoutes);
+app.use(['/api/admin', '/admin'], adminRoutes);
+app.use(['/api/users', '/users'], apiRateLimiter, userRoutes);
+app.use(['/api/subscriptions', '/subscriptions'], apiRateLimiter, userRoutes);
+app.use(['/api/matches', '/matches'], apiRateLimiter, matchRoutes);
+app.use(['/api/messages', '/messages'], apiRateLimiter, messageRoutes);
+app.use(['/api/support', '/support'], supportRoutes);
+app.use(['/api/fcm', '/fcm'], fcmRoutes);
+app.use(['/api/notifications', '/notifications'], apiRateLimiter, notificationRoutes);
+app.get(['/api/pages/:slug', '/pages/:slug'], getPublicWebsitePageBySlug);
 
 // Health check route
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Backend is running',

@@ -88,6 +88,22 @@ describe('FCM Push Notification Service & Routes', () => {
       expect(dbUser.fcmtokenweb).toBe('api_registered_token_111');
     });
 
+    it('POST /fcm/register-token registers token on bare route (proxy prefix stripped)', async () => {
+      const res = await request(app)
+        .post('/fcm/register-token')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          fcmToken: 'bare_route_token_222',
+          platform: 'web',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const dbUser = await User.findById(user._id);
+      expect(dbUser.fcmtokenweb).toBe('bare_route_token_222');
+    });
+
     it('POST /api/fcm/remove-token removes registered token', async () => {
       await saveFcmToken({ userId: user._id, fcmToken: 'tok_remove_api', platform: 'web' });
 
