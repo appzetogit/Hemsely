@@ -13,6 +13,8 @@
 // SameSite=strict is still the primary defense there, and plenty of legitimate
 // same-origin requests omit these headers depending on the client/browser.
 
+import { isAllowedOrigin } from '../utils/originUtils.js';
+
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 const originOf = (value) => {
@@ -35,9 +37,7 @@ export const csrfProtection = (req, res, next) => {
 
   if (!sourceOrigin) return next();
 
-  const allowedOrigin = originOf(process.env.FRONTEND_URL || 'http://localhost:5173');
-
-  if (sourceOrigin === allowedOrigin) return next();
+  if (isAllowedOrigin(sourceOrigin)) return next();
 
   return res.status(403).json({
     success: false,

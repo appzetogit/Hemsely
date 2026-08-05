@@ -2,6 +2,8 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
+import { isAllowedOrigin } from '../utils/originUtils.js';
+
 let io = null;
 
 // userId -> Set of connected socket ids (a user can have multiple tabs/devices open)
@@ -16,7 +18,13 @@ const userRoom = (userId) => `user:${userId}`;
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: (origin, callback) => callback(null, true),
+      origin: (origin, callback) => {
+        if (isAllowedOrigin(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       credentials: true,
     },
   });
