@@ -514,7 +514,7 @@ const ProfilePreviewPage = () => {
         >
             <ProfileHeaderBar onSettingsClick={() => navigate('/settings')} />
 
-            <main className="flex-1 flex flex-col justify-start overflow-y-auto px-4 pt-6 pb-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <main className="flex-1 flex flex-col justify-start overflow-y-auto px-4 pt-6 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <ProfileAvatarSection
                     name={profileState.name}
                     age={profileState.age}
