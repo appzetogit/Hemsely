@@ -1,6 +1,5 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import SplashScreen from '../pages/SplashScreen';
 import PrivateRoute from '../components/PrivateRoute';
 
 const LoginScreen = lazy(() => import('../pages/LoginScreen'));
@@ -57,7 +56,7 @@ const AppRoutes = () => {
     return (
         <Suspense fallback={<RouteFallback />}>
             <Routes>
-                <Route path="/" element={<SplashScreen />} />
+                <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<LoginScreen />} />
                 <Route path="/phone-input" element={<PhoneInputPage />} />
                 <Route path="/verify" element={<VerifyOTPPage />} />
