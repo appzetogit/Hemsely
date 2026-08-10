@@ -13,9 +13,10 @@ const httpServer = http.createServer(app);
 
 initSocket(httpServer);
 
-// Helper to kill orphan process on port in development mode
+// Helper to kill orphan process on port (e.g. a crashed/zombie previous
+// instance left LISTENING after PM2 SIGKILLs it instead of a clean restart).
+// Scoped to the exact port and excludes our own PID, so it's safe in production too.
 const killPortProcess = (port) => {
-  if (process.env.NODE_ENV === 'production') return false;
   try {
     if (process.platform === 'win32') {
       const output = execSync(`netstat -ano | findstr :${port}`).toString();

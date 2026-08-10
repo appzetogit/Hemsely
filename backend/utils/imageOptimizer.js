@@ -1,4 +1,4 @@
-import { Jimp } from 'jimp';
+import sharp from 'sharp';
 
 const FOLDER_PROFILES = {
   'amora/profiles': { maxWidth: 600, maxHeight: 600, quality: 80 },
@@ -9,55 +9,33 @@ const FOLDER_PROFILES = {
   default: { maxWidth: 800, maxHeight: 800, quality: 75 },
 };
 
-function detectMimeType(buffer) {
-  if (!buffer || buffer.length < 4) return 'unknown';
-  const b = buffer;
-  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
-  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
-  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';
-  if (b.length >= 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'image/webp';
-  return 'unknown';
-}
-
 export async function compressImage(inputBuffer, opts = {}) {
   const originalSize = inputBuffer.length;
   if (opts.isVideo) return { buffer: inputBuffer, originalSize, compressedSize: originalSize, mimeType: 'video/mp4', extension: 'mp4' };
-
-  const mimeType = detectMimeType(inputBuffer);
-  if (mimeType === 'unknown') {
-    return { buffer: inputBuffer, originalSize, compressedSize: originalSize, mimeType: 'application/octet-stream', extension: 'bin' };
-  }
 
   const folderKey = opts.folder || 'default';
   const { maxWidth, maxHeight, quality } = FOLDER_PROFILES[folderKey] || FOLDER_PROFILES.default;
 
   try {
-    const image = await Jimp.read(inputBuffer);
-    const origW = image.bitmap.width;
-    const origH = image.bitmap.height;
+    const image = sharp(inputBuffer, { failOn: 'none' }).rotate();
+    const meta = await image.metadata();
 
-    if (origW > maxWidth || origH > maxHeight) {
-      image.scaleToFit({ w: maxWidth, h: maxHeight });
-    }
-
-    if (mimeType === 'image/gif') {
-      const outBuffer = await image.getBuffer('image/gif');
+    if (meta.format === 'gif') {
+      const outBuffer = await image.gif().toBuffer();
       return { buffer: outBuffer, originalSize, compressedSize: outBuffer.length, mimeType: 'image/gif', extension: 'gif' };
     }
 
-    let outputMime = 'image/jpeg';
-    let outputExt = 'jpg';
+    const resized = (meta.width > maxWidth || meta.height > maxHeight)
+      ? image.resize({ width: maxWidth, height: maxHeight, fit: 'inside', withoutEnlargement: true })
+      : image;
 
-    // Preserve PNG transparency
-    const hasAlpha = mimeType === 'image/png' && image.bitmap.data.some((v, i) => i % 4 === 3 && v < 255);
-    if (hasAlpha) {
-      outputMime = 'image/png';
-      outputExt = 'png';
-    }
+    const hasAlpha = meta.format === 'png' && meta.hasAlpha;
+    const outputMime = hasAlpha ? 'image/png' : 'image/jpeg';
+    const outputExt = hasAlpha ? 'png' : 'jpg';
 
-    let outBuffer = outputMime === 'image/jpeg'
-      ? await image.getBuffer('image/jpeg', { quality })
-      : await image.getBuffer('image/png');
+    const outBuffer = hasAlpha
+      ? await resized.png({ quality, compressionLevel: 8 }).toBuffer()
+      : await resized.jpeg({ quality, mozjpeg: true }).toBuffer();
 
     return {
       buffer: outBuffer,
@@ -67,7 +45,7 @@ export async function compressImage(inputBuffer, opts = {}) {
       extension: outputExt,
     };
   } catch (err) {
-    console.error('❌ Jimp Error: Falling back to raw buffer:', err.message);
-    return { buffer: inputBuffer, originalSize, compressedSize: originalSize, mimeType, extension: mimeType.split('/')[1] || 'jpg' };
+    console.error('❌ Sharp Error: Falling back to raw buffer:', err.message);
+    return { buffer: inputBuffer, originalSize, compressedSize: originalSize, mimeType: 'application/octet-stream', extension: 'jpg' };
   }
 }

@@ -86,13 +86,12 @@ export const createLocalUploadMiddleware = (folder, isMultiple = false, fieldNam
           req.file.secure_url = result.secure_url;
           req.file.url = result.url;
         } else if (isMultiple && req.files && req.files.length > 0) {
-          for (let i = 0; i < req.files.length; i++) {
-            const file = req.files[i];
+          await Promise.all(req.files.map(async (file) => {
             const result = await uploadToLocal(file.buffer, { folder });
             file.path = result.path;
             file.secure_url = result.secure_url;
             file.url = result.url;
-          }
+          }));
         }
         next();
       } catch (uploadErr) {
