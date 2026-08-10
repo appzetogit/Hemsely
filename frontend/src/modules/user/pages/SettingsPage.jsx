@@ -404,7 +404,7 @@ const SettingsPage = () => {
                 </button>
             </header>
 
-            <main className="flex-1 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <main className="flex-1 overflow-y-auto pb-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <SectionHeader title="Profile" />
                 <SettingRow label="Pause">
                     <Toggle active={isPaused} label="Pause profile" onToggle={handleTogglePause} />
@@ -445,7 +445,7 @@ const SettingsPage = () => {
                     onClick={() => navigate('/terms-of-service')}
                 />
 
-                <div className="mt-6 mb-2 px-4 flex flex-col gap-3">
+                <div className="mt-6 mb-10 px-4 flex flex-col gap-3">
                     <button
                         type="button"
                         onClick={handleLogout}

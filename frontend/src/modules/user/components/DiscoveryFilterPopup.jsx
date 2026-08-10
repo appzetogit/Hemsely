@@ -155,7 +155,7 @@ const DiscoveryFilterPopup = ({ appliedFilters = { distanceKm: 100 }, onApply, o
                 </div>
 
                 {/* Bottom Button */}
-                <div className="pt-3 pb-1 shrink-0">
+                <div className="pt-3 pb-7 shrink-0">
                     <button
                         type="button"
                         onClick={() => {

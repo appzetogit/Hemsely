@@ -22,9 +22,16 @@ export const initConsoleSanitizer = () => {
                 str.includes('Refused to get unsafe header') ||
                 str.includes('Permissions policy violation') ||
                 str.includes('serviceworker') ||
+                str.includes('web app manifest') ||
+                str.includes('manifest') ||
                 str.includes('x-rtb-fingerprint-id') ||
                 str.includes('request-id') ||
-                str.includes('validate/account')
+                str.includes('validate/account') ||
+                str.includes('standard_checkout') ||
+                str.includes('500 (Internal Server Error)') ||
+                str.includes('ERR_CONNECTION_REFUSED') ||
+                str.includes('trycatch.ts') ||
+                str.includes('loader.min.js')
             );
         } catch {
             return false;
