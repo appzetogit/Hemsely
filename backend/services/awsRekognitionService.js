@@ -115,81 +115,47 @@ export async function compareFacesWithAWS(profilePhotoInput, selfiePhotoInput, i
             },
         });
 
-        // If user profile photo buffer is missing, detect face in selfie alone as fallback
+        // 1. If profile photo buffer is missing, perform single face detection on selfie photo
         if (!profileBuffer) {
-            const detectFacesCommand = new DetectFacesCommand({
-                Image: { Bytes: selfieBuffer },
-                Attributes: ['ALL'],
-            });
-            const detectResult = await rekognitionClient.send(detectFacesCommand);
-            const faces = detectResult.FaceDetails || [];
+            try {
+                const detectFacesCommand = new DetectFacesCommand({
+                    Image: { Bytes: selfieBuffer },
+                    Attributes: ['ALL'],
+                });
+                const detectResult = await rekognitionClient.send(detectFacesCommand);
+                const faces = detectResult.FaceDetails || [];
 
-            if (faces.length === 0) {
+                if (faces.length > 0) {
+                    const faceConfidence = faces[0].Confidence || 0;
+                    const isVerified = faceConfidence >= minSimilarity;
+
+                    return {
+                        success: true,
+                        verified: isVerified,
+                        noFaceDetected: !isVerified && !isFaceInFrame,
+                        pending: !isVerified && isFaceInFrame,
+                        similarity: Math.round(faceConfidence * 10) / 10,
+                        isMock: false,
+                        message: isVerified
+                            ? `AWS Rekognition verified human face detection with ${Math.round(faceConfidence)}% confidence.`
+                            : (isFaceInFrame ? 'Selfie photo submitted successfully. Under review for manual admin verification.' : `Face confidence (${Math.round(faceConfidence)}%) below requirement threshold (${minSimilarity}%).`),
+                    };
+                }
+            } catch (detectErr) {
+                console.warn('[AWS Rekognition Service] Single face detection warning:', detectErr.message);
+            }
+
+            if (isFaceInFrame) {
                 return {
                     success: true,
                     verified: false,
-                    noFaceDetected: true,
+                    pending: true,
                     similarity: 0,
                     isMock: false,
-                    message: 'No human face detected in uploaded selfie photo. Please take a clear selfie showing your face.',
+                    message: 'Selfie photo captured successfully. Submitted for manual admin verification.',
                 };
             }
 
-            const faceConfidence = faces[0].Confidence || 0;
-            const isVerified = faceConfidence >= minSimilarity;
-
-            return {
-                success: true,
-                verified: isVerified,
-                noFaceDetected: !isVerified,
-                similarity: Math.round(faceConfidence * 10) / 10,
-                isMock: false,
-                message: isVerified
-                    ? `AWS Rekognition verified human face detection with ${Math.round(faceConfidence)}% confidence.`
-                    : `Face confidence (${Math.round(faceConfidence)}%) below requirement threshold (${minSimilarity}%).`,
-            };
-        }
-
-        // AWS Rekognition CompareFaces API execution
-        const command = new CompareFacesCommand({
-            SourceImage: { Bytes: profileBuffer },
-            TargetImage: { Bytes: selfieBuffer },
-            SimilarityThreshold: minSimilarity,
-        });
-
-        const response = await rekognitionClient.send(command);
-        const matches = response.FaceMatches || [];
-
-        if (matches.length === 0) {
-            return {
-                success: true,
-                verified: false,
-                similarity: 0,
-                isMock: false,
-                message: 'AWS Rekognition facial comparison complete: No matching face found between selfie and profile picture.',
-            };
-        }
-
-        const topMatch = matches[0];
-        const similarityScore = Math.round((topMatch.Similarity || 0) * 10) / 10;
-        const isVerified = similarityScore >= minSimilarity;
-
-        return {
-            success: true,
-            verified: isVerified,
-            similarity: similarityScore,
-            isMock: false,
-            message: isVerified
-                ? `AWS Rekognition verified facial match with ${similarityScore}% similarity score.`
-                : `Facial similarity (${similarityScore}%) below threshold (${minSimilarity}%).`,
-        };
-    } catch (error) {
-        console.error('[AWS Rekognition Service Error]:', error.message || error);
-
-        const isNoFaceError = error.name === 'InvalidParameterException' ||
-            (error.message && /no face|faces in the image|invalid parameters/i.test(error.message));
-
-        if (isNoFaceError) {
             return {
                 success: true,
                 verified: false,
@@ -200,7 +166,93 @@ export async function compareFacesWithAWS(profilePhotoInput, selfiePhotoInput, i
             };
         }
 
-        // AWS SDK/network failure — do NOT auto-verify. Route to manual review instead.
+        // 2. AWS Rekognition CompareFaces API execution (with profileBuffer)
+        try {
+            const command = new CompareFacesCommand({
+                SourceImage: { Bytes: profileBuffer },
+                TargetImage: { Bytes: selfieBuffer },
+                SimilarityThreshold: minSimilarity,
+            });
+
+            const response = await rekognitionClient.send(command);
+            const matches = response.FaceMatches || [];
+
+            if (matches.length > 0) {
+                const topMatch = matches[0];
+                const similarityScore = Math.round((topMatch.Similarity || 0) * 10) / 10;
+                const isVerified = similarityScore >= minSimilarity;
+
+                if (isVerified) {
+                    return {
+                        success: true,
+                        verified: true,
+                        similarity: similarityScore,
+                        isMock: false,
+                        message: `AWS Rekognition verified facial match with ${similarityScore}% similarity score.`,
+                    };
+                }
+            }
+        } catch (compareError) {
+            const isNoFaceOrParamError = compareError.name === 'InvalidParameterException' ||
+                (compareError.message && /no face|faces in the image|invalid parameters/i.test(compareError.message));
+
+            if (!isNoFaceOrParamError) {
+                throw compareError;
+            }
+            console.warn('[AWS Rekognition Service] CompareFaces parameter warning:', compareError.message);
+        }
+
+        // 3. Fallback: Check if selfie itself has a face or was captured in green frame
+        try {
+            const detectFacesCommand = new DetectFacesCommand({
+                Image: { Bytes: selfieBuffer },
+                Attributes: ['DEFAULT'],
+            });
+            const detectResult = await rekognitionClient.send(detectFacesCommand);
+            const faces = detectResult.FaceDetails || [];
+
+            if (faces.length > 0 || isFaceInFrame) {
+                return {
+                    success: true,
+                    verified: false,
+                    pending: true,
+                    similarity: 0,
+                    isMock: false,
+                    message: 'Selfie photo captured successfully. Profile facial comparison pending manual admin verification.',
+                };
+            }
+        } catch (detectErr) {
+            const isNoFaceOrParamError = detectErr.name === 'InvalidParameterException' ||
+                (detectErr.message && /no face|faces in the image|invalid parameters/i.test(detectErr.message));
+
+            if (!isNoFaceOrParamError) {
+                throw detectErr;
+            }
+            console.warn('[AWS Rekognition Service] DetectFaces fallback warning:', detectErr.message);
+        }
+
+        if (isFaceInFrame) {
+            return {
+                success: true,
+                verified: false,
+                pending: true,
+                similarity: 0,
+                isMock: false,
+                message: 'Selfie photo captured inside guide frame. Submitted for manual admin verification.',
+            };
+        }
+
+        return {
+            success: true,
+            verified: false,
+            noFaceDetected: true,
+            similarity: 0,
+            isMock: false,
+            message: 'No human face detected in uploaded selfie photo. Please take a clear selfie showing your face.',
+        };
+    } catch (error) {
+        console.error('[AWS Rekognition Service Error]:', error.message || error);
+
         return {
             success: false,
             verified: false,
@@ -211,3 +263,4 @@ export async function compareFacesWithAWS(profilePhotoInput, selfiePhotoInput, i
         };
     }
 }
+
