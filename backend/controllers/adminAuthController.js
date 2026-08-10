@@ -63,6 +63,7 @@ export const adminRegister = asyncHandler(async (req, res, next) => {
     success: true,
     message: 'Admin registered successfully',
     token,
+    refreshToken,
     admin: {
       id: admin._id,
       username: admin.username,
@@ -139,6 +140,7 @@ export const adminLogin = asyncHandler(async (req, res, next) => {
     success: true,
     message: 'Admin logged in successfully',
     token,
+    refreshToken,
     admin: {
       id: admin._id,
       username: admin.username,

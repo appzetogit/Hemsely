@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -19,7 +20,7 @@ vi.mock('../../../../shared/services/apiClient', () => ({
 
 describe('EditProfilePage', () => {
     beforeEach(() => {
-        localStorage.clear();
+        if (typeof localStorage !== 'undefined') localStorage.clear();
         // resetAllMocks (not clearAllMocks) - a mockResolvedValue set by one test
         // must not leak its implementation into the next test.
         vi.resetAllMocks();

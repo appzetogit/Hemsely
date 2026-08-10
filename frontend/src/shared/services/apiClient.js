@@ -130,9 +130,13 @@ export const apiClient = {
 
             try {
                 const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
+                const refreshHeaders = {
+                    'Content-Type': 'application/json',
+                    ...(refreshToken ? { 'x-refresh-token': refreshToken, Authorization: `Bearer ${refreshToken}` } : {}),
+                };
                 const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: refreshHeaders,
                     body: JSON.stringify({ refreshToken }),
                     credentials: 'include',
                 });

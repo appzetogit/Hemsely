@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { resolveUploadsUrls } from '../apiClient';
 
@@ -41,7 +42,28 @@ describe('resolveUploadsUrls', () => {
 
 describe('apiClient.request', () => {
     beforeEach(() => {
-        localStorage.clear();
+        if (typeof localStorage === 'undefined') {
+            const store = {};
+            global.localStorage = {
+                getItem: (key) => store[key] || null,
+                setItem: (key, value) => { store[key] = String(value); },
+                removeItem: (key) => { delete store[key]; },
+                clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+            };
+        } else {
+            localStorage.clear();
+        }
+        if (typeof sessionStorage === 'undefined') {
+            const store = {};
+            global.sessionStorage = {
+                getItem: (key) => store[key] || null,
+                setItem: (key, value) => { store[key] = String(value); },
+                removeItem: (key) => { delete store[key]; },
+                clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+            };
+        } else {
+            sessionStorage.clear();
+        }
         vi.resetModules();
     });
 

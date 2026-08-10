@@ -176,6 +176,7 @@ export const verifyOTP = asyncHandler(async (req, res, next) => {
     success: true,
     message: isProfileComplete ? 'Logged in successfully' : 'OTP verified. Please complete your profile',
     token,
+    refreshToken,
     isNewUser: !user.firstName,
     isProfileComplete,
     user: {
@@ -239,6 +240,7 @@ export const register = asyncHandler(async (req, res, next) => {
     success: true,
     message: 'User registered successfully',
     token,
+    refreshToken,
     user: {
       id: user._id,
       _id: user._id,
@@ -303,6 +305,7 @@ export const login = asyncHandler(async (req, res, next) => {
     success: true,
     message: 'User logged in successfully',
     token,
+    refreshToken,
     user: {
       id: user._id,
       _id: user._id,
