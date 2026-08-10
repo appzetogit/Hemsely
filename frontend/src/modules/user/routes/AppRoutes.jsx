@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from '../components/PrivateRoute';
+import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = lazy(() => import('../pages/LoginScreen'));
 const PhoneInputPage = lazy(() => import('../pages/PhoneInputPage'));
@@ -52,11 +53,18 @@ const RouteFallback = () => (
     </div>
 );
 
+const RootRedirect = () => {
+    const { user, loading } = useAuth();
+    if (loading) return <RouteFallback />;
+    const isAuthed = user && localStorage.getItem('token');
+    return <Navigate to={isAuthed ? '/discovery' : '/login'} replace />;
+};
+
 const AppRoutes = () => {
     return (
         <Suspense fallback={<RouteFallback />}>
             <Routes>
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/" element={<RootRedirect />} />
                 <Route path="/login" element={<LoginScreen />} />
                 <Route path="/phone-input" element={<PhoneInputPage />} />
                 <Route path="/verify" element={<VerifyOTPPage />} />

@@ -1,5 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 // Import assets from local folder
 import centerImage from '../assets/853e31e910922fe7f47f66de5c5206f78a610037.jpg';
@@ -11,10 +12,15 @@ import avatarLeftDenim from '../assets/cb6000111458728947d5516dee724f449f4d81e2.
 
 const LoginScreen = () => {
     const navigate = useNavigate();
+    const { user, loading } = useAuth();
 
     const handlePhoneLoginClick = () => {
         navigate('/phone-input');
     };
+
+    if (!loading && user && localStorage.getItem('token')) {
+        return <Navigate to="/discovery" replace />;
+    }
 
     return (
         <div className="h-[100dvh] bg-white flex flex-col justify-between items-center py-6 px-6 font-sans overflow-hidden max-w-[420px] mx-auto select-none">
