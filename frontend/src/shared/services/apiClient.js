@@ -23,6 +23,12 @@ export const SOCKET_URL = (() => {
     return BACKEND_ORIGIN;
 })();
 
+const isPublicOrAdminRoute = (pathname) => {
+    if (!pathname) return false;
+    const publicUserRoutes = ['/login', '/phone-input', '/verify', '/privacy-policy', '/terms-of-service', '/measurement-units'];
+    return publicUserRoutes.includes(pathname) || pathname.startsWith('/admin');
+};
+
 /**
  * Recursively scans any API response payload and resolves relative /uploads paths
  * to absolute backend URLs. Bypasses File/Blob objects so file uploads pass through untouched.
@@ -176,7 +182,7 @@ export const apiClient = {
                     localStorage.removeItem('refreshToken');
                     localStorage.removeItem('user');
                     localStorage.removeItem('userId');
-                    if (typeof window !== 'undefined' && !['/login', '/phone-input', '/verify'].includes(window.location.pathname)) {
+                    if (typeof window !== 'undefined' && !isPublicOrAdminRoute(window.location.pathname)) {
                         window.location.href = '/login';
                     }
                 }
@@ -190,7 +196,7 @@ export const apiClient = {
                 localStorage.removeItem('refreshToken');
                 localStorage.removeItem('user');
                 localStorage.removeItem('userId');
-                if (typeof window !== 'undefined' && !['/login', '/phone-input', '/verify'].includes(window.location.pathname)) {
+                if (typeof window !== 'undefined' && !isPublicOrAdminRoute(window.location.pathname)) {
                     window.location.href = '/login';
                 }
             }
@@ -218,7 +224,7 @@ export const apiClient = {
             localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
             localStorage.removeItem('userId');
-            if (typeof window !== 'undefined' && !['/login', '/phone-input', '/verify'].includes(window.location.pathname)) {
+            if (typeof window !== 'undefined' && !isPublicOrAdminRoute(window.location.pathname)) {
                 window.location.href = '/login';
             }
         }

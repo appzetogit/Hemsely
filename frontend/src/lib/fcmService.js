@@ -103,9 +103,6 @@ export async function registerFcmToken(tokenOrAuthToken, options = {}) {
     const providedFcmToken = options.fcmToken;
     const platform = options.platform || 'web';
 
-    const fcmToken = providedFcmToken || (await getFcmToken());
-    if (!fcmToken) return;
-
     // Get Auth token from argument, sessionStorage, or localStorage
     const jwtToken =
       typeof tokenOrAuthToken === 'string' && !providedFcmToken
@@ -115,7 +112,15 @@ export async function registerFcmToken(tokenOrAuthToken, options = {}) {
           sessionStorage.getItem('authToken') ||
           localStorage.getItem('authToken');
 
-    const customHeaders = jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {};
+    if (!jwtToken) {
+      // User is not authenticated; skip registering FCM token with backend
+      return;
+    }
+
+    const fcmToken = providedFcmToken || (await getFcmToken());
+    if (!fcmToken) return;
+
+    const customHeaders = { Authorization: `Bearer ${jwtToken}` };
 
     const { data } = await apiClient.request('/fcm/register-token', {
       method: 'POST',

@@ -10,16 +10,17 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const savedUser = sessionStorage.getItem('user') ||
                           sessionStorage.getItem(AUTH_STORAGE_KEY) ||
                           localStorage.getItem('user') ||
                           localStorage.getItem(AUTH_STORAGE_KEY);
-        if (savedUser) {
+        if (savedUser && token) {
             try {
                 const parsed = JSON.parse(savedUser);
                 setUser(parsed);
                 // Register FCM token if user is logged in
-                registerFcmToken();
+                registerFcmToken(token);
             } catch {
                 setUser(null);
             }
