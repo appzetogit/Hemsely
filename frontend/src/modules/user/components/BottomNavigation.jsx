@@ -33,7 +33,7 @@ const BottomNavigation = ({ activeTab = 'people' }) => {
     const navigate = useNavigate();
 
     return (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white pt-3 pb-7 px-6 border-t border-gray-100 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] flex justify-between items-center z-50">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white pt-3 pb-9 px-6 border-t border-gray-100 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] flex justify-between items-center z-50">
             <NavItem
                 name="People"
                 icon={coupleIcon}
