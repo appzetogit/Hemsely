@@ -492,7 +492,7 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
 
   if (isBlockedByQueue(currentUser)) {
     const queueStatus = await getQueueStatusForUser(currentUser._id);
-    return res.status(403).json({
+    return res.status(200).json({
       success: false,
       queued: true,
       ...queueStatus,

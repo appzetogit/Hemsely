@@ -132,11 +132,11 @@ describe('Phase 6 — moderation, queue, ranking, selfie, static plans', () => {
       const { user: target } = await makeUser({ gender: 'female' });
 
       const discoveryRes = await request(app).get('/api/users/discovery').set('Authorization', `Bearer ${token}`);
-      expect(discoveryRes.status).toBe(403);
+      expect(discoveryRes.status).toBe(200);
       expect(discoveryRes.body.queued).toBe(true);
 
       const likeRes = await request(app).post(`/api/matches/like/${target._id}`).set('Authorization', `Bearer ${token}`);
-      expect(likeRes.status).toBe(403);
+      expect(likeRes.status).toBe(200);
       expect(likeRes.body.queued).toBe(true);
     });
 

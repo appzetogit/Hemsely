@@ -32,7 +32,7 @@ export const likeUser = asyncHandler(async (req, res, next) => {
   const likingUser = await User.findById(likedBy).select('accessStatus isPremium isSuperUser isSuperSubscriber blockedUsers');
   if (likingUser && isBlockedByQueue(likingUser)) {
     const queueStatus = await getQueueStatusForUser(likedBy);
-    return res.status(403).json({
+    return res.status(200).json({
       success: false,
       queued: true,
       ...queueStatus,
