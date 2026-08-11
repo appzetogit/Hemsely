@@ -140,37 +140,61 @@ const DiscoveryProfileCard = ({
 
         {/* Details Section */}
         <div className="w-full mt-6 space-y-5">
-            <section className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-xs">
-                <h3 className="text-[15px] font-bold text-gray-900 mb-2 tracking-tight">About me</h3>
-                <p className="text-[13.5px] text-gray-600 font-medium leading-relaxed">
-                    {profile.about}
-                </p>
-            </section>
+            {profile.about && profile.about.trim() !== '' && (
+                <section className="bg-white rounded-2xl p-4 border border-gray-100/90 shadow-xs">
+                    <h3 className="text-[15px] font-bold text-gray-900 mb-2 tracking-tight">About me</h3>
+                    <p className="text-[13.5px] text-gray-600 font-medium leading-relaxed">
+                        {profile.about}
+                    </p>
+                </section>
+            )}
 
-            <section className="px-1">
-                <h3 className="text-[14.5px] font-bold text-gray-900 mb-2.5">My interests</h3>
-                <div className="flex flex-wrap gap-2">
-                    {profile.interests.map(i => (
-                        <Pill key={`interest-${i}`} icon={<span className="text-[#733FE0]">{renderInterestIcon(i)}</span>}>{i}</Pill>
-                    ))}
-                </div>
-            </section>
+            {profile.interests && profile.interests.length > 0 && (
+                <section className="px-1">
+                    <h3 className="text-[14.5px] font-bold text-gray-900 mb-2.5">My interests</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {profile.interests.map(i => (
+                            <Pill key={`interest-${i}`} icon={<span className="text-[#733FE0]">{renderInterestIcon(i)}</span>}>{i}</Pill>
+                        ))}
+                    </div>
+                </section>
+            )}
 
-            <section className="px-1">
-                <h3 className="text-[14.5px] font-bold text-gray-900 mb-2.5">Basics</h3>
-                <div className="flex flex-wrap gap-2">
-                    <Pill icon={<img src={heightIcon} className="w-4 h-4 object-contain" alt="" />}>{profile.basics.height}</Pill>
-                    <Pill icon={<img src={religionIcon} className="w-4 h-4 object-contain" alt="" />}>{profile.basics.religion}</Pill>
-                    <Pill icon={<img src={drinkIcon} className="w-4 h-4 object-contain" alt="" />}>{profile.basics.drinks}</Pill>
-                    <Pill icon={<img src={smokeIcon} className="w-4 h-4 object-contain" alt="" />}>{profile.basics.smokes}</Pill>
-                    <Pill icon={<img src={studyIcon} className="w-4 h-4 object-contain" alt="" />}>{profile.basics.education}</Pill>
-                </div>
-            </section>
+            {(() => {
+                const isValValid = (val) => Boolean(val && val !== 'N/A' && val !== 'Not specified' && val !== 'undefined');
+                const validHeight = isValValid(profile.basics?.height) ? profile.basics.height : null;
+                const validReligion = isValValid(profile.basics?.religion) ? profile.basics.religion : null;
+                const validDrinks = isValValid(profile.basics?.drinks) ? profile.basics.drinks : null;
+                const validSmokes = isValValid(profile.basics?.smokes) ? profile.basics.smokes : null;
+                const validEducation = isValValid(profile.basics?.education) ? profile.basics.education : null;
 
-            <section className="px-1">
-                <h3 className="text-[14.5px] font-bold text-gray-900 mb-2.5">I'm looking for</h3>
-                <Pill icon={<img src={heartIcon} className="w-4 h-4 object-contain" alt="" />}>{profile.lookingFor}</Pill>
-            </section>
+                const hasAnyBasic = validHeight || validReligion || validDrinks || validSmokes || validEducation;
+                if (!hasAnyBasic) return null;
+
+                return (
+                    <section className="px-1">
+                        <h3 className="text-[14.5px] font-bold text-gray-900 mb-2.5">Basics</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {validHeight && <Pill icon={<img src={heightIcon} className="w-4 h-4 object-contain" alt="" />}>{validHeight}</Pill>}
+                            {validReligion && <Pill icon={<img src={religionIcon} className="w-4 h-4 object-contain" alt="" />}>{validReligion}</Pill>}
+                            {validDrinks && <Pill icon={<img src={drinkIcon} className="w-4 h-4 object-contain" alt="" />}>{validDrinks}</Pill>}
+                            {validSmokes && <Pill icon={<img src={smokeIcon} className="w-4 h-4 object-contain" alt="" />}>{validSmokes}</Pill>}
+                            {validEducation && <Pill icon={<img src={studyIcon} className="w-4 h-4 object-contain" alt="" />}>{validEducation}</Pill>}
+                        </div>
+                    </section>
+                );
+            })()}
+
+            {(() => {
+                const isValValid = (val) => Boolean(val && val !== 'N/A' && val !== 'Not specified' && val !== 'undefined');
+                if (!isValValid(profile.lookingFor)) return null;
+                return (
+                    <section className="px-1">
+                        <h3 className="text-[14.5px] font-bold text-gray-900 mb-2.5">I'm looking for</h3>
+                        <Pill icon={<img src={heartIcon} className="w-4 h-4 object-contain" alt="" />}>{profile.lookingFor}</Pill>
+                    </section>
+                );
+            })()}
         </div>
 
         {/* Additional User Photos & Prompts Cards */}

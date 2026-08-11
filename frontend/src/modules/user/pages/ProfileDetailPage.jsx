@@ -151,28 +151,47 @@ const ProfileDetailPage = () => {
                         </section>
                     )}
 
-                    {profile.relationshipGoal && (
-                        <section>
-                            <h3 className="text-[16px] font-bold text-black mb-2">Looking for</h3>
-                            <div className="inline-flex items-center px-3 text-[13px] py-2 rounded-full bg-[#F9F7FF] border border-[#6F3BCE42] shadow-sm">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#FF4458" className="mr-2.5">
-                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                                </svg>
-                                <span className="text-black font-medium text-[14px]">{profile.relationshipGoal}</span>
-                            </div>
-                        </section>
-                    )}
+                    {(() => {
+                        const isValValid = (val) => Boolean(val && val !== 'N/A' && val !== 'Not specified' && val !== 'undefined');
+                        if (!isValValid(profile.relationshipGoal)) return null;
+                        return (
+                            <section>
+                                <h3 className="text-[16px] font-bold text-black mb-2">Looking for</h3>
+                                <div className="inline-flex items-center px-3 text-[13px] py-2 rounded-full bg-[#F9F7FF] border border-[#6F3BCE42] shadow-sm">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#FF4458" className="mr-2.5">
+                                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                    </svg>
+                                    <span className="text-black font-medium text-[14px]">{profile.relationshipGoal}</span>
+                                </div>
+                            </section>
+                        );
+                    })()}
 
-                    <section>
-                        <h3 className="text-[16px] font-bold text-black mb-2">Basics</h3>
-                        <div className="flex flex-wrap gap-2.5">
-                            {profile.height?.value && <Chip icon={heightIcon} label={`${profile.height.value} ${profile.height.unit || ''}`.trim()} />}
-                            {profile.religion && <Chip icon={religionIcon} label={profile.religion} />}
-                            {profile.drinkingStatus && <Chip icon={drinkIcon} label={profile.drinkingStatus} />}
-                            {profile.smokingStatus && <Chip icon={smokeIcon} label={profile.smokingStatus} />}
-                            {profile.education && <Chip icon={studyIcon} label={profile.education} />}
-                        </div>
-                    </section>
+                    {(() => {
+                        const isValValid = (val) => Boolean(val && val !== 'N/A' && val !== 'Not specified' && val !== 'undefined');
+                        const heightStr = profile.height?.value ? `${profile.height.value} ${profile.height.unit || ''}`.trim() : null;
+                        const validHeight = isValValid(heightStr) ? heightStr : null;
+                        const validReligion = isValValid(profile.religion) ? profile.religion : null;
+                        const validDrinks = isValValid(profile.drinkingStatus) ? profile.drinkingStatus : null;
+                        const validSmokes = isValValid(profile.smokingStatus) ? profile.smokingStatus : null;
+                        const validEducation = isValValid(profile.education) ? profile.education : null;
+
+                        const hasAnyBasic = validHeight || validReligion || validDrinks || validSmokes || validEducation;
+                        if (!hasAnyBasic) return null;
+
+                        return (
+                            <section>
+                                <h3 className="text-[16px] font-bold text-black mb-2">Basics</h3>
+                                <div className="flex flex-wrap gap-2.5">
+                                    {validHeight && <Chip icon={heightIcon} label={validHeight} />}
+                                    {validReligion && <Chip icon={religionIcon} label={validReligion} />}
+                                    {validDrinks && <Chip icon={drinkIcon} label={validDrinks} />}
+                                    {validSmokes && <Chip icon={smokeIcon} label={validSmokes} />}
+                                    {validEducation && <Chip icon={studyIcon} label={validEducation} />}
+                                </div>
+                            </section>
+                        );
+                    })()}
 
                     {profile.interests?.length > 0 && (
                         <section>
