@@ -38,7 +38,6 @@ const UsersPage = lazy(() => import('../../admin/pages/UsersPage'));
 const SubscriptionsPage = lazy(() => import('../../admin/pages/SubscriptionsPage'));
 const BoostEditPage = lazy(() => import('../../admin/pages/BoostEditPage'));
 const SubscriptionUsersPage = lazy(() => import('../../admin/pages/SubscriptionUsersPage'));
-const QueueManagementPage = lazy(() => import('../../admin/pages/QueueManagementPage'));
 const TransactionsPage = lazy(() => import('../../admin/pages/TransactionsPage'));
 const ReportsPage = lazy(() => import('../../admin/pages/ReportsPage'));
 const NotificationsPage = lazy(() => import('../../admin/pages/NotificationsPage'));
@@ -105,7 +104,6 @@ const AppRoutes = () => {
                     <Route path="subscriptions" element={<SubscriptionsPage />} />
                     <Route path="boost-edit" element={<BoostEditPage />} />
                     <Route path="subscription-users" element={<SubscriptionUsersPage />} />
-                    <Route path="queue-management" element={<QueueManagementPage />} />
                     <Route path="transactions" element={<TransactionsPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="app-config" element={<AppConfigPage />} />
