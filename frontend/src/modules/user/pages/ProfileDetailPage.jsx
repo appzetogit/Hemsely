@@ -85,8 +85,8 @@ const ProfileDetailPage = () => {
     }
 
     const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || 'User';
-    const gallery = profile.galleryImages?.length ? profile.galleryImages.map((g) => g.url) : [];
-    const mainPhoto = profile.profilePicture || demoPhoto;
+    const gallery = profile.galleryImages?.length ? profile.galleryImages.map((g) => (typeof g === 'string' ? g : g?.url)).filter(Boolean) : [];
+    const mainPhoto = gallery[0] || profile.profilePicture || demoPhoto;
 
     return (
         <div className="min-h-screen bg-white font-sans pb-10 max-w-md mx-auto shadow-2xl border-x border-gray-100">

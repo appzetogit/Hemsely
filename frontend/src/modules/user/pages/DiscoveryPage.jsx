@@ -12,7 +12,6 @@ import demoPhoto from '../assets/6ee1ef9d2677e06049fb899a7658f4b9ac9c11dc.jpg';
 
 const toProfileCardShape = (user) => {
     const allPhotos = [];
-    if (user.profilePicture) allPhotos.push(user.profilePicture);
     if (Array.isArray(user.galleryImages)) {
         user.galleryImages.forEach((g) => {
             const url = typeof g === 'string' ? g : g?.url;
@@ -20,6 +19,10 @@ const toProfileCardShape = (user) => {
                 allPhotos.push(url);
             }
         });
+    }
+    // Only if user has no discovery photos at all, fallback to profilePicture or demoPhoto
+    if (allPhotos.length === 0 && user.profilePicture) {
+        allPhotos.push(user.profilePicture);
     }
     if (allPhotos.length === 0) allPhotos.push(demoPhoto);
 

@@ -164,10 +164,15 @@ const EditProfilePage = () => {
         }));
     };
 
-    const [selectedSlotIndex, setSelectedSlotIndex] = useState(null);
+    const [uploadTarget, setUploadTarget] = useState(null);
 
-    const handleSlotClick = (idx) => {
-        setSelectedSlotIndex(idx);
+    const handleProfileClick = () => {
+        setUploadTarget('profile');
+        fileInputRef.current?.click();
+    };
+
+    const handleGallerySlotClick = (idx) => {
+        setUploadTarget({ type: 'gallery', index: idx });
         fileInputRef.current?.click();
     };
 
@@ -178,7 +183,7 @@ const EditProfilePage = () => {
 
         setUploading(true);
         try {
-            const isMainPhotoSlot = selectedSlotIndex === 0 || !form.profilePicture;
+            const isMainPhotoSlot = uploadTarget === 'profile' || (!form.profilePicture && !uploadTarget);
             const croppedFile = await cropImageToSquare(file).catch(() => file);
             const formData = new FormData();
 
@@ -205,7 +210,7 @@ const EditProfilePage = () => {
             }
         } finally {
             setUploading(false);
-            setSelectedSlotIndex(null);
+            setUploadTarget(null);
         }
     };
 
@@ -368,17 +373,17 @@ const EditProfilePage = () => {
 
     const isValidPhoto = (url) => url && typeof url === 'string' && !url.includes('wallet') && !url.includes('svg');
 
-    const photoSlots = [
-        { url: isValidPhoto(form.profilePicture) ? form.profilePicture : null, id: 'profile', isProfile: true },
-        ...form.galleryImages
-            .filter((g) => isValidPhoto(typeof g === 'string' ? g : g?.url))
-            .map((g) => ({
-                url: typeof g === 'string' ? g : g.url,
-                id: g._id || g.url,
-                isProfile: false,
-            })),
-    ];
-    while (photoSlots.length < 6) photoSlots.push(null);
+    const gallerySlots = [];
+    const validGalleryImages = (form.galleryImages || [])
+        .map((g) => ({
+            url: typeof g === 'string' ? g : g?.url,
+            id: typeof g === 'object' ? g._id || g.url : g,
+        }))
+        .filter((g) => isValidPhoto(g.url));
+
+    for (let i = 0; i < 6; i++) {
+        gallerySlots.push(validGalleryImages[i] || null);
+    }
 
     const answeredQuestionsCount = questions.filter((q) => q.answer && q.answer.trim().length > 0).length;
 
@@ -408,15 +413,65 @@ const EditProfilePage = () => {
                     <p className="text-[13px] font-semibold text-red-500 my-2 text-center">{error}</p>
                 )}
 
-                {/* Profile Photos */}
+                {/* Profile Photo */}
                 <section className="bg-white rounded-[24px] p-4 shadow-2xs border border-gray-100/70 mt-3">
                     <div className="flex items-center justify-between mb-3">
-                        <h2 className="font-bold text-[15px] text-gray-900">Profile Photos</h2>
-                        {uploading && <span className="text-[12px] font-semibold text-[#733FE0]">Uploading...</span>}
+                        <h2 className="font-bold text-[15px] text-gray-900">Profile Photo</h2>
+                        {uploading && uploadTarget === 'profile' && (
+                            <span className="text-[12px] font-semibold text-[#733FE0]">Uploading...</span>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
-                        {photoSlots.map((slot, idx) => (
+                        <div className="relative aspect-square w-full">
+                            {isValidPhoto(form.profilePicture) ? (
+                                <div className="relative w-full h-full rounded-[20px] overflow-hidden border border-gray-100 shadow-2xs group">
+                                    <img src={form.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+
+                                    {/* Edit / Replace Pencil Button */}
+                                    <button
+                                        type="button"
+                                        onClick={handleProfileClick}
+                                        className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-[#733FE0] text-white flex items-center justify-center border border-white shadow-md cursor-pointer hover:bg-[#602ec3]"
+                                        title="Change Profile Photo"
+                                    >
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={handleProfileClick}
+                                    disabled={uploading}
+                                    className="w-full h-full rounded-[20px] bg-gradient-to-b from-gray-50/90 to-purple-50/40 border border-gray-150 flex flex-col items-center justify-center cursor-pointer hover:border-purple-300 transition-colors"
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-[#733FE0] text-white flex items-center justify-center shadow-xs">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19" />
+                                            <line x1="5" y1="12" x2="19" y2="12" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-400 mt-1">Main Photo</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Discovery Photos */}
+                <section className="bg-white rounded-[24px] p-4 shadow-2xs border border-gray-100/70 mt-3.5">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="font-bold text-[15px] text-gray-900">Discovery Photos</h2>
+                        {uploading && uploadTarget && uploadTarget !== 'profile' && (
+                            <span className="text-[12px] font-semibold text-[#733FE0]">Uploading...</span>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                        {gallerySlots.map((slot, idx) => (
                             <div key={idx} className="relative aspect-square w-full">
                                 {slot?.url ? (
                                     <div className="relative w-full h-full rounded-[20px] overflow-hidden border border-gray-100 shadow-2xs group">
@@ -425,7 +480,7 @@ const EditProfilePage = () => {
                                         {/* Edit / Replace Pencil Button */}
                                         <button
                                             type="button"
-                                            onClick={() => handleSlotClick(idx)}
+                                            onClick={() => handleGallerySlotClick(idx)}
                                             className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-[#733FE0] text-white flex items-center justify-center border border-white shadow-md cursor-pointer hover:bg-[#602ec3]"
                                             title="Edit / Replace Photo"
                                         >
@@ -436,20 +491,19 @@ const EditProfilePage = () => {
                                         </button>
 
                                         {/* Delete button for gallery photos */}
-                                        {!slot.isProfile && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveGalleryImage(slot.id)}
-                                                className="absolute top-1.5 right-1.5 w-5.5 h-5.5 rounded-full bg-black/75 text-white flex items-center justify-center text-[10px] border-0 cursor-pointer"
-                                            >
-                                                ✕
-                                            </button>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveGalleryImage(slot.id)}
+                                            className="absolute top-1.5 right-1.5 w-5.5 h-5.5 rounded-full bg-black/75 text-white flex items-center justify-center text-[10px] border-0 cursor-pointer hover:bg-black"
+                                            title="Remove Photo"
+                                        >
+                                            ✕
+                                        </button>
                                     </div>
                                 ) : (
                                     <button
                                         type="button"
-                                        onClick={() => handleSlotClick(idx)}
+                                        onClick={() => handleGallerySlotClick(idx)}
                                         disabled={uploading}
                                         className="w-full h-full rounded-[20px] bg-gradient-to-b from-gray-50/90 to-purple-50/40 border border-gray-150 flex flex-col items-center justify-center cursor-pointer hover:border-purple-300 transition-colors"
                                     >
@@ -459,12 +513,6 @@ const EditProfilePage = () => {
                                                 <line x1="5" y1="12" x2="19" y2="12" />
                                             </svg>
                                         </div>
-                                        {idx === 0 && (
-                                            <span className="text-[10px] font-bold text-gray-400 mt-1">Main Photo</span>
-                                        )}
-                                        {idx === 2 && !photoSlots[0]?.url && (
-                                            <span className="text-[10px] font-bold text-gray-400 mt-1">Add Photo</span>
-                                        )}
                                     </button>
                                 )}
                             </div>
