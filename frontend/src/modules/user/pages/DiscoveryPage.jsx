@@ -50,6 +50,7 @@ const toProfileCardShape = (user) => {
             drinks: isValValid(user.drinkingStatus) ? user.drinkingStatus : null,
             smokes: isValValid(user.smokingStatus) ? user.smokingStatus : null,
             education: isValValid(user.education) ? user.education : null,
+            languages: isValValid(user.languages) ? (Array.isArray(user.languages) ? user.languages.join(', ') : user.languages) : null,
         },
         interests: user.interests?.length ? user.interests : [],
         prompts: Array.isArray(user.prompts) ? user.prompts.filter((p) => p && (p.question || p.text) && p.answer) : [],

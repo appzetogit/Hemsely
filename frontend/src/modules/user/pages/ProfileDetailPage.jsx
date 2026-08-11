@@ -183,8 +183,10 @@ const ProfileDetailPage = () => {
                         const validDrinks = isValValid(profile.drinkingStatus) ? profile.drinkingStatus : null;
                         const validSmokes = isValValid(profile.smokingStatus) ? profile.smokingStatus : null;
                         const validEducation = isValValid(profile.education) ? profile.education : null;
+                        const langStr = Array.isArray(profile.languages) ? profile.languages.join(', ') : profile.languages;
+                        const validLanguages = isValValid(langStr) ? langStr : null;
 
-                        const hasAnyBasic = validHeight || validReligion || validDrinks || validSmokes || validEducation;
+                        const hasAnyBasic = validHeight || validReligion || validDrinks || validSmokes || validEducation || validLanguages;
                         if (!hasAnyBasic) return null;
 
                         return (
@@ -196,6 +198,15 @@ const ProfileDetailPage = () => {
                                     {validDrinks && <Chip icon={drinkIcon} label={validDrinks} />}
                                     {validSmokes && <Chip icon={smokeIcon} label={validSmokes} />}
                                     {validEducation && <Chip icon={studyIcon} label={validEducation} />}
+                                    {validLanguages && (
+                                        <Chip iconSvg={
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6F3BCE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 shrink-0">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <line x1="2" y1="12" x2="22" y2="12" />
+                                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                            </svg>
+                                        } label={validLanguages} />
+                                    )}
                                 </div>
                             </section>
                         );

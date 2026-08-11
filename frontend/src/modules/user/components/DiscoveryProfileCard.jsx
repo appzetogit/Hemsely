@@ -171,8 +171,9 @@ const DiscoveryProfileCard = ({
                 const validDrinks = isValValid(profile.basics?.drinks) ? profile.basics.drinks : null;
                 const validSmokes = isValValid(profile.basics?.smokes) ? profile.basics.smokes : null;
                 const validEducation = isValValid(profile.basics?.education) ? profile.basics.education : null;
+                const validLanguages = isValValid(profile.basics?.languages) ? profile.basics.languages : null;
 
-                const hasAnyBasic = validHeight || validReligion || validDrinks || validSmokes || validEducation;
+                const hasAnyBasic = validHeight || validReligion || validDrinks || validSmokes || validEducation || validLanguages;
                 if (!hasAnyBasic) return null;
 
                 return (
@@ -184,6 +185,17 @@ const DiscoveryProfileCard = ({
                             {validDrinks && <Pill icon={<img src={drinkIcon} className="w-4 h-4 object-contain" alt="" />}>{validDrinks}</Pill>}
                             {validSmokes && <Pill icon={<img src={smokeIcon} className="w-4 h-4 object-contain" alt="" />}>{validSmokes}</Pill>}
                             {validEducation && <Pill icon={<img src={studyIcon} className="w-4 h-4 object-contain" alt="" />}>{validEducation}</Pill>}
+                            {validLanguages && (
+                                <Pill icon={
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#733FE0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="2" y1="12" x2="22" y2="12" />
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                    </svg>
+                                }>
+                                    {validLanguages}
+                                </Pill>
+                            )}
                         </div>
                     </section>
                 );
