@@ -10,6 +10,12 @@ import { getStored, setStored } from '../constants/discoveryData';
 import apiClient from '../../../shared/services/apiClient';
 import demoPhoto from '../assets/6ee1ef9d2677e06049fb899a7658f4b9ac9c11dc.jpg';
 
+const isValValid = (val) => {
+    if (!val) return false;
+    const str = String(val).trim().toLowerCase();
+    return str !== '' && str !== 'n/a' && str !== 'not specified' && str !== 'not_specified' && str !== 'undefined' && str !== 'null' && str !== 'none';
+};
+
 const toProfileCardShape = (user) => {
     const allPhotos = [];
     if (Array.isArray(user.galleryImages)) {
@@ -36,14 +42,14 @@ const toProfileCardShape = (user) => {
         photo: allPhotos[0],
         photos: allPhotos,
         instagram: null,
-        about: user.bio || '',
-        lookingFor: user.relationshipGoal || null,
+        about: isValValid(user.bio) ? user.bio : '',
+        lookingFor: isValValid(user.relationshipGoal) ? user.relationshipGoal : null,
         basics: {
-            height: user.height?.value ? `${user.height.value} ${user.height.unit || ''}`.trim() : null,
-            religion: user.religion || null,
-            drinks: user.drinkingStatus || null,
-            smokes: user.smokingStatus || null,
-            education: user.education || null,
+            height: (user.height?.value && isValValid(user.height.value)) ? `${user.height.value} ${user.height.unit || ''}`.trim() : null,
+            religion: isValValid(user.religion) ? user.religion : null,
+            drinks: isValValid(user.drinkingStatus) ? user.drinkingStatus : null,
+            smokes: isValValid(user.smokingStatus) ? user.smokingStatus : null,
+            education: isValValid(user.education) ? user.education : null,
         },
         interests: user.interests?.length ? user.interests : [],
         prompts: Array.isArray(user.prompts) ? user.prompts.filter((p) => p && (p.question || p.text) && p.answer) : [],

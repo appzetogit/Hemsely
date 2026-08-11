@@ -161,7 +161,11 @@ const DiscoveryProfileCard = ({
             )}
 
             {(() => {
-                const isValValid = (val) => Boolean(val && val !== 'N/A' && val !== 'Not specified' && val !== 'undefined');
+                const isValValid = (val) => {
+                    if (!val) return false;
+                    const str = String(val).trim().toLowerCase();
+                    return str !== '' && str !== 'n/a' && str !== 'not specified' && str !== 'not_specified' && str !== 'undefined' && str !== 'null' && str !== 'none';
+                };
                 const validHeight = isValValid(profile.basics?.height) ? profile.basics.height : null;
                 const validReligion = isValValid(profile.basics?.religion) ? profile.basics.religion : null;
                 const validDrinks = isValValid(profile.basics?.drinks) ? profile.basics.drinks : null;
@@ -186,7 +190,11 @@ const DiscoveryProfileCard = ({
             })()}
 
             {(() => {
-                const isValValid = (val) => Boolean(val && val !== 'N/A' && val !== 'Not specified' && val !== 'undefined');
+                const isValValid = (val) => {
+                    if (!val) return false;
+                    const str = String(val).trim().toLowerCase();
+                    return str !== '' && str !== 'n/a' && str !== 'not specified' && str !== 'not_specified' && str !== 'undefined' && str !== 'null' && str !== 'none';
+                };
                 if (!isValValid(profile.lookingFor)) return null;
                 return (
                     <section className="px-1">

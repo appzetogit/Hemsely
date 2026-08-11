@@ -152,7 +152,11 @@ const ProfileDetailPage = () => {
                     )}
 
                     {(() => {
-                        const isValValid = (val) => Boolean(val && val !== 'N/A' && val !== 'Not specified' && val !== 'undefined');
+                        const isValValid = (val) => {
+                            if (!val) return false;
+                            const str = String(val).trim().toLowerCase();
+                            return str !== '' && str !== 'n/a' && str !== 'not specified' && str !== 'not_specified' && str !== 'undefined' && str !== 'null' && str !== 'none';
+                        };
                         if (!isValValid(profile.relationshipGoal)) return null;
                         return (
                             <section>
@@ -168,7 +172,11 @@ const ProfileDetailPage = () => {
                     })()}
 
                     {(() => {
-                        const isValValid = (val) => Boolean(val && val !== 'N/A' && val !== 'Not specified' && val !== 'undefined');
+                        const isValValid = (val) => {
+                            if (!val) return false;
+                            const str = String(val).trim().toLowerCase();
+                            return str !== '' && str !== 'n/a' && str !== 'not specified' && str !== 'not_specified' && str !== 'undefined' && str !== 'null' && str !== 'none';
+                        };
                         const heightStr = profile.height?.value ? `${profile.height.value} ${profile.height.unit || ''}`.trim() : null;
                         const validHeight = isValValid(heightStr) ? heightStr : null;
                         const validReligion = isValValid(profile.religion) ? profile.religion : null;
