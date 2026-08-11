@@ -41,15 +41,15 @@ const DEFAULT_QUESTIONS = [
 const emptyProfile = {
     bio: '',
     profession: '',
-    interests: ['Art & Crafts', 'Travelling', 'Photography'],
-    education: 'Graduate',
-    religion: 'Hindu',
-    heightValue: '5.6',
+    interests: [],
+    education: '',
+    religion: '',
+    heightValue: '',
     heightUnit: 'Feet',
-    languages: 'English',
-    relationshipGoal: 'Long-term',
-    drinkingStatus: 'No',
-    smokingStatus: 'No',
+    languages: '',
+    relationshipGoal: '',
+    drinkingStatus: '',
+    smokingStatus: '',
     profilePicture: '',
     galleryImages: [],
     selfiePhoto: '',
@@ -118,15 +118,15 @@ const EditProfilePage = () => {
                 setForm({
                     bio: u.bio || '',
                     profession: u.profession || '',
-                    interests: u.interests?.length > 0 ? u.interests : ['Art & Crafts', 'Travelling', 'Photography'],
-                    education: u.education || 'Graduate',
-                    religion: u.religion || 'Hindu',
-                    heightValue: u.height?.value ? String(u.height.value) : '5.6',
+                    interests: u.interests || [],
+                    education: u.education || '',
+                    religion: u.religion || '',
+                    heightValue: u.height?.value ? String(u.height.value) : '',
                     heightUnit: u.height?.unit || 'Feet',
-                    languages: u.languages || 'English',
-                    relationshipGoal: u.relationshipGoal || 'Long-term',
-                    drinkingStatus: u.drinkingStatus || 'No',
-                    smokingStatus: u.smokingStatus || 'No',
+                    languages: Array.isArray(u.languages) ? u.languages.join(', ') : (u.languages || ''),
+                    relationshipGoal: u.relationshipGoal || '',
+                    drinkingStatus: u.drinkingStatus || '',
+                    smokingStatus: u.smokingStatus || '',
                     profilePicture: u.profilePicture || '',
                     galleryImages: u.galleryImages || [],
                     selfiePhoto: u.selfiePhoto || '',
@@ -255,22 +255,28 @@ const EditProfilePage = () => {
 
         const payload = {
             bio: form.bio,
-            profession: form.profession,
+            profession: form.profession === 'Not specified' ? '' : form.profession,
             interests: form.interests,
-            education: form.education,
-            religion: form.religion,
-            languages: form.languages,
-            relationshipGoal: form.relationshipGoal,
-            drinkingStatus: form.drinkingStatus,
-            smokingStatus: form.smokingStatus,
+            education: form.education === 'Not specified' ? '' : form.education,
+            religion: form.religion === 'Not specified' ? '' : form.religion,
+            languages: form.languages === 'Not specified' ? '' : form.languages,
+            relationshipGoal: form.relationshipGoal === 'Not specified' ? '' : form.relationshipGoal,
+            drinkingStatus: form.drinkingStatus === 'Not specified' ? '' : form.drinkingStatus,
+            smokingStatus: form.smokingStatus === 'Not specified' ? '' : form.smokingStatus,
             // Strip local-only fields like `id` — Mongoose rejects `id` on subdocuments.
             prompts: questions.map(({ question, answer }) => ({ question, answer })),
         };
 
-        if (form.heightValue) {
+        if (form.heightValue && form.heightValue !== 'Not specified') {
             const rawVal = String(form.heightValue).replace(' Feet', '').trim();
-            const numVal = parseFloat(rawVal) || 5.6;
-            payload.height = { value: numVal, unit: 'ft' };
+            const numVal = parseFloat(rawVal);
+            if (!isNaN(numVal)) {
+                payload.height = { value: numVal, unit: 'ft' };
+            } else {
+                payload.height = null;
+            }
+        } else {
+            payload.height = null;
         }
 
         const targetId = userId || 'me';
@@ -335,12 +341,13 @@ const EditProfilePage = () => {
                 return next;
             });
         } else if (activeModal.type === 'detail') {
+            const valToSave = modalInputValue === 'Not specified' ? '' : modalInputValue;
             if (activeModal.key === 'heightValue') {
-                const val = modalInputValue.replace(' Feet', '').trim();
+                const val = valToSave.replace(' Feet', '').trim();
                 updateField('heightValue', val);
                 updateField('heightUnit', 'Feet');
             } else {
-                updateField(activeModal.key, modalInputValue);
+                updateField(activeModal.key, valToSave);
             }
         }
 
@@ -683,11 +690,11 @@ const EditProfilePage = () => {
                     <div className="flex flex-col gap-2.5">
                         {[
                             { key: 'profession', label: 'Work / Post', value: form.profession || 'Not specified', placeholder: 'e.g. Interior Designer at Company' },
-                            { key: 'education', label: 'Education', value: form.education || 'Graduate', options: ['Graduate', 'Post Graduate', 'Undergraduate', 'High School'] },
-                            { key: 'religion', label: 'Religious beliefs', value: form.religion || 'Hindu', options: ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Atheist', 'Other'] },
-                            { key: 'heightValue', label: 'Height', value: form.heightValue ? (form.heightValue.includes('Feet') ? form.heightValue : `${form.heightValue} Feet`) : '5.6 Feet', options: HEIGHT_OPTIONS },
-                            { key: 'languages', label: 'My Languages', value: form.languages || 'English', options: ['English', 'Hindi', 'Bengali', 'Punjabi', 'Gujarati', 'Marathi', 'Tamil', 'Telugu'] },
-                            { key: 'relationshipGoal', label: 'Dating intentions', value: form.relationshipGoal || 'Long-term', options: ['Long-term', 'Short-term', 'New friends', 'Casual'] },
+                            { key: 'education', label: 'Education', value: form.education || 'Not specified', options: ['Not specified', 'Graduate', 'Post Graduate', 'Undergraduate', 'High School'] },
+                            { key: 'religion', label: 'Religious beliefs', value: form.religion || 'Not specified', options: ['Not specified', 'Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Atheist', 'Other'] },
+                            { key: 'heightValue', label: 'Height', value: form.heightValue ? (form.heightValue.includes('Feet') ? form.heightValue : `${form.heightValue} Feet`) : 'Not specified', options: ['Not specified', ...HEIGHT_OPTIONS] },
+                            { key: 'languages', label: 'My Languages', value: form.languages || 'Not specified', options: ['Not specified', 'English', 'Hindi', 'Bengali', 'Punjabi', 'Gujarati', 'Marathi', 'Tamil', 'Telugu'] },
+                            { key: 'relationshipGoal', label: 'Dating intentions', value: form.relationshipGoal || 'Not specified', options: ['Not specified', 'Long-term', 'Short-term', 'New friends', 'Casual'] },
                         ].map((item) => (
                             <div
                                 key={item.key}
@@ -713,8 +720,8 @@ const EditProfilePage = () => {
                     <h3 className="font-bold text-[15px] text-gray-900 mb-2.5 px-0.5">Habits</h3>
                     <div className="flex flex-col gap-2.5">
                         {[
-                            { key: 'drinkingStatus', label: 'Drinking', value: form.drinkingStatus || 'No', options: ['No', 'Yes', 'Occasionally', 'Socially'] },
-                            { key: 'smokingStatus', label: 'Smoking', value: form.smokingStatus || 'No', options: ['No', 'Yes', 'Occasionally', 'Socially'] },
+                            { key: 'drinkingStatus', label: 'Drinking', value: form.drinkingStatus || 'Not specified', options: ['Not specified', 'No', 'Yes', 'Occasionally', 'Socially'] },
+                            { key: 'smokingStatus', label: 'Smoking', value: form.smokingStatus || 'Not specified', options: ['Not specified', 'No', 'Yes', 'Occasionally', 'Socially'] },
                         ].map((item) => (
                             <div
                                 key={item.key}
