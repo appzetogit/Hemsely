@@ -104,10 +104,10 @@ describe('Admin auth', () => {
   });
 
   describe('Login lockout', () => {
-    it('locks the account after 5 failed attempts', async () => {
+    it('locks the account after 10 failed attempts', async () => {
       await createSuperAdmin();
 
-      for (let i = 0; i < 5; i += 1) {
+      for (let i = 0; i < 10; i += 1) {
         const res = await request(app).post('/api/admin/login').send({
           email: 'panchalajay717@gmail.com',
           password: 'wrong-password',

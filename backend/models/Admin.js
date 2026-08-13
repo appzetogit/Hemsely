@@ -66,7 +66,11 @@ adminSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Method to check if account is locked
 adminSchema.methods.isLocked = function () {
-  return this.lockUntil && this.lockUntil > Date.now();
+  const maxAttempts = 10;
+  if (this.loginAttempts < maxAttempts) {
+    return false;
+  }
+  return !!(this.lockUntil && this.lockUntil > Date.now());
 };
 
 // Method to increment login attempts
@@ -80,8 +84,8 @@ adminSchema.methods.incLoginAttempts = function () {
   }
   // Otherwise we're incrementing
   const updates = { $inc: { loginAttempts: 1 } };
-  // Lock the account if we've reached max attempts
-  const maxAttempts = 5;
+  // Lock the account if we've reached max attempts (10 failed attempts)
+  const maxAttempts = 10;
   const lockTimeMs = 30 * 60 * 1000; // 30 minutes
 
   if (this.loginAttempts + 1 >= maxAttempts && !this.isLocked()) {

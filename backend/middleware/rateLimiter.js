@@ -104,7 +104,7 @@ export const apiRateLimiter = createRateLimiter({
 
 export const adminAuthRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 10, // Max 10 admin login/register attempts per 15 mins per IP
+  max: 20, // Max 20 admin login/register attempts per 15 mins per IP
   message: 'Too many admin login attempts from this IP. Please wait 15 minutes before trying again.',
 });
 
