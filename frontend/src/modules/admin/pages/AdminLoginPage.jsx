@@ -19,8 +19,12 @@ function AdminLoginPage() {
         event.preventDefault();
         setError('');
 
-        const normalizedEmail = email.trim().toLowerCase();
-        const normalizedPassword = password.trim();
+        const form = event.currentTarget;
+        const emailEl = form.elements['admin-email'] || form.elements['email'];
+        const passwordEl = form.elements['admin-password'] || form.elements['password'];
+
+        const normalizedEmail = (email || emailEl?.value || '').trim().toLowerCase();
+        const normalizedPassword = (password || passwordEl?.value || '').trim();
 
         if (!normalizedEmail || !normalizedPassword) {
             setError('Email and password are required.');
@@ -35,7 +39,7 @@ function AdminLoginPage() {
             });
 
             if (!ok) {
-                throw new Error(data.message || 'Invalid admin credentials.');
+                throw new Error(data?.message || 'Invalid admin credentials.');
             }
             if (!data?.token) {
                 throw new Error('Login succeeded but no session token was returned.');
@@ -45,7 +49,12 @@ function AdminLoginPage() {
                 sessionStorage.setItem('adminToken', data.token);
                 localStorage.setItem('adminToken', data.token);
             }
+            if (data.refreshToken) {
+                sessionStorage.setItem('adminRefreshToken', data.refreshToken);
+                localStorage.setItem('adminRefreshToken', data.refreshToken);
+            }
             sessionStorage.setItem(ADMIN_SESSION_KEY, 'active');
+            localStorage.setItem(ADMIN_SESSION_KEY, 'active');
             navigate('/admin', { replace: true });
         } catch (submitError) {
             setError(submitError.message || 'Invalid admin credentials.');
@@ -70,7 +79,9 @@ function AdminLoginPage() {
                         <Label htmlFor="admin-email">Email</Label>
                         <Input
                             id="admin-email"
+                            name="email"
                             type="email"
+                            autoComplete="username email"
                             placeholder="Enter admin email"
                             value={email}
                             onChange={(event) => setEmail(event.target.value)}
@@ -83,7 +94,9 @@ function AdminLoginPage() {
                         <div className="relative">
                             <Input
                                 id="admin-password"
+                                name="password"
                                 type={showPassword ? 'text' : 'password'}
+                                autoComplete="current-password"
                                 placeholder="Enter password"
                                 value={password}
                                 onChange={(event) => setPassword(event.target.value)}

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
-import adminApi from '../services/adminApi';
+import adminApi, { clearAdminSession } from '../services/adminApi';
 import { Menu, Bell, User, LogOut } from 'lucide-react';
 
 const ADMIN_SESSION_KEY = 'hemsely_admin_session:v1';
@@ -30,9 +30,10 @@ const AdminLayout = () => {
         setAuthCheckError('');
 
         const token = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken');
-        const sessionActive = sessionStorage.getItem(ADMIN_SESSION_KEY);
+        const refreshToken = sessionStorage.getItem('adminRefreshToken') || localStorage.getItem('adminRefreshToken');
+        const sessionActive = sessionStorage.getItem(ADMIN_SESSION_KEY) || localStorage.getItem(ADMIN_SESSION_KEY);
 
-        if (!token && !sessionActive) {
+        if (!token && !refreshToken && !sessionActive) {
             navigate('/admin/login', { replace: true });
             return;
         }
@@ -43,9 +44,7 @@ const AdminLayout = () => {
                 setAdmin(data.admin);
                 setAuthCheckError('');
             } else if (status === 401 || status === 403 || !data?.success) {
-                sessionStorage.removeItem(ADMIN_SESSION_KEY);
-                sessionStorage.removeItem('adminToken');
-                localStorage.removeItem('adminToken');
+                clearAdminSession();
                 navigate('/admin/login', { replace: true });
             } else {
                 setAuthCheckError('Could not verify your session. Please retry or log in again.');
@@ -84,9 +83,7 @@ const AdminLayout = () => {
         } catch {
             // Clearing the local session is what actually matters here.
         }
-        sessionStorage.removeItem(ADMIN_SESSION_KEY);
-        sessionStorage.removeItem('adminToken');
-        localStorage.removeItem('adminToken');
+        clearAdminSession();
         navigate('/admin/login', { replace: true });
     };
 

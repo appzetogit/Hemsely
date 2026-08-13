@@ -1,4 +1,5 @@
 import Admin from '../models/Admin.js';
+import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { generateToken, generateRefreshToken, setCookie, clearCookie } from '../utils/tokenUtils.js';
 import { validatePassword } from '../utils/validators.js';
@@ -163,6 +164,60 @@ export const adminLogout = asyncHandler(async (req, res, next) => {
     success: true,
     message: 'Admin logged out successfully',
   });
+});
+
+// @desc Refresh Admin Token
+// @route POST /api/admin/refresh
+// @access Public
+export const refreshAdminToken = asyncHandler(async (req, res, next) => {
+  const refreshToken =
+    req.cookies?.adminRefreshToken ||
+    req.body?.refreshToken ||
+    req.headers['x-refresh-token'] ||
+    (req.headers.authorization?.startsWith('Bearer') ? req.headers.authorization.split(' ')[1] : null);
+
+  if (!refreshToken) {
+    return res.status(401).json({
+      success: false,
+      message: 'Admin refresh token not found',
+    });
+  }
+
+  try {
+    const secret = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
+    const decoded = jwt.verify(refreshToken, secret);
+    const admin = await Admin.findById(decoded.id);
+
+    if (!admin || admin.isActive === false) {
+      return res.status(401).json({
+        success: false,
+        message: 'Admin not authorized or account is inactive',
+      });
+    }
+
+    const newToken = generateToken(admin._id, admin.role);
+    const newRefreshToken = generateRefreshToken(admin._id);
+
+    setCookie(res, newToken, newRefreshToken, 'adminToken', 'adminRefreshToken');
+
+    res.status(200).json({
+      success: true,
+      message: 'Admin token refreshed successfully',
+      token: newToken,
+      refreshToken: newRefreshToken,
+      admin: {
+        id: admin._id,
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+      },
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid or expired admin refresh token',
+    });
+  }
 });
 
 // @desc Get current admin

@@ -3,6 +3,7 @@ import {
   adminRegister,
   adminLogin,
   adminLogout,
+  refreshAdminToken,
   getCurrentAdmin,
   updateAdminProfile,
   changeAdminPassword,
@@ -49,6 +50,7 @@ const router = express.Router();
 // Auth
 router.post('/register', adminProtect, adminAuthRateLimiter, adminRegisterValidator, validate, adminRegister);
 router.post('/login', adminAuthRateLimiter, adminLoginValidator, validate, adminLogin);
+router.post('/refresh', adminAuthRateLimiter, refreshAdminToken);
 router.post('/logout', adminProtect, adminLogout);
 router.get('/me', adminProtect, getCurrentAdmin);
 router.put('/profile', adminProtect, adminProfileValidator, validate, updateAdminProfile);
