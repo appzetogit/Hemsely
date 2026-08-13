@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import './Admin.js';
 
 const auditLogSchema = new mongoose.Schema(
   {

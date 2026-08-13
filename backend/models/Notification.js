@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import './Admin.js';
+import './User.js';
 
 const notificationSchema = new mongoose.Schema(
   {

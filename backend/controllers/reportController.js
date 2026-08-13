@@ -1,5 +1,6 @@
 import Report from '../models/Report.js';
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logAdminAction } from '../utils/auditLog.js';
 import { stripAllHtml } from '../utils/sanitize.js';

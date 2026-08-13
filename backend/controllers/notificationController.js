@@ -1,5 +1,6 @@
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logAdminAction } from '../utils/auditLog.js';
 import { sendNotification as sendFcmPushNotification } from '../services/fcmService.js';
@@ -116,14 +117,19 @@ export const getNotifications = asyncHandler(async (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit || '15', 10), 1), 50);
   const skip = (page - 1) * limit;
 
+  const query = {
+    $or: [{ recipientUserId: null }, { recipientUserId: { $exists: false } }],
+  };
+
   const [notifications, totalNotifications, broadcastCount] = await Promise.all([
-    Notification.find({ recipientUserId: null })
+    Notification.find(query)
       .populate('sentBy', 'firstName lastName username')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit),
-    Notification.countDocuments({ recipientUserId: null }),
-    Notification.countDocuments({ recipientUserId: null, target: 'all' }),
+      .limit(limit)
+      .lean(),
+    Notification.countDocuments(query),
+    Notification.countDocuments({ ...query, target: 'all' }),
   ]);
 
   return res.status(200).json({
@@ -132,7 +138,7 @@ export const getNotifications = asyncHandler(async (req, res) => {
     counts: {
       total: totalNotifications,
       broadcast: broadcastCount,
-      targeted: totalNotifications - broadcastCount,
+      targeted: Math.max(0, totalNotifications - broadcastCount),
     },
     pagination: {
       page,
