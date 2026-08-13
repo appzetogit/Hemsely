@@ -109,9 +109,11 @@ const AppConfigPage = () => {
         setSaving(true);
         setSaveError('');
         try {
+            // Round-trip the full config, not just the fields this page has controls
+            // for — otherwise saving silently drops settings (e.g. the access-queue
+            // fields) that were fetched but have no UI here yet, back to nothing.
             const { data, ok } = await adminApi.put('/admin/app-config', {
-                maintenanceMode: config.maintenanceMode,
-                signupsEnabled: config.signupsEnabled,
+                ...config,
                 dailyLikeLimit: Number(config.dailyLikeLimit),
                 discoveryRadiusKm: Number(config.discoveryRadiusKm),
                 maxAgeGapYears: Number(config.maxAgeGapYears),

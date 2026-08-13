@@ -6,7 +6,6 @@ import { Input, Label } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
 
 const ADMIN_SESSION_KEY = 'amora_admin_session:v1';
-const ADMIN_TOKEN_KEY = 'amora_admin_token';
 
 function AdminLoginPage() {
     const navigate = useNavigate();
@@ -41,7 +40,8 @@ function AdminLoginPage() {
                 throw new Error('Login succeeded but no session token was returned.');
             }
 
-            localStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+            // The httpOnly adminToken cookie is already set by the response (credentials: 'include') —
+            // only a lightweight session flag is kept client-side, never the token itself.
             sessionStorage.setItem(ADMIN_SESSION_KEY, 'active');
             navigate('/admin', { replace: true });
         } catch (submitError) {

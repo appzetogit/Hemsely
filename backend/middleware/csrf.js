@@ -3,15 +3,18 @@
 // The app's real auth mechanism is a Bearer token the frontend attaches manually -
 // that's immune to CSRF by construction, since a forged cross-site request has no
 // way to read the victim's localStorage/sessionStorage token. The httpOnly auth
-// cookies ARE ambient browser credentials though, and are already `sameSite: 'strict'`
-// (see utils/tokenUtils.js), which blocks the browser from attaching them to any
-// cross-site request in the first place. This middleware adds a second, independent
-// check on top of that: for any state-changing request relying solely on the cookie
-// (no Bearer header), the declared Origin/Referer must match our own frontend.
+// cookies ARE ambient browser credentials though. In development they're
+// `sameSite: 'lax'`, and in production `sameSite: 'none'` (required for the
+// frontend/backend to run on different origins) - so unlike a same-site cookie
+// setup, the browser will still attach them to some or all cross-site requests.
+// That makes THIS middleware the primary CSRF defense for the cookie-auth path,
+// not a second layer on top of SameSite: for any state-changing request relying
+// solely on the cookie (no Bearer header), the declared Origin/Referer must match
+// our own frontend (see utils/originUtils.js).
 //
 // Requests with no Origin/Referer info at all are let through rather than blocked -
-// SameSite=strict is still the primary defense there, and plenty of legitimate
-// same-origin requests omit these headers depending on the client/browser.
+// plenty of legitimate same-origin requests omit these headers depending on the
+// client/browser, and the Bearer-token path remains the primary auth mechanism.
 
 import { isAllowedOrigin } from '../utils/originUtils.js';
 

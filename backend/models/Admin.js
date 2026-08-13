@@ -32,7 +32,6 @@ const adminSchema = new mongoose.Schema(
       enum: ['admin', 'superadmin'],
       default: 'admin',
     },
-    permissions: [String],
     isActive: {
       type: Boolean,
       default: true,

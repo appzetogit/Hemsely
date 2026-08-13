@@ -13,19 +13,8 @@ import { getOrCreateConfig } from './appConfigController.js';
 // @access Private/Admin
 export const getPlans = asyncHandler(async (req, res) => {
   let plans = await Plan.find({}).sort({ price: 1 });
-  const hasOldPlans = plans.some((p) => ['Weekly Lite', 'Monthly', '3 Months VIP'].includes(p.name));
-  const targetFeatures = [
-    'Unlimited Likes',
-    'Location Changes (Passport Mode)',
-    'View Who Likes You',
-    'Unlimited Rewinds',
-    '1 Profile Boost per week',
-    'Advanced Filters',
-    'Priority Profile Visibility',
-  ];
 
-  if (plans.length === 0 || hasOldPlans) {
-    await Plan.deleteMany({});
+  if (plans.length === 0) {
     const defaultPremium = await Plan.create({
       name: 'Premium',
       description: 'Get full access to priority discovery, location changes, unlimited likes, and profile boosts!',
@@ -33,7 +22,15 @@ export const getPlans = asyncHandler(async (req, res) => {
       durationDays: 30,
       isSystemPlan: true,
       isActive: true,
-      features: targetFeatures,
+      features: [
+        'Unlimited Likes',
+        'Location Changes (Passport Mode)',
+        'View Who Likes You',
+        'Unlimited Rewinds',
+        '1 Profile Boost per week',
+        'Advanced Filters',
+        'Priority Profile Visibility',
+      ],
     });
     plans = [defaultPremium];
   }
@@ -254,6 +251,10 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Transaction record not found' });
   }
 
+  if (String(transaction.user) !== String(userId)) {
+    return res.status(403).json({ success: false, message: 'This transaction does not belong to you' });
+  }
+
   const isConfigured = razorpayService.isConfigured();
   let isValid = false;
 
@@ -329,7 +330,7 @@ export const getBoostPlans = asyncHandler(async (req, res) => {
 // @access Private/User
 export const createBoostOrder = asyncHandler(async (req, res) => {
   const userId = req.user?._id || req.user?.id;
-  const { optionId, count } = req.body;
+  const { optionId } = req.body;
 
   const user = await User.findById(userId);
   if (!user) {
@@ -340,7 +341,7 @@ export const createBoostOrder = asyncHandler(async (req, res) => {
   const price1 = config.boostPrice1 ?? 199;
   const price5 = config.boostPrice5 ?? 399;
 
-  const boostCountNum = Number(count) || (optionId === 'left' ? 1 : 5);
+  const boostCountNum = optionId === 'left' ? 1 : 5;
   const boostPriceNum = optionId === 'left' ? price1 : price5;
 
   const transactionId = razorpayService.generateTransactionId('TXN');
@@ -416,7 +417,7 @@ export const createBoostOrder = asyncHandler(async (req, res) => {
 // @access Private/User
 export const verifyBoostPayment = asyncHandler(async (req, res) => {
   const userId = req.user?._id || req.user?.id;
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, transactionId, count } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, transactionId } = req.body;
 
   let transaction = await Transaction.findOne({
     $or: [
@@ -427,6 +428,10 @@ export const verifyBoostPayment = asyncHandler(async (req, res) => {
 
   if (!transaction) {
     return res.status(404).json({ success: false, message: 'Transaction record not found' });
+  }
+
+  if (String(transaction.user) !== String(userId)) {
+    return res.status(403).json({ success: false, message: 'This transaction does not belong to you' });
   }
 
   const isConfigured = razorpayService.isConfigured();
@@ -450,7 +455,8 @@ export const verifyBoostPayment = asyncHandler(async (req, res) => {
   transaction.gatewaySignature = razorpay_signature || '';
   await transaction.save();
 
-  const boostInc = Number(count) || (transaction.planName?.includes('5') ? 5 : 1);
+  // Derive the credited count from the amount actually paid for, never from client input.
+  const boostInc = parseInt(transaction.planName, 10) || 1;
 
   const updatedUser = await User.findByIdAndUpdate(
     userId,
@@ -478,6 +484,10 @@ export const verifyBoostPayment = asyncHandler(async (req, res) => {
 // @desc Get list of all users who have an active or past subscription
 // @route GET /api/admin/subscription-users
 // @access Private/Admin
+// ponytail: loads every successful subscription transaction + every premium user into
+// memory to dedupe-by-user and paginate with .slice(), instead of paginating at the DB
+// layer. Fine at current admin-only scale; upgrade to a $group+$facet aggregation if
+// the transaction/premium-user history grows large enough for this page to slow down.
 export const getSubscriptionUsers = asyncHandler(async (req, res) => {
   const page = Math.max(parseInt(req.query.page || '1', 10), 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);

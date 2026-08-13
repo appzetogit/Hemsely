@@ -18,7 +18,7 @@ import { corsOptionsDelegate } from './utils/originUtils.js';
 // Import routes
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
-import userRoutes from './routes/userRoutes.js';
+import userRoutes, { subscriptionRouter } from './routes/userRoutes.js';
 import matchRoutes from './routes/matchRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
@@ -76,17 +76,22 @@ app.get(['/uploads/*', '/api/uploads/*', '/amora/*', '/public/uploads/*'], (req,
     .replace(/^\/public\/uploads\//, '')
     .replace(/^\/amora\//, 'amora/');
 
+  const uploadsRoot = path.join(__dirname, 'uploads');
+  const publicUploadsRoot = path.join(__dirname, 'public', 'uploads');
+
   const candidatePaths = [
-    path.join(__dirname, 'public', 'uploads', cleanPath),
-    path.join(__dirname, 'uploads', cleanPath),
-    path.join(__dirname, 'public', 'uploads', 'amora', 'profiles', path.basename(cleanPath)),
-    path.join(__dirname, 'public', 'uploads', 'amora', 'chats', path.basename(cleanPath)),
-    path.join(__dirname, 'public', 'uploads', 'amora', 'selfies', path.basename(cleanPath)),
+    path.join(publicUploadsRoot, cleanPath),
+    path.join(uploadsRoot, cleanPath),
+    path.join(publicUploadsRoot, 'amora', 'profiles', path.basename(cleanPath)),
+    path.join(publicUploadsRoot, 'amora', 'chats', path.basename(cleanPath)),
+    path.join(publicUploadsRoot, 'amora', 'selfies', path.basename(cleanPath)),
   ];
 
   for (const filePath of candidatePaths) {
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      return res.sendFile(filePath);
+    const normalized = path.normalize(filePath);
+    const isContained = normalized.startsWith(publicUploadsRoot + path.sep) || normalized.startsWith(uploadsRoot + path.sep);
+    if (isContained && fs.existsSync(normalized) && fs.statSync(normalized).isFile()) {
+      return res.sendFile(normalized);
     }
   }
   console.warn(`[Upload Fallback] File not found on disk for URL: ${req.url}`);
@@ -124,7 +129,7 @@ import { getPublicWebsitePageBySlug } from './controllers/websitePageController.
 app.use(['/api/auth', '/auth'], authRoutes);
 app.use(['/api/admin', '/admin'], adminRoutes);
 app.use(['/api/users', '/users'], apiRateLimiter, userRoutes);
-app.use(['/api/subscriptions', '/subscriptions'], apiRateLimiter, userRoutes);
+app.use(['/api/subscriptions', '/subscriptions'], apiRateLimiter, subscriptionRouter);
 app.use(['/api/matches', '/matches'], apiRateLimiter, matchRoutes);
 app.use(['/api/messages', '/messages'], apiRateLimiter, messageRoutes);
 app.use(['/api/support', '/support'], supportRoutes);

@@ -481,10 +481,16 @@ const ChatListPage = () => {
 
     const loadData = useCallback(async () => {
         const myId = getMyId();
-        const [matchesRes, conversationsRes] = await Promise.all([
-            apiClient.get('/matches'),
-            apiClient.get(`/messages/conversations${buildConversationsQuery(filters)}`),
-        ]);
+        let matchesRes = { ok: false, data: null };
+        let conversationsRes = { ok: false, data: null };
+        try {
+            [matchesRes, conversationsRes] = await Promise.all([
+                apiClient.get('/matches'),
+                apiClient.get(`/messages/conversations${buildConversationsQuery(filters)}`),
+            ]);
+        } catch {
+            // Network failure — fall through and stop the loading spinner below.
+        }
 
         if (matchesRes.ok && matchesRes.data.success) {
             setMatches(

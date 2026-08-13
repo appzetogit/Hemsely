@@ -13,13 +13,11 @@ try {
   // Ignore if custom DNS servers cannot be set in environment
 }
 
-const directAtlasUri = 'mongodb://hemselyapp_db_user:cEzwTAX8OnFvBCLf@ac-qhxacfg-shard-00-00.2nsi8wq.mongodb.net:27017,ac-qhxacfg-shard-00-01.2nsi8wq.mongodb.net:27017,ac-qhxacfg-shard-00-02.2nsi8wq.mongodb.net:27017/hemsely?ssl=true&authSource=admin';
-
 const connectDB = async () => {
   const primaryUri = process.env.MONGODB_URI;
   const fallbackUri = process.env.MONGODB_FALLBACK_URI || process.env.MONGODB_LOCAL_URI || 'mongodb://127.0.0.1:27017/hemsely';
 
-  const urisToTry = [primaryUri, directAtlasUri, fallbackUri].filter(Boolean);
+  const urisToTry = [primaryUri, fallbackUri].filter(Boolean);
 
   for (const uri of urisToTry) {
     try {

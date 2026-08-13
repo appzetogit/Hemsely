@@ -45,7 +45,11 @@ export async function compressImage(inputBuffer, opts = {}) {
       extension: outputExt,
     };
   } catch (err) {
-    console.error('❌ Sharp Error: Falling back to raw buffer:', err.message);
-    return { buffer: inputBuffer, originalSize, compressedSize: originalSize, mimeType: 'application/octet-stream', extension: 'jpg' };
+    // Never fall back to storing the raw, undecoded buffer — if sharp can't decode
+    // it as an image, it isn't one (regardless of what the client's mimetype header
+    // claimed), and writing it to disk under an image extension risks storing an
+    // HTML/SVG polyglot that later gets served back as static content.
+    console.error('❌ Sharp Error: rejecting file that could not be decoded as an image:', err.message);
+    throw new Error('File could not be processed as a valid image');
   }
 }

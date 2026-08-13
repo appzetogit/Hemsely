@@ -47,8 +47,10 @@ const DashboardPage = () => {
 
     const handleResetMatches = async () => {
         if (!window.confirm('Are you sure you want to reset all active matches & likes? Users will be able to swipe & match again.')) return;
+        const typed = window.prompt('This cannot be undone. Type RESET MATCHES to confirm:');
+        if (typed !== 'RESET MATCHES') return;
         setResettingMatches(true);
-        const res = await adminApi.delete('/admin/dashboard/reset-matches');
+        const res = await adminApi.delete('/admin/dashboard/reset-matches', { body: JSON.stringify({ confirm: typed }) });
         if (res.ok && res.data.success) {
             setStats((prev) => prev ? { ...prev, activeMatches: 0 } : prev);
             alert('All active matches & likes reset successfully!');

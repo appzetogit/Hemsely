@@ -4,7 +4,6 @@ import AdminSidebar from './AdminSidebar';
 import adminApi from '../services/adminApi';
 import { Menu, Bell, User, LogOut } from 'lucide-react';
 
-const ADMIN_TOKEN_KEY = 'amora_admin_token';
 const ADMIN_SESSION_KEY = 'amora_admin_session:v1';
 
 const AdminLayout = () => {
@@ -27,8 +26,7 @@ const AdminLayout = () => {
     }, [location.pathname]);
 
     useEffect(() => {
-        const token = localStorage.getItem(ADMIN_TOKEN_KEY);
-        if (!token) {
+        if (!sessionStorage.getItem(ADMIN_SESSION_KEY)) {
             navigate('/admin/login', { replace: true });
             return;
         }
@@ -41,7 +39,7 @@ const AdminLayout = () => {
                     setCheckingAuth(false);
                 } else if (status === 401 || status === 403) {
                     // Genuinely unauthenticated/unauthorized - clear the stale session and send them to login.
-                    localStorage.removeItem(ADMIN_TOKEN_KEY);
+                    sessionStorage.removeItem(ADMIN_SESSION_KEY);
                     navigate('/admin/login', { replace: true });
                 } else {
                     // A transient failure (network hiccup, 500, etc.) shouldn't force-logout an
@@ -78,7 +76,6 @@ const AdminLayout = () => {
         } catch {
             // Clearing the local session is what actually matters here.
         }
-        localStorage.removeItem(ADMIN_TOKEN_KEY);
         sessionStorage.removeItem(ADMIN_SESSION_KEY);
         navigate('/admin/login', { replace: true });
     };

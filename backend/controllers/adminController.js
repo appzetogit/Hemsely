@@ -4,6 +4,8 @@ import { logAdminAction } from '../utils/auditLog.js';
 import { releaseFromQueue, getQueueAdminSnapshot } from '../utils/queueService.js';
 import { escapeRegex } from '../utils/regexUtils.js';
 import { stripAllHtml } from '../utils/sanitize.js';
+import { cascadeDeleteUserData } from '../utils/userCleanup.js';
+import { disconnectUser } from '../socket/index.js';
 
 // @desc Get paginated users for moderation
 // @route GET /api/admin/users
@@ -88,6 +90,7 @@ export const banUser = asyncHandler(async (req, res) => {
   user.isActive = false;
 
   await user.save();
+  disconnectUser(user._id);
 
   await logAdminAction({
     adminId: req.admin.id,
@@ -209,6 +212,7 @@ export const updateUserByAdmin = asyncHandler(async (req, res) => {
       user.bannedAt = new Date();
       user.bannedBy = req.admin.id;
       user.isActive = false;
+      disconnectUser(user._id);
     } else {
       user.banReason = '';
       user.bannedAt = null;
@@ -249,6 +253,7 @@ export const deleteUserByAdmin = asyncHandler(async (req, res) => {
   }
 
   await user.deleteOne();
+  await cascadeDeleteUserData(req.params.id);
 
   await logAdminAction({
     adminId: req.admin.id,

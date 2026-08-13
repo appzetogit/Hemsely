@@ -55,4 +55,16 @@ router.post('/:id/block/:blockedUserId', protect, mongoIdParam('id'), mongoIdPar
 router.post('/:id/unblock/:blockedUserId', protect, mongoIdParam('id'), mongoIdParam('blockedUserId'), validate, unblockUser);
 router.post('/:id/report/:reportedUserId', protect, mongoIdParam('id'), mongoIdParam('reportedUserId'), validate, reportUser);
 
+// Subscription/boost-only routes, mounted separately at /api/subscriptions so that
+// mount doesn't also expose the full user-management API (profile CRUD, uploads,
+// block/report, account deletion) under an unrelated path.
+export const subscriptionRouter = express.Router();
+subscriptionRouter.get('/boost-plans', protect, getBoostPlans);
+subscriptionRouter.post('/subscribe/create-order', protect, createRazorpayOrder);
+subscriptionRouter.post('/subscribe/verify', protect, verifyRazorpayPayment);
+subscriptionRouter.post('/create-order', protect, createRazorpayOrder);
+subscriptionRouter.post('/verify-payment', protect, verifyRazorpayPayment);
+subscriptionRouter.post('/boost/create-order', protect, createBoostOrder);
+subscriptionRouter.post('/boost/verify', protect, verifyBoostPayment);
+
 export default router;

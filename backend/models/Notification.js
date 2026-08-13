@@ -48,14 +48,15 @@ const notificationSchema = new mongoose.Schema(
       type: String,
       default: 'broadcast',
     },
-    isRead: {
-      type: Boolean,
-      default: false,
-    },
-    readAt: {
-      type: Date,
-      default: null,
-    },
+    // Per-user read state. A broadcast/segment notification is one shared document
+    // read by many users, so "read" can't be a single boolean on the doc itself —
+    // that would mark it read for every recipient the moment any one of them opens it.
+    readBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},

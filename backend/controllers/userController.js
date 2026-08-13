@@ -12,6 +12,8 @@ import { haversineKm, EARTH_RADIUS_KM } from '../utils/geoService.js';
 import { stripAllHtml } from '../utils/sanitize.js';
 import { generateOtpCode, getOtpExpiry, isOtpValid, lastTenDigits } from '../utils/otpService.js';
 import { compareFacesWithAWS } from '../services/awsRekognitionService.js';
+import { escapeRegex } from '../utils/regexUtils.js';
+import { cascadeDeleteUserData } from '../utils/userCleanup.js';
 
 
 // @desc Get the current user's gender-ratio queue status
@@ -171,7 +173,10 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
     }));
   }
 
-  if (updates.firstName || req.body.isProfileComplete !== undefined || req.body.gender || req.body.interests) {
+  // Completing onboarding (name/gender/interests present) always marks the profile
+  // complete. Otherwise respect whatever isProfileComplete value the client sent —
+  // it must be possible to explicitly set it back to false (e.g. pause/reset flows).
+  if (updates.firstName || req.body.gender || req.body.interests) {
     updates.isProfileComplete = true;
   }
 
@@ -578,12 +583,65 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // If current user has gender preference, filter by it
-  if (Array.isArray(currentUser.interestedIn) && currentUser.interestedIn.length > 0) {
+  // If client specified explicit gender preference in query, use it; otherwise fallback to profile setting
+  const targetInterest = (req.query.interestedIn && req.query.interestedIn !== 'both')
+    ? req.query.interestedIn.toLowerCase()
+    : null;
+
+  if (targetInterest) {
+    query.gender = targetInterest;
+  } else if (Array.isArray(currentUser.interestedIn) && currentUser.interestedIn.length > 0 && !currentUser.interestedIn.includes('both')) {
     query.gender = { $in: currentUser.interestedIn };
   }
 
-  const [myLng, myLat] = currentUser.location?.coordinates?.coordinates || [0, 0];
+  // Age Filter: apply client requested age range or fallback to maxAgeGapYears
+  const reqMinAge = req.query.minAge ? parseInt(req.query.minAge, 10) : null;
+  const reqMaxAge = req.query.maxAge ? parseInt(req.query.maxAge, 10) : null;
+
+  if (reqMinAge || reqMaxAge) {
+    const ageBounds = {};
+    if (reqMinAge) ageBounds.$gte = reqMinAge;
+    if (reqMaxAge) ageBounds.$lte = reqMaxAge;
+    const clientAgeFilter = {
+      $or: [
+        { age: ageBounds },
+        { age: { $exists: false } },
+        { age: null },
+      ],
+    };
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, clientAgeFilter];
+      delete query.$or;
+    } else {
+      query.$or = clientAgeFilter.$or;
+    }
+  } else if (currentUser.age && config.maxAgeGapYears) {
+    const minAge = Math.max(18, currentUser.age - config.maxAgeGapYears);
+    const maxAge = currentUser.age + config.maxAgeGapYears;
+    const ageFilter = {
+      $or: [
+        { age: { $gte: minAge, $lte: maxAge } },
+        { age: { $exists: false } },
+        { age: null },
+      ],
+    };
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, ageFilter];
+      delete query.$or;
+    } else {
+      query.$or = ageFilter.$or;
+    }
+  }
+
+  let [myLng, myLat] = currentUser.location?.coordinates?.coordinates || [0, 0];
+  if (req.query.lng && req.query.lat) {
+    const qLng = parseFloat(req.query.lng);
+    const qLat = parseFloat(req.query.lat);
+    if (!isNaN(qLng) && !isNaN(qLat) && (qLng !== 0 || qLat !== 0)) {
+      myLng = qLng;
+      myLat = qLat;
+    }
+  }
   const myLocationKnown = myLng !== 0 || myLat !== 0;
 
   // Distance pre-filter: only apply strict geo radius limit when explicitly requested by client via distanceKm query parameter
@@ -595,12 +653,34 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
     query['location.coordinates.coordinates'] = { $ne: [0, 0] };
   }
 
+  // Premium Advanced Matching Criteria Filters (Only enforced if current user is Premium)
+  const isPremiumUser = Boolean(currentUser.isPremium || currentUser.isSuperUser || currentUser.isSuperSubscriber);
+  if (isPremiumUser) {
+    if (req.query.relationshipGoal && req.query.relationshipGoal.toLowerCase() !== 'any') {
+      query.relationshipGoal = { $regex: new RegExp(escapeRegex(req.query.relationshipGoal.trim()), 'i') };
+    }
+    if (req.query.religion && req.query.religion.toLowerCase() !== 'any') {
+      query.religion = { $regex: new RegExp(escapeRegex(req.query.religion.trim()), 'i') };
+    }
+    if (req.query.education && req.query.education.toLowerCase() !== 'any') {
+      query.education = { $regex: new RegExp(escapeRegex(req.query.education.trim()), 'i') };
+    }
+    if (req.query.drinkingStatus && req.query.drinkingStatus.toLowerCase() !== 'any') {
+      query.drinkingStatus = { $regex: new RegExp(escapeRegex(req.query.drinkingStatus.trim()), 'i') };
+    }
+    if (req.query.smokingStatus && req.query.smokingStatus.toLowerCase() !== 'any') {
+      query.smokingStatus = { $regex: new RegExp(escapeRegex(req.query.smokingStatus.trim()), 'i') };
+    }
+  }
+
   // Rank within a bounded candidate pool (Super User > Premium+Verified > Verified >
   // Premium tier, plus online status and average time-spent) rather than natural
   // DB order, then paginate the already-ranked list.
+  // ponytail: candidates beyond this pool size never surface for a given filter set;
+  // upgrade to real skip-based DB pagination if the eligible pool regularly exceeds it.
   const CANDIDATE_POOL_SIZE = 200;
   const [candidates, totalCount] = await Promise.all([
-    User.find(query).limit(CANDIDATE_POOL_SIZE).lean(),
+    User.find(query).sort({ _id: 1 }).limit(CANDIDATE_POOL_SIZE).lean(),
     User.countDocuments(query),
   ]);
 
@@ -794,14 +874,7 @@ export const deleteUserProfile = asyncHandler(async (req, res, next) => {
   }
 
   await User.findByIdAndDelete(req.params.id);
-
-  // Cascade cleanup: remove the deleted user's likes, matches, and messages
-  // so downstream populate() calls never resolve a null user reference.
-  await Promise.all([
-    Like.deleteMany({ $or: [{ likedBy: req.params.id }, { likedUser: req.params.id }] }),
-    Match.deleteMany({ $or: [{ user1: req.params.id }, { user2: req.params.id }] }),
-    Message.deleteMany({ $or: [{ sender: req.params.id }, { receiver: req.params.id }] }),
-  ]);
+  await cascadeDeleteUserData(req.params.id);
 
   res.status(200).json({
     success: true,

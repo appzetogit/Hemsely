@@ -1,9 +1,12 @@
 import adminModule from 'firebase-admin';
+import { getMessaging } from 'firebase-admin/messaging';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
 import { ensureFirebaseAdminApp } from '../config/firebaseAdminInit.js';
 
-const admin = adminModule?.credential ? adminModule : (adminModule?.default || adminModule);
+// firebase-admin v14's default export is flat and has no `.apps` array — use
+// getApps() instead (see config/firebaseAdminInit.js for the same fix).
+const admin = adminModule.default || adminModule;
 
 let fcmInitialized = false;
 
@@ -11,7 +14,7 @@ let fcmInitialized = false;
  * Initialize Firebase Admin default app for FCM
  */
 export function initializeFcm() {
-  if (fcmInitialized && Array.isArray(admin?.apps) && admin.apps.length > 0) return true;
+  if (fcmInitialized && admin.getApps().length > 0) return true;
   const ok = ensureFirebaseAdminApp();
   if (ok) {
     fcmInitialized = true;
@@ -195,7 +198,7 @@ export async function sendNotification(tokens, notification, data = {}) {
   try {
     console.log(`📤 [FCM] Sending notification: "${notificationObj.title}" - "${notificationObj.body}" to ${tokenArray.length} token(s)`);
 
-    const messaging = admin.messaging();
+    const messaging = getMessaging();
     const sendFn =
       typeof messaging.sendEachForMulticast === 'function'
         ? messaging.sendEachForMulticast.bind(messaging)

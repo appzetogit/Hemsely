@@ -189,7 +189,7 @@ describe('End-to-End Notification System (Admin & User APIs)', () => {
       expect(res.body.success).toBe(false);
 
       const unchanged = await Notification.findById(notif._id);
-      expect(unchanged.isRead).toBe(false);
+      expect(unchanged.readBy || []).toHaveLength(0);
     });
 
     it('PATCH /api/notifications/read-all marks all notifications as read', async () => {

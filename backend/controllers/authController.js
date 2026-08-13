@@ -350,7 +350,7 @@ export const refreshAccessToken = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET || 'secret');
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
     if (!user || user.isBanned) {

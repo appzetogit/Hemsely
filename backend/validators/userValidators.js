@@ -6,7 +6,17 @@ export const mongoIdParam = (name) =>
     .withMessage(`Invalid ${name}`);
 
 export const discoveryFeedQueryValidator = [
-  query('distanceKm').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('distanceKm').optional().isInt({ min: 1, max: 500 }).toInt(),
+  query('minAge').optional().isInt({ min: 18, max: 120 }).toInt(),
+  query('maxAge').optional().isInt({ min: 18, max: 120 }).toInt(),
+  query('lat').optional().isFloat({ min: -90, max: 90 }).toFloat(),
+  query('lng').optional().isFloat({ min: -180, max: 180 }).toFloat(),
+  query('interestedIn').optional().isString().trim(),
+  query('relationshipGoal').optional().isString().trim(),
+  query('religion').optional().isString().trim(),
+  query('education').optional().isString().trim(),
+  query('drinkingStatus').optional().isString().trim(),
+  query('smokingStatus').optional().isString().trim(),
 ];
 
 export const updateProfileValidator = [

@@ -103,6 +103,17 @@ export const resetMatches = asyncHandler(async (req, res) => {
     });
   }
 
+  // This wipes matches/likes platform-wide and is irreversible, so a client-side
+  // confirm() alone isn't enough — require a typed confirmation server-side too,
+  // so a replayed/scripted request can't trigger it without a human deliberately
+  // typing the phrase.
+  if (req.body?.confirm !== 'RESET MATCHES') {
+    return res.status(400).json({
+      success: false,
+      message: 'Type "RESET MATCHES" to confirm this irreversible action.',
+    });
+  }
+
   const [matchResult, likeResult] = await Promise.all([
     Match.deleteMany({}),
     Like.deleteMany({}),

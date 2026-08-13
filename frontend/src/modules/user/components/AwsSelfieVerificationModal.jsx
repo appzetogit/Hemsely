@@ -294,10 +294,9 @@ const AwsSelfieVerificationModal = ({ isOpen, onClose, onVerificationSuccess }) 
             clearTimeout(timer2);
             setScanProgress(100);
             setResult({
-                success: true,
+                success: false,
                 verified: false,
-                pending: true,
-                message: 'Your selfie has been submitted for manual admin verification and is currently under review.',
+                message: 'Could not submit your selfie — check your connection and try again.',
             });
         } finally {
             setIsSubmitting(false);

@@ -242,9 +242,15 @@ const EditProfilePage = () => {
 
     const handleRemoveGalleryImage = async (imageId) => {
         if (!userId) return;
-        const { data, ok } = await apiClient.delete(`/users/${userId}/gallery/${imageId}`);
-        if (ok && data.success) {
-            updateField('galleryImages', data.user.galleryImages);
+        try {
+            const { data, ok } = await apiClient.delete(`/users/${userId}/gallery/${imageId}`);
+            if (ok && data.success) {
+                updateField('galleryImages', data.user.galleryImages);
+            } else {
+                setError(data?.message || 'Could not remove photo. Please try again.');
+            }
+        } catch {
+            setError('Could not remove photo. Please check your connection and try again.');
         }
     };
 
@@ -259,7 +265,7 @@ const EditProfilePage = () => {
             interests: form.interests,
             education: form.education === 'Not specified' ? '' : form.education,
             religion: form.religion === 'Not specified' ? '' : form.religion,
-            languages: form.languages === 'Not specified' ? '' : form.languages,
+            languages: form.languages === 'Not specified' || !form.languages ? [] : [form.languages],
             relationshipGoal: form.relationshipGoal === 'Not specified' ? '' : form.relationshipGoal,
             drinkingStatus: form.drinkingStatus === 'Not specified' ? '' : form.drinkingStatus,
             smokingStatus: form.smokingStatus === 'Not specified' ? '' : form.smokingStatus,
@@ -617,7 +623,7 @@ const EditProfilePage = () => {
                 <section className="mt-5">
                     <div className="flex items-center gap-1.5 mb-2.5 px-0.5">
                         <h3 className="font-bold text-[15px] text-gray-900">Questions</h3>
-                        <span className="text-gray-400 text-[11.5px] font-medium">( 2 Answers Mandatory )</span>
+                        <span className="text-gray-400 text-[11.5px] font-medium">( Answer at least 2 to stand out )</span>
                     </div>
 
                     <div className="flex flex-col gap-2.5">

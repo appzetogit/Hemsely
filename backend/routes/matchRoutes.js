@@ -16,8 +16,8 @@ import { userIdParamValidator, matchIdParamValidator } from '../validators/match
 const router = express.Router();
 
 router.post('/like/:userId', protect, userIdParamValidator, validate, likeUser);
-router.post('/unmatch/:userId', protect, unmatchUser);
-router.delete('/unmatch/:userId', protect, unmatchUser);
+router.post('/unmatch/:userId', protect, userIdParamValidator, validate, unmatchUser);
+router.delete('/unmatch/:userId', protect, userIdParamValidator, validate, unmatchUser);
 router.delete('/unlike/:userId', protect, userIdParamValidator, validate, unlikeUser);
 router.get('/', protect, getMatches);
 router.get('/likes/received', protect, getLikesReceived);

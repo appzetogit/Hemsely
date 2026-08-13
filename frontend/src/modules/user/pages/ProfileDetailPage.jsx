@@ -12,9 +12,9 @@ import drinkIcon from '../assets/icons/drink.png';
 import smokeIcon from '../assets/icons/cigratee.png';
 import studyIcon from '../assets/icons/study.png';
 
-const Chip = ({ icon, label }) => (
+const Chip = ({ icon, iconSvg, label }) => (
     <div className="flex items-center px-3 py-1.5 rounded-full border border-[#6F3BCE42] bg-[#F9F7FF] shadow-sm">
-        {icon && <img src={icon} className="w-3.5 h-3.5 mr-2 object-contain" alt="" />}
+        {iconSvg || (icon && <img src={icon} className="w-3.5 h-3.5 mr-2 object-contain" alt="" />)}
         <span className="text-[12px] font-medium text-black">{label}</span>
     </div>
 );

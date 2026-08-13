@@ -4,15 +4,20 @@ import connectDB from '../config/database.js';
 import Admin from '../models/Admin.js';
 
 const SEED_ADMIN = {
-  username: 'ajaypanchal',
-  email: 'panchalajay717@gmail.com',
-  password: '123456',
-  firstName: 'Ajay',
-  lastName: 'Panchal',
+  username: process.env.SEED_ADMIN_USERNAME || 'ajaypanchal',
+  email: process.env.SEED_ADMIN_EMAIL || 'panchalajay717@gmail.com',
+  password: process.env.SEED_ADMIN_PASSWORD,
+  firstName: process.env.SEED_ADMIN_FIRST_NAME || 'Ajay',
+  lastName: process.env.SEED_ADMIN_LAST_NAME || 'Panchal',
   role: 'superadmin',
 };
 
 const run = async () => {
+  if (!SEED_ADMIN.password) {
+    console.error('❌ Set SEED_ADMIN_PASSWORD before running this script (no default password is provided).');
+    process.exit(1);
+  }
+
   await connectDB();
 
   const existing = await Admin.findOne({ email: SEED_ADMIN.email });

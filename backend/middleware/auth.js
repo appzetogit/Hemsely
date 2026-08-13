@@ -57,16 +57,18 @@ export const adminProtect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (decoded.role !== 'admin' && decoded.role !== 'superadmin') {
-      return res.status(403).json({ success: false, message: 'Admin access required' });
-    }
-
-    const admin = await Admin.findById(decoded.id).select('isActive');
+    // Re-fetch the current role/active status from the DB on every request instead
+    // of trusting the JWT's role claim — otherwise a demoted/deactivated admin keeps
+    // their old privileges until the token expires (up to JWT_EXPIRY, default 30d).
+    const admin = await Admin.findById(decoded.id).select('role isActive');
     if (!admin || admin.isActive === false) {
       return res.status(403).json({ success: false, message: 'Admin account is inactive' });
     }
+    if (admin.role !== 'admin' && admin.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
 
-    req.admin = decoded;
+    req.admin = { ...decoded, role: admin.role };
     next();
   } catch (error) {
     return res.status(401).json({ success: false, message: 'Admin access required' });

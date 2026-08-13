@@ -74,6 +74,9 @@ ticketSchema.pre('save', async function (next) {
   next();
 });
 
+// Covers the admin ticket list, which filters by status and always sorts by createdAt.
+ticketSchema.index({ status: 1, createdAt: -1 });
+
 const Ticket = mongoose.model('Ticket', ticketSchema);
 
 export default Ticket;

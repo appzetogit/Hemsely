@@ -42,9 +42,16 @@ describe('DELETE /api/admin/dashboard/reset-matches (superadmin-only regression)
     const userB = await User.create({ phoneNumber: '+919876500013', firstName: 'B', isProfileComplete: true });
     await Match.create({ user1: userA._id, user2: userB._id, initiatedBy: userA._id, status: 'accepted' });
 
-    const res = await request(app)
+    const rejected = await request(app)
       .delete('/api/admin/dashboard/reset-matches')
       .set('Authorization', `Bearer ${token}`);
+    expect(rejected.status).toBe(400);
+    expect(await Match.countDocuments({})).toBe(1);
+
+    const res = await request(app)
+      .delete('/api/admin/dashboard/reset-matches')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ confirm: 'RESET MATCHES' });
 
     expect(res.status).toBe(200);
     expect(await Match.countDocuments({})).toBe(0);

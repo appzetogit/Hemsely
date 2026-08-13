@@ -259,6 +259,10 @@ userSchema.pre('save', async function (next) {
 // Index for geospatial queries
 userSchema.index({ 'location.coordinates': '2dsphere' });
 
+// Covers the discovery-feed and access-queue filters, which otherwise full-scan
+// the whole collection on every request (isBanned/isActive/isPaused/gender/age).
+userSchema.index({ isBanned: 1, isActive: 1, isPaused: 1, gender: 1, age: 1 });
+
 // Method to compare password
 userSchema.methods.matchPassword = async function (enteredPassword) {
   if (!this.password) return false;

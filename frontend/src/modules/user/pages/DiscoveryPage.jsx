@@ -58,14 +58,51 @@ const toProfileCardShape = (user) => {
     };
 };
 
-const DEFAULT_FILTERS = { distanceKm: 100 };
+const DEFAULT_FILTERS = {
+    interestedIn: 'Both',
+    distanceKm: 100,
+    minAge: 18,
+    maxAge: 60,
+    relationshipGoal: 'any',
+    religion: 'any',
+    education: 'any',
+    drinkingStatus: 'any',
+    smokingStatus: 'any',
+};
 
-// Builds the /users/discovery querystring; distanceKm is only appended when
-// it diverges from the no-op default, matching the ChatListPage filter convention.
+// Builds the /users/discovery querystring with basic and advanced filter parameters
 const buildDiscoveryQuery = (pageToLoad, filters) => {
     const params = new URLSearchParams({ page: pageToLoad, limit: 20 });
-    if (filters.distanceKm !== DEFAULT_FILTERS.distanceKm) {
+    if (filters.interestedIn && filters.interestedIn.toLowerCase() !== 'both') {
+        params.set('interestedIn', filters.interestedIn);
+    }
+    if (filters.distanceKm && filters.distanceKm !== 100) {
         params.set('distanceKm', filters.distanceKm);
+    }
+    if (filters.minAge && filters.minAge !== 18) {
+        params.set('minAge', filters.minAge);
+    }
+    if (filters.maxAge && filters.maxAge !== 60) {
+        params.set('maxAge', filters.maxAge);
+    }
+    if (filters.lat && filters.lng) {
+        params.set('lat', filters.lat);
+        params.set('lng', filters.lng);
+    }
+    if (filters.relationshipGoal && filters.relationshipGoal !== 'any') {
+        params.set('relationshipGoal', filters.relationshipGoal);
+    }
+    if (filters.religion && filters.religion !== 'any') {
+        params.set('religion', filters.religion);
+    }
+    if (filters.education && filters.education !== 'any') {
+        params.set('education', filters.education);
+    }
+    if (filters.drinkingStatus && filters.drinkingStatus !== 'any') {
+        params.set('drinkingStatus', filters.drinkingStatus);
+    }
+    if (filters.smokingStatus && filters.smokingStatus !== 'any') {
+        params.set('smokingStatus', filters.smokingStatus);
     }
     return params.toString();
 };
@@ -104,6 +141,14 @@ const DiscoveryPage = () => {
             return false;
         }
     });
+    const [isPremium, setIsPremium] = useState(() => {
+        try {
+            const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+            return Boolean(u.isPremium || u.isSuperUser || u.isSuperSubscriber);
+        } catch {
+            return false;
+        }
+    });
     const [selfieStatus, setSelfieStatus] = useState(() => {
         try {
             const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
@@ -115,7 +160,18 @@ const DiscoveryPage = () => {
     const [rejectionReason, setRejectionReason] = useState('');
     const [checkingStatus, setCheckingStatus] = useState(false);
 
-    const hasActiveFilter = filters.distanceKm !== DEFAULT_FILTERS.distanceKm;
+    const hasActiveFilter = Boolean(
+        (filters.interestedIn && filters.interestedIn.toLowerCase() !== 'both') ||
+        (filters.distanceKm && filters.distanceKm !== 100) ||
+        (filters.minAge && filters.minAge !== 18) ||
+        (filters.maxAge && filters.maxAge !== 60) ||
+        (filters.lat && filters.lng) ||
+        (filters.relationshipGoal && filters.relationshipGoal !== 'any') ||
+        (filters.religion && filters.religion !== 'any') ||
+        (filters.education && filters.education !== 'any') ||
+        (filters.drinkingStatus && filters.drinkingStatus !== 'any') ||
+        (filters.smokingStatus && filters.smokingStatus !== 'any')
+    );
     const isProfileComplete = getStored('profile_complete', false);
 
     const refreshUserVerificationStatus = async () => {
@@ -124,7 +180,9 @@ const DiscoveryPage = () => {
             const { ok, data } = await apiClient.get('/users/me');
             if (ok && data?.user) {
                 const verified = Boolean(data.user.isVerified || data.user.selfieStatus === 'approved');
+                const prem = Boolean(data.user.isPremium || data.user.isSuperUser || data.user.isSuperSubscriber);
                 setIsUserVerified(verified);
+                setIsPremium(prem);
                 setSelfieStatus(data.user.selfieStatus || (verified ? 'approved' : 'not_submitted'));
                 setRejectionReason(data.user.selfieRejectionReason || '');
                 const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -160,6 +218,8 @@ const DiscoveryPage = () => {
     }, []);
 
     const [swipedIds, setSwipedIds] = useState(new Set());
+    const swipedIdsRef = useRef(swipedIds);
+    swipedIdsRef.current = swipedIds;
     const [dragOffset, setDragOffset] = useState(0);
     const [isExiting, setIsExiting] = useState(false);
     const [exitDir, setExitDir] = useState(null);
@@ -173,7 +233,7 @@ const DiscoveryPage = () => {
             setProfiles((prev) => {
                 const existingIds = new Set(prev.map((p) => String(p.id)));
                 const newItems = data.users
-                    .filter((u) => !existingIds.has(String(u._id)) && !swipedIds.has(String(u._id)))
+                    .filter((u) => !existingIds.has(String(u._id)) && !swipedIdsRef.current.has(String(u._id)))
                     .map(toProfileCardShape);
                 return [...prev, ...newItems];
             });
@@ -184,7 +244,7 @@ const DiscoveryPage = () => {
         } else {
             setHasMore(false);
         }
-    }, [filters, swipedIds]);
+    }, [filters]);
 
     const handleApplyFilters = (newFilters) => {
         setFilters(newFilters);
@@ -221,7 +281,7 @@ const DiscoveryPage = () => {
     };
 
     const handleLike = async () => {
-        if (!profile) return;
+        if (!profile || isExiting) return;
         if (!isProfileComplete) { setShowIncomplete(true); return; }
 
         setSwipedIds((prev) => new Set(prev).add(profile.id));
@@ -245,7 +305,7 @@ const DiscoveryPage = () => {
     };
 
     const handleReject = () => {
-        if (!profile) return;
+        if (!profile || isExiting) return;
         if (!isProfileComplete) { setShowIncomplete(true); return; }
         setSwipedIds((prev) => new Set(prev).add(profile.id));
         setPassesCount((c) => c + 1);
@@ -469,6 +529,7 @@ const DiscoveryPage = () => {
                     onApply={handleApplyFilters}
                     onClose={() => setShowFilter(false)}
                     onUnlockPremium={() => { setShowFilter(false); navigate('/premium'); }}
+                    isPremium={isPremium}
                 />
             )}
 

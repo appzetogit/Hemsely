@@ -1,22 +1,19 @@
 import { API_BASE_URL, resolveUploadsUrls } from '../../../shared/services/apiClient';
 
-const ADMIN_TOKEN_KEY = 'amora_admin_token';
-
 const request = async (endpoint, options = {}) => {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
     const headers = {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers || {}),
     };
 
+    // Auth is carried by the httpOnly adminToken cookie (credentials: 'include') —
+    // never duplicate it into localStorage, which an XSS could read directly.
     const response = await fetch(url, { ...options, headers, credentials: 'include' });
 
     if (response.status === 401) {
-        localStorage.removeItem(ADMIN_TOKEN_KEY);
         sessionStorage.removeItem('amora_admin_session:v1');
         if (!window.location.pathname.startsWith('/admin/login')) {
             window.location.href = '/admin/login';

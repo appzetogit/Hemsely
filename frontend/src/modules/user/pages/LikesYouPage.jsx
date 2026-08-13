@@ -83,6 +83,7 @@ const LikesYouPage = () => {
     const [likesAreQueued, setLikesAreQueued] = useState(false);
     const [likesData, setLikesData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filters, setFilters] = useState(null);
 
     const [isPremium, setIsPremium] = useState(() => {
         try {
@@ -125,26 +126,31 @@ const LikesYouPage = () => {
                 }
             } catch {}
 
-            const { data, ok } = await apiClient.get('/matches/likes/received');
-            if (!cancelled && ok && data.success) {
-                setLikesAreQueued(!!data.queued);
-                setLikesData(
-                    data.likes
-                        .filter((like) => like.likedBy)
-                        .map((like) => ({
-                            id: like.likedBy._id,
-                            name: like.likedBy.firstName || 'User',
-                            age: like.likedBy.age || '',
-                            photo: like.likedBy.profilePicture || demoPhoto,
-                        }))
-                );
-            }
+            try {
+                const { data, ok } = await apiClient.get('/matches/likes/received');
+                if (!cancelled && ok && data.success) {
+                    setLikesAreQueued(!!data.queued);
+                    setLikesData(
+                        data.likes
+                            .filter((like) => like.likedBy)
+                            .map((like) => ({
+                                id: like.likedBy._id,
+                                name: like.likedBy.firstName || 'User',
+                                age: like.likedBy.age || '',
+                                photo: like.likedBy.profilePicture || demoPhoto,
+                            }))
+                    );
+                }
+            } catch {}
             if (!cancelled) setLoading(false);
         })();
         return () => { cancelled = true; };
     }, []);
 
-    const cardsToShow = likesData.length > 0 ? likesData : MOCK_BLURRED_LIKES;
+    const cardsToShow = (likesData.length > 0 ? likesData : MOCK_BLURRED_LIKES).filter((person) => {
+        if (!filters || !person.age) return true;
+        return person.age >= filters.minAge && person.age <= filters.maxAge;
+    });
 
     return (
         <div className="h-[100dvh] flex flex-col max-w-[414px] mx-auto overflow-hidden relative" style={{ background: isPremium ? '#FCFCFC' : '#121212' }}>
@@ -339,8 +345,11 @@ const LikesYouPage = () => {
             {/* Shared Filter Popup */}
             {showFilter && (
                 <DiscoveryFilterPopup
+                    appliedFilters={filters}
+                    onApply={(newFilters) => { setFilters(newFilters); setShowFilter(false); }}
                     onClose={() => setShowFilter(false)}
                     onUnlockPremium={() => { setShowFilter(false); navigate('/premium'); }}
+                    isPremium={isPremium}
                 />
             )}
         </div>

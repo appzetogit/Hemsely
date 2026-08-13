@@ -32,15 +32,20 @@ export const getUserNotifications = asyncHandler(async (req, res) => {
     ],
   };
 
-  const [notifications, totalNotifications, unreadCount] = await Promise.all([
+  const [notificationDocs, totalNotifications, unreadCount] = await Promise.all([
     Notification.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
     Notification.countDocuments(query),
-    Notification.countDocuments({ ...query, isRead: false }),
+    Notification.countDocuments({ ...query, readBy: { $ne: userId } }),
   ]);
+
+  const notifications = notificationDocs.map(({ readBy, ...n }) => ({
+    ...n,
+    isRead: (readBy || []).some((u) => String(u) === String(userId)),
+  }));
 
   return res.status(200).json({
     success: true,
@@ -71,7 +76,7 @@ export const getUnreadCount = asyncHandler(async (req, res) => {
   const isInactive = user.isPaused || user.isActive === false;
 
   const query = {
-    isRead: false,
+    readBy: { $ne: userId },
     $or: [
       { recipientUserId: userId },
       { target: 'all' },
@@ -116,14 +121,12 @@ export const markAsRead = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'Not authorized to modify this notification' });
   }
 
-  notification.isRead = true;
-  notification.readAt = new Date();
-  await notification.save();
+  await Notification.updateOne({ _id: id }, { $addToSet: { readBy: userId } });
 
   return res.status(200).json({
     success: true,
     message: 'Notification marked as read',
-    notification,
+    notification: { ...notification.toObject(), isRead: true },
   });
 });
 
@@ -140,7 +143,7 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
   const isInactive = user?.isPaused || user?.isActive === false;
 
   const query = {
-    isRead: false,
+    readBy: { $ne: userId },
     $or: [
       { recipientUserId: userId },
       { target: 'all' },
@@ -151,7 +154,7 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
   };
 
   await Notification.updateMany(query, {
-    $set: { isRead: true, readAt: new Date() },
+    $addToSet: { readBy: userId },
   });
 
   return res.status(200).json({

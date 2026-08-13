@@ -386,15 +386,19 @@ const ChatScreenPage = () => {
         if (!partnerId) return;
         let cancelled = false;
         (async () => {
-            const { data, ok } = await apiClient.get(`/messages/conversation/${partnerId}`);
-            if (!cancelled && ok && data.success) {
-                setMessages(data.messages);
-                if (data.isUnmatched !== undefined) {
-                    setIsUnmatched(data.isUnmatched);
+            try {
+                const { data, ok } = await apiClient.get(`/messages/conversation/${partnerId}`);
+                if (!cancelled && ok && data.success) {
+                    setMessages(data.messages);
+                    if (data.isUnmatched !== undefined) {
+                        setIsUnmatched(data.isUnmatched);
+                    }
                 }
+                apiClient.put(`/messages/read/${partnerId}`, {}).catch(() => { });
+            } catch {
+                // Network failure — fall through and stop the loading spinner below.
             }
             if (!cancelled) setLoading(false);
-            apiClient.put(`/messages/read/${partnerId}`, {}).catch(() => { });
         })();
         return () => { cancelled = true; };
     }, [partnerId]);
@@ -467,18 +471,27 @@ const ChatScreenPage = () => {
         setMessageText('');
         notifyTyping(false);
 
-        const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, { message: trimmed });
-        if (ok && data.success) {
-            setMessages((prev) => {
-                if (prev.some((m) => String(m._id) === String(data.data._id))) {
-                    return prev;
+        try {
+            const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, { message: trimmed });
+            if (ok && data.success) {
+                setMessages((prev) => {
+                    if (prev.some((m) => String(m._id) === String(data.data._id))) {
+                        return prev;
+                    }
+                    return [...prev, data.data];
+                });
+            } else {
+                if (data?.message?.includes('unmatched')) {
+                    setIsUnmatched(true);
                 }
-                return [...prev, data.data];
-            });
-        } else if (data?.message?.includes('unmatched')) {
-            setIsUnmatched(true);
+                setMessageText(trimmed);
+            }
+        } catch {
+            // Network failure — restore the draft so the message isn't silently lost.
+            setMessageText(trimmed);
+        } finally {
+            setSending(false);
         }
-        setSending(false);
     };
 
     const handleReport = () => {

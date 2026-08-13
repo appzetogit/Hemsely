@@ -2,7 +2,9 @@ import adminModule from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
 
-const admin = adminModule?.credential ? adminModule : (adminModule?.default || adminModule);
+// firebase-admin v14's default export is flat (cert/initializeApp/getApps directly
+// on it) — there is no `.credential` namespace and no `.apps` array anymore.
+const admin = adminModule.default || adminModule;
 
 let cachedServiceAccount = null;
 
@@ -73,7 +75,7 @@ export function loadServiceAccountObject() {
  * Ensures Firebase Admin default app is initialized.
  */
 export function ensureFirebaseAdminApp() {
-  if (Array.isArray(admin?.apps) && admin.apps.length > 0) {
+  if (admin.getApps().length > 0) {
     return true;
   }
 
@@ -87,7 +89,7 @@ export function ensureFirebaseAdminApp() {
     const projectId = sa.project_id || sa.projectId || process.env.FIREBASE_PROJECT_ID || 'hemsely-d2910';
 
     admin.initializeApp({
-      credential: admin.credential.cert(sa),
+      credential: admin.cert(sa),
       projectId,
     });
 

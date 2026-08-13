@@ -91,7 +91,7 @@ router.get('/transactions', adminProtect, getTransactions);
 // Notifications
 router.get('/notifications', adminProtect, getNotifications);
 router.post('/notifications', adminProtect, sendNotificationValidator, validate, sendNotification);
-router.delete('/notifications/:id', adminProtect, deleteNotification);
+router.delete('/notifications/:id', adminProtect, mongoIdParam('id'), validate, deleteNotification);
 
 // App Config
 router.get('/app-config', adminProtect, getAppConfig);

@@ -18,13 +18,11 @@ export function uploadToLocal(buffer, options = {}) {
       let fileExtension = isVideo ? 'mp4' : 'jpg';
 
       if (!isVideo) {
-        try {
-          const compressed = await compressImage(buffer, { folder });
-          finalBuffer = compressed.buffer;
-          fileExtension = compressed.extension;
-        } catch (compErr) {
-          console.warn('⚠️ Compression skipped:', compErr.message);
-        }
+        // No fallback here: if the image can't be decoded/compressed, the upload
+        // must be rejected rather than storing the raw, unverified bytes.
+        const compressed = await compressImage(buffer, { folder });
+        finalBuffer = compressed.buffer;
+        fileExtension = compressed.extension;
       }
 
       // Dynamic path guarantee using absolute directory

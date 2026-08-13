@@ -5,6 +5,11 @@ import app from './app.js';
 import connectDB from './config/database.js';
 import { initSocket } from './socket/index.js';
 
+if (!process.env.JWT_SECRET) {
+  console.error('❌ JWT_SECRET is not set. Refusing to start — tokens would be forgeable.');
+  process.exit(1);
+}
+
 // Connect to database
 connectDB();
 

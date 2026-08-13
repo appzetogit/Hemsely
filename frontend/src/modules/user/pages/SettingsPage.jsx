@@ -4,6 +4,7 @@ import checkMarkIcon from '../assets/icons/tick.png';
 import { deleteUserProfile, requestAccountDeletionOtp, updateUserProfile } from '../services/userApi';
 import apiClient from '../../../shared/services/apiClient';
 import { devError } from '../../../shared/utils/logger';
+import { useAuth } from '../context/AuthContext';
 
 const SectionHeader = ({ title }) => (
     <div style={{ padding: '16px 15px 8px', opacity: 0.7 }}>
@@ -140,6 +141,7 @@ const SettingRow = ({ label, value, subtext, showCheck, showArrow, badge, onClic
 
 const SettingsPage = () => {
     const navigate = useNavigate();
+    const { logout } = useAuth();
     const [isPaused, setIsPaused] = useState(false);
     const [showActiveStatus, setShowActiveStatus] = useState(true);
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -328,7 +330,7 @@ const SettingsPage = () => {
             } catch {
                 // Ignore network errors — clearing local session is what actually matters here.
             }
-            localStorage.clear();
+            logout();
             navigate('/phone-input');
         }
     };

@@ -213,7 +213,7 @@ const AddPhotosPage = () => {
                 </button>
 
                 <p className="text-[12px] text-gray-400 font-normal text-center">
-                    Minimum 5 photos required
+                    At least 1 photo required — add up to 6 to boost your profile
                 </p>
             </div>
         </div>

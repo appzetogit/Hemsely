@@ -29,7 +29,7 @@ export const initSocket = (httpServer) => {
     },
   });
 
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     let token =
       socket.handshake.auth?.token ||
       socket.handshake.headers?.authorization?.split(' ')[1];
@@ -44,6 +44,10 @@ export const initSocket = (httpServer) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id).select('isBanned isActive isPaused');
+      if (!user || user.isBanned || (user.isActive === false && !user.isPaused)) {
+        return next(new Error('Account is banned or inactive'));
+      }
       socket.userId = decoded.id;
       next();
     } catch (err) {
@@ -128,6 +132,13 @@ import AppConfig from '../models/AppConfig.js';
 export const emitToUser = (userId, event, payload) => {
   if (!io || !userId) return;
   io.to(userRoom(userId)).emit(event, payload);
+};
+
+// Force-closes any live sockets a user has open, so a ban takes effect immediately
+// instead of waiting for their token to expire or for them to reconnect.
+export const disconnectUser = (userId) => {
+  if (!io || !userId) return;
+  io.in(userRoom(userId)).disconnectSockets(true);
 };
 
 // Broadcasts real-time maintenance mode toggle to all connected client sockets

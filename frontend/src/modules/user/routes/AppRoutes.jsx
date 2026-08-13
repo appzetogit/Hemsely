@@ -67,13 +67,13 @@ const AppRoutes = () => {
                 <Route path="/login" element={<LoginScreen />} />
                 <Route path="/phone-input" element={<PhoneInputPage />} />
                 <Route path="/verify" element={<VerifyOTPPage />} />
-                <Route path="/profile-details" element={<ProfileDetailsPage />} />
-                <Route path="/gender-select" element={<GenderSelectionPage />} />
-                <Route path="/add-photos" element={<AddPhotosPage />} />
-                <Route path="/enable-location" element={<EnableLocationPage />} />
-                <Route path="/interests" element={<InterestsPage />} />
-                <Route path="/relationship-goals" element={<RelationshipGoalsPage />} />
-                <Route path="/review-profile" element={<ReviewProfilePage />} />
+                <Route path="/profile-details" element={<PrivateRoute><ProfileDetailsPage /></PrivateRoute>} />
+                <Route path="/gender-select" element={<PrivateRoute><GenderSelectionPage /></PrivateRoute>} />
+                <Route path="/add-photos" element={<PrivateRoute><AddPhotosPage /></PrivateRoute>} />
+                <Route path="/enable-location" element={<PrivateRoute><EnableLocationPage /></PrivateRoute>} />
+                <Route path="/interests" element={<PrivateRoute><InterestsPage /></PrivateRoute>} />
+                <Route path="/relationship-goals" element={<PrivateRoute><RelationshipGoalsPage /></PrivateRoute>} />
+                <Route path="/review-profile" element={<PrivateRoute><ReviewProfilePage /></PrivateRoute>} />
                 <Route path="/match-success" element={<MatchSuccessPage />} />
                 <Route path="/profile" element={<PrivateRoute><ProfilePreviewPage /></PrivateRoute>} />
                 <Route path="/profile-preview" element={<PrivateRoute><ProfilePreviewPage /></PrivateRoute>} />

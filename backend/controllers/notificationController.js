@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logAdminAction } from '../utils/auditLog.js';
 import { sendNotification as sendFcmPushNotification } from '../services/fcmService.js';
+import { stripAllHtml } from '../utils/sanitize.js';
 
 /**
  * @desc Create and send push notification to targeted audience with real FCM dispatch
@@ -10,7 +11,8 @@ import { sendNotification as sendFcmPushNotification } from '../services/fcmServ
  * @access Private/Admin
  */
 export const sendNotification = asyncHandler(async (req, res) => {
-  const { title, body, target = 'all', segment = '', targetUsers = [] } = req.body || {};
+  let { title, body } = req.body || {};
+  const { target = 'all', segment = '', targetUsers = [] } = req.body || {};
 
   if (!title || !body) {
     return res.status(400).json({
@@ -18,6 +20,9 @@ export const sendNotification = asyncHandler(async (req, res) => {
       message: 'Title and body are required',
     });
   }
+
+  title = stripAllHtml(title);
+  body = stripAllHtml(body);
 
   // Build target query based on selected audience
   let userQuery = { isBanned: { $ne: true } };
