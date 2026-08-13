@@ -78,20 +78,35 @@ app.get(['/uploads/*', '/api/uploads/*', '/amora/*', '/public/uploads/*'], (req,
 
   const uploadsRoot = path.join(__dirname, 'uploads');
   const publicUploadsRoot = path.join(__dirname, 'public', 'uploads');
+  const filenameOnly = path.basename(cleanPath);
 
   const candidatePaths = [
     path.join(publicUploadsRoot, cleanPath),
     path.join(uploadsRoot, cleanPath),
-    path.join(publicUploadsRoot, 'amora', 'profiles', path.basename(cleanPath)),
-    path.join(publicUploadsRoot, 'amora', 'chats', path.basename(cleanPath)),
-    path.join(publicUploadsRoot, 'amora', 'selfies', path.basename(cleanPath)),
+    path.join(publicUploadsRoot, 'amora', 'profiles', filenameOnly),
+    path.join(publicUploadsRoot, 'amora', 'chats', filenameOnly),
+    path.join(publicUploadsRoot, 'amora', 'selfies', filenameOnly),
+    path.join(uploadsRoot, 'amora', 'profiles', filenameOnly),
+    path.join(uploadsRoot, 'amora', 'chats', filenameOnly),
+    path.join(uploadsRoot, 'amora', 'selfies', filenameOnly),
+    path.join(publicUploadsRoot, filenameOnly),
+    path.join(uploadsRoot, filenameOnly),
   ];
+
+  const resolvedPublicRoot = path.resolve(publicUploadsRoot).toLowerCase();
+  const resolvedUploadsRoot = path.resolve(uploadsRoot).toLowerCase();
 
   for (const filePath of candidatePaths) {
     const normalized = path.normalize(filePath);
-    const isContained = normalized.startsWith(publicUploadsRoot + path.sep) || normalized.startsWith(uploadsRoot + path.sep);
+    const normalizedLower = path.resolve(normalized).toLowerCase();
+    const isContained =
+      normalizedLower.startsWith(resolvedPublicRoot + path.sep.toLowerCase()) ||
+      normalizedLower.startsWith(resolvedUploadsRoot + path.sep.toLowerCase()) ||
+      normalizedLower.startsWith(resolvedPublicRoot) ||
+      normalizedLower.startsWith(resolvedUploadsRoot);
+
     if (isContained && fs.existsSync(normalized) && fs.statSync(normalized).isFile()) {
-      return res.sendFile(normalized);
+      return res.sendFile(path.resolve(normalized));
     }
   }
   console.warn(`[Upload Fallback] File not found on disk for URL: ${req.url}`);
