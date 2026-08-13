@@ -121,30 +121,59 @@ export const getNotifications = asyncHandler(async (req, res) => {
     $or: [{ recipientUserId: null }, { recipientUserId: { $exists: false } }],
   };
 
-  const [notifications, totalNotifications, broadcastCount] = await Promise.all([
-    Notification.find(query)
-      .populate('sentBy', 'firstName lastName username')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Notification.countDocuments(query),
-    Notification.countDocuments({ ...query, target: 'all' }),
-  ]);
+  let notifications = [];
+  let totalNotifications = 0;
+  let broadcastCount = 0;
+
+  try {
+    [notifications, totalNotifications, broadcastCount] = await Promise.all([
+      Notification.find(query)
+        .populate({
+          path: 'sentBy',
+          select: 'firstName lastName username',
+          strictPopulate: false,
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Notification.countDocuments(query),
+      Notification.countDocuments({ ...query, target: 'all' }),
+    ]);
+  } catch (err) {
+    console.warn('⚠️ [getNotifications] Populate fallback triggered:', err.message);
+    [notifications, totalNotifications, broadcastCount] = await Promise.all([
+      Notification.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Notification.countDocuments(query),
+      Notification.countDocuments({ ...query, target: 'all' }),
+    ]);
+  }
+
+  // Ensure sentBy is safely formatted as object or null even if populate returned null/string
+  const sanitizedNotifications = (notifications || []).map((n) => {
+    if (n.sentBy && typeof n.sentBy === 'object') {
+      return n;
+    }
+    return { ...n, sentBy: null };
+  });
 
   return res.status(200).json({
     success: true,
-    notifications,
+    notifications: sanitizedNotifications,
     counts: {
-      total: totalNotifications,
-      broadcast: broadcastCount,
-      targeted: Math.max(0, totalNotifications - broadcastCount),
+      total: totalNotifications || 0,
+      broadcast: broadcastCount || 0,
+      targeted: Math.max(0, (totalNotifications || 0) - (broadcastCount || 0)),
     },
     pagination: {
       page,
       limit,
-      totalNotifications,
-      totalPages: Math.max(Math.ceil(totalNotifications / limit), 1),
+      totalNotifications: totalNotifications || 0,
+      totalPages: Math.max(Math.ceil((totalNotifications || 0) / limit), 1),
     },
   });
 });
