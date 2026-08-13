@@ -154,9 +154,17 @@ export async function sendNotification(tokens, notification, data = {}) {
     notificationObj.image = imageUrl;
   }
 
+  // Web display is data-only (see message.webpush below) — the service
+  // worker reads title/body from `data`, so they must travel here too.
+  dataWithTag.title = notificationObj.title;
+  dataWithTag.body = notificationObj.body;
+  if (imageUrl) dataWithTag.image = imageUrl;
+
   const androidConfig = {
     priority: 'high',
     notification: {
+      title: notificationObj.title,
+      body: notificationObj.body,
       sound: dataWithTag.sound ? String(dataWithTag.sound) : 'default',
       ...(dataWithTag.channelId && { channelId: String(dataWithTag.channelId) }),
       ...(imageUrl && { imageUrl }),
@@ -167,6 +175,7 @@ export async function sendNotification(tokens, notification, data = {}) {
   const apnsConfig = {
     payload: {
       aps: {
+        alert: { title: notificationObj.title, body: notificationObj.body },
         sound: apnsSound,
         ...(imageUrl && { 'mutable-content': 1 }),
       },
@@ -176,8 +185,13 @@ export async function sendNotification(tokens, notification, data = {}) {
     apnsConfig.payload.imageUrl = imageUrl;
   }
 
+  // No top-level `notification` and no `webpush.notification`: on web, either
+  // one makes the browser auto-display a system notification, while our
+  // service worker's onBackgroundMessage ALSO calls showNotification() from
+  // `data` — together that's 2 notifications for 1 push. Android/iOS get
+  // their display payload from android.notification / apns.payload.aps.alert
+  // above instead.
   const message = {
-    notification: notificationObj,
     data: Object.fromEntries(
       Object.entries(dataWithTag).map(([k, v]) => [String(k), String(v)])
     ),
@@ -186,12 +200,6 @@ export async function sendNotification(tokens, notification, data = {}) {
     apns: apnsConfig,
     webpush: {
       headers: { Urgency: 'high' },
-      notification: {
-        tag: dataWithTag.tag,
-        requireInteraction: true,
-        vibrate: [200, 100, 200],
-        ...(imageUrl && { image: imageUrl }),
-      },
     },
   };
 
