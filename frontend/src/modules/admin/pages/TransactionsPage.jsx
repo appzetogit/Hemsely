@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { IndianRupee, Receipt, CheckCircle2, XCircle, Clock, Filter, FileText, ChevronLeft, ChevronRight, RotateCcw, Loader2 } from 'lucide-react';
 import { Table, TableHead, TableRow, TableHeader, TableCell } from '../components/Table';
 import adminApi from '../services/adminApi';
-import { PageSpinner } from '../../../shared/components/ui/Spinner';
 
 const STATUS_FILTERS = ['all', 'success', 'failed'];
 
@@ -444,7 +443,10 @@ const TransactionsPage = () => {
             {/* Table */}
             <div className="rounded-2xl bg-white border border-zinc-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
                 {loading ? (
-                    <PageSpinner />
+                    <div className="p-12 text-center text-sm font-medium text-zinc-500 flex items-center justify-center gap-2">
+                        <div className="h-5 w-5 rounded-full border-2 border-purple-200 border-t-purple-600 animate-spin" />
+                        Loading transactions...
+                    </div>
                 ) : transactions.length === 0 ? (
                     <div className="p-10 text-center text-sm font-medium text-zinc-500">
                         No transactions match the selected filters.

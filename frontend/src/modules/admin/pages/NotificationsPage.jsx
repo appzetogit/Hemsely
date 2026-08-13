@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Send, Users, Crown, Clock, CheckCircle2, Plus, X, Trash2 } from 'lucide-react';
 import adminApi from '../services/adminApi';
-import { PageSpinner } from '../../../shared/components/ui/Spinner';
 
 const AUDIENCES = [
     { value: 'all', label: 'All Users', icon: Users, desc: 'Every registered user on the platform' },
@@ -104,7 +103,6 @@ const NotificationsPage = () => {
         }
     };
 
-    if (loading) return <PageSpinner />;
 
     return (
         <div className="space-y-6">
@@ -164,7 +162,12 @@ const NotificationsPage = () => {
             {/* Sent History */}
             <section className="rounded-2xl bg-white border border-zinc-200 shadow-sm p-6">
                 <h2 className="text-base font-semibold text-zinc-900 border-b border-zinc-100 pb-3 mb-4">Sent History</h2>
-                {history.length === 0 ? (
+                {loading ? (
+                    <div className="p-10 text-center text-sm font-medium text-zinc-500 flex items-center justify-center gap-2">
+                        <div className="h-5 w-5 rounded-full border-2 border-purple-200 border-t-purple-600 animate-spin" />
+                        Loading history...
+                    </div>
+                ) : history.length === 0 ? (
                     <div className="text-center py-10">
                         <Bell className="w-8 h-8 text-zinc-300 mx-auto mb-3" />
                         <p className="text-sm text-zinc-500 font-medium">No notifications sent yet.</p>

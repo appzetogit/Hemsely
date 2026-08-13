@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, ToggleLeft, ToggleRight, Save } from 'lucide-react';
 import adminApi from '../services/adminApi';
-import { PageSpinner } from '../../../shared/components/ui/Spinner';
 import { Input } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
 
@@ -92,6 +91,7 @@ const AppConfigPage = () => {
     }, []);
 
     const handleToggle = (key) => {
+        if (!config) return;
         if (key === 'maintenanceMode' && !config.maintenanceMode) {
             const confirmOn = window.confirm('Are you sure you want to turn ON Maintenance Mode? Non-admin users will be blocked from accessing the app.');
             if (!confirmOn) return;
@@ -132,16 +132,7 @@ const AppConfigPage = () => {
         setSaving(false);
     };
 
-    if (loading) return <PageSpinner />;
 
-    if (!config) {
-        return (
-            <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-                <p className="text-sm font-semibold text-zinc-700">{loadError || 'Could not load app configuration.'}</p>
-                <Button onClick={() => window.location.reload()}>Retry</Button>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-6">
@@ -151,13 +142,20 @@ const AppConfigPage = () => {
                     <p className="text-sm text-zinc-500 mt-1">Control platform-wide settings without touching code. Toggle or edit below, then click Save to apply.</p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
-                    <Button onClick={handleSave} disabled={saving}>
+                    <Button onClick={handleSave} disabled={saving || loading || !config}>
                         <Save className="w-4 h-4" />
                         {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
                     </Button>
                     {saveError && <p className="text-xs font-semibold text-danger-600">{saveError}</p>}
                 </div>
             </div>
+
+            {loadError && !config && (
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center rounded-xl bg-red-50 border border-red-100 p-4">
+                    <p className="text-sm font-semibold text-zinc-700">{loadError}</p>
+                    <Button onClick={() => window.location.reload()}>Retry</Button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 {/* Platform Access */}
@@ -175,7 +173,7 @@ const AppConfigPage = () => {
                         label="Maintenance Mode"
                         desc="When ON, all non-admin API traffic is blocked with a maintenance message."
                         configKey="maintenanceMode"
-                        isChecked={config.maintenanceMode}
+                        isChecked={Boolean(config?.maintenanceMode)}
                         isSavedActive={savedConfig?.maintenanceMode}
                         onToggle={handleToggle}
                     />
@@ -192,9 +190,9 @@ const AppConfigPage = () => {
                             <p className="text-xs text-zinc-500 mt-0.5">Enforced directly on the matching API</p>
                         </div>
                     </div>
-                    <NumberField label="Daily Like Limit" desc="Max likes any user can send per day." name="dailyLikeLimit" min={1} max={1000} unit="likes/day" value={config.dailyLikeLimit} onChange={handleChange} />
-                    <NumberField label="Discovery Radius" desc="Default max search radius in kilometres." name="discoveryRadiusKm" min={1} max={500} unit="km" value={config.discoveryRadiusKm} onChange={handleChange} />
-                    <NumberField label="Max Age Gap" desc="Maximum allowed age gap in years for matches." name="maxAgeGapYears" min={1} max={50} unit="years" value={config.maxAgeGapYears} onChange={handleChange} />
+                    <NumberField label="Daily Like Limit" desc="Max likes any user can send per day." name="dailyLikeLimit" min={1} max={1000} unit="likes/day" value={config?.dailyLikeLimit || ''} onChange={handleChange} />
+                    <NumberField label="Discovery Radius" desc="Default max search radius in kilometres." name="discoveryRadiusKm" min={1} max={500} unit="km" value={config?.discoveryRadiusKm || ''} onChange={handleChange} />
+                    <NumberField label="Max Age Gap" desc="Maximum allowed age gap in years for matches." name="maxAgeGapYears" min={1} max={50} unit="years" value={config?.maxAgeGapYears || ''} onChange={handleChange} />
                 </section>
             </div>
         </div>

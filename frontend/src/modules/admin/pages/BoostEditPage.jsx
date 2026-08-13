@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Zap, IndianRupee, Save, CheckCircle2, ShieldAlert } from 'lucide-react';
 import adminApi from '../services/adminApi';
-import { PageSpinner } from '../../../shared/components/ui/Spinner';
 import { Input } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
 
@@ -65,13 +64,7 @@ const BoostEditPage = () => {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex h-96 items-center justify-center">
-                <PageSpinner />
-            </div>
-        );
-    }
+
 
     return (
         <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
@@ -185,7 +178,7 @@ const BoostEditPage = () => {
                 <div className="flex justify-end pt-2">
                     <Button
                         type="submit"
-                        disabled={saving}
+                        disabled={saving || loading}
                         className="bg-[#703DE2] hover:bg-[#602ec3] text-white px-6 py-2.5 rounded-xl font-bold shadow-md flex items-center gap-2"
                     >
                         <Save className="w-4 h-4" />

@@ -3,7 +3,6 @@ import { Lock, Eye, EyeOff, ShieldCheck, Save, Mail } from 'lucide-react';
 import adminApi from '../services/adminApi';
 import { Input, Label } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
-import { PageSpinner } from '../../../shared/components/ui/Spinner';
 
 const PasswordInput = ({ label, name, placeholder, value, onChange, isVisible, onToggleShow }) => (
     <div>
@@ -185,7 +184,7 @@ const AdminProfilePage = () => {
         setTimeout(() => setSupportMsg({ text: '', type: '' }), 3000);
     };
 
-    if (loading) return <PageSpinner />;
+
 
     return (
         <div className="space-y-6">
@@ -238,9 +237,9 @@ const AdminProfilePage = () => {
                                     </span>
                                 )}
                             </div>
-                            <Button type="submit" disabled={profileSaving}>
+                            <Button type="submit" disabled={profileSaving || loading}>
                                 <Save className="w-4 h-4" />
-                                {profileSaving ? 'Saving...' : 'Save Profile'}
+                                {profileSaving ? 'Saving...' : loading ? 'Loading...' : 'Save Profile'}
                             </Button>
                         </div>
                     </form>

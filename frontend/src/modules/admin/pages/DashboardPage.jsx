@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Users, UserPlus, Heart, TrendingUp, MessageCircle, Crown, RotateCcw } from 'lucide-react';
 import adminApi from '../services/adminApi';
-import { PageSpinner } from '../../../shared/components/ui/Spinner';
 import GrowthChart from '../components/GrowthChart';
 
 const StatCard = ({ title, value, icon: Icon, iconBg, iconColor, ringColor, actionButton }) => (
@@ -102,23 +101,6 @@ const DashboardPage = () => {
         })();
     }, []);
 
-    if (loading) return <PageSpinner />;
-
-    if (!stats) {
-        return (
-            <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-                <p className="text-sm font-semibold text-zinc-700">{loadError || 'Could not load dashboard stats.'}</p>
-                <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="px-4 py-2 rounded-lg bg-[#733FE0] text-white text-xs font-bold cursor-pointer border-0"
-                >
-                    Retry
-                </button>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6">
             <div>
@@ -128,24 +110,37 @@ const DashboardPage = () => {
                 </p>
             </div>
 
+            {loadError && !stats && (
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center rounded-xl bg-red-50 border border-red-100 p-4">
+                    <p className="text-sm font-semibold text-zinc-700">{loadError}</p>
+                    <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 rounded-lg bg-[#733FE0] text-white text-xs font-bold cursor-pointer border-0"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+
             {/* Stats Grid - All 6 cards in a single row on desktop */}
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
                 <StatCard
-                    title="Total Users" value={stats.totalUsers.toLocaleString()} icon={Users}
+                    title="Total Users" value={loading ? <div className="h-6 w-16 bg-zinc-200 rounded animate-pulse my-0.5" /> : (stats?.totalUsers || 0).toLocaleString()} icon={Users}
                     iconBg="bg-blue-50" iconColor="text-blue-600" ringColor="ring-blue-100/50"
                 />
                 <StatCard
-                    title="New This Week" value={stats.newSignupsWeek.toLocaleString()} icon={UserPlus}
+                    title="New This Week" value={loading ? <div className="h-6 w-16 bg-zinc-200 rounded animate-pulse my-0.5" /> : (stats?.newSignupsWeek || 0).toLocaleString()} icon={UserPlus}
                     iconBg="bg-emerald-50" iconColor="text-emerald-600" ringColor="ring-emerald-100/50"
                 />
                 <StatCard
-                    title="Active Matches" value={stats.activeMatches.toLocaleString()} icon={Heart}
+                    title="Active Matches" value={loading ? <div className="h-6 w-16 bg-zinc-200 rounded animate-pulse my-0.5" /> : (stats?.activeMatches || 0).toLocaleString()} icon={Heart}
                     iconBg="bg-indigo-50" iconColor="text-indigo-600" ringColor="ring-indigo-100/50"
                     actionButton={
                         <button
                             type="button"
                             onClick={handleResetMatches}
-                            disabled={resettingMatches}
+                            disabled={resettingMatches || loading}
                             title="Reset All Active Matches"
                             className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white transition-all border-0 cursor-pointer shadow-2xs disabled:opacity-50 flex items-center gap-1"
                         >
@@ -155,15 +150,15 @@ const DashboardPage = () => {
                     }
                 />
                 <StatCard
-                    title="Total Revenue" value={`₹${stats.totalRevenue.toLocaleString()}`} icon={TrendingUp}
+                    title="Total Revenue" value={loading ? <div className="h-6 w-16 bg-zinc-200 rounded animate-pulse my-0.5" /> : `₹${(stats?.totalRevenue || 0).toLocaleString()}`} icon={TrendingUp}
                     iconBg="bg-amber-50" iconColor="text-amber-600" ringColor="ring-amber-100/50"
                 />
                 <StatCard
-                    title="Total Messages" value={stats.totalMessages.toLocaleString()} icon={MessageCircle}
+                    title="Total Messages" value={loading ? <div className="h-6 w-16 bg-zinc-200 rounded animate-pulse my-0.5" /> : (stats?.totalMessages || 0).toLocaleString()} icon={MessageCircle}
                     iconBg="bg-violet-50" iconColor="text-violet-600" ringColor="ring-violet-100/50"
                 />
                 <StatCard
-                    title="Premium Users" value={stats.premiumUsers.toLocaleString()} icon={Crown}
+                    title="Premium Users" value={loading ? <div className="h-6 w-16 bg-zinc-200 rounded animate-pulse my-0.5" /> : (stats?.premiumUsers || 0).toLocaleString()} icon={Crown}
                     iconBg="bg-rose-50" iconColor="text-rose-600" ringColor="ring-rose-100/50"
                 />
             </div>

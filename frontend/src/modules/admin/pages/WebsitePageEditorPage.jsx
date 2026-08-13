@@ -3,7 +3,6 @@ import { Navigate, useParams } from 'react-router-dom';
 import { Save, Edit3, Check } from 'lucide-react';
 import { websitePagesBySlug } from '../constants/websitePages';
 import adminApi from '../services/adminApi';
-import { PageSpinner } from '../../../shared/components/ui/Spinner';
 
 const WebsitePageEditorPage = () => {
     const { slug } = useParams();
@@ -92,17 +91,11 @@ const WebsitePageEditorPage = () => {
         }
     };
 
-    if (loading) return <PageSpinner />;
-
-    if (loadError && !page) {
-        return (
-            <div className="w-full max-w-5xl mx-auto rounded-3xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">
-                {loadError}
-            </div>
-        );
-    }
-
-    if (!page) return null;
+    const pageData = page || {
+        title: staticMeta.title,
+        summary: staticMeta.description,
+        body: '',
+    };
 
     return (
         <div className="w-full max-w-5xl mx-auto">
@@ -129,7 +122,7 @@ const WebsitePageEditorPage = () => {
                         <button
                             type="button"
                             onClick={handleAction}
-                            disabled={saving}
+                            disabled={saving || loading}
                             className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white transition-colors shadow-sm cursor-pointer disabled:opacity-60 ${
                                 saved
                                     ? 'bg-success-600 hover:bg-success-600'
@@ -164,6 +157,12 @@ const WebsitePageEditorPage = () => {
                     </div>
                 )}
 
+                {loadError && !page && (
+                    <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                        {loadError}
+                    </div>
+                )}
+
                 <div className="space-y-5">
                     <div>
                         <label htmlFor="editor-title" className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
@@ -172,7 +171,7 @@ const WebsitePageEditorPage = () => {
                         <input
                             id="editor-title"
                             type="text"
-                            value={page.title}
+                            value={pageData.title}
                             readOnly={!isEditing}
                             onChange={(e) => updateField('title', e.target.value)}
                             className={`w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-900 outline-none transition-colors ${
@@ -191,7 +190,7 @@ const WebsitePageEditorPage = () => {
                         <input
                             id="editor-summary"
                             type="text"
-                            value={page.summary}
+                            value={pageData.summary}
                             readOnly={!isEditing}
                             onChange={(e) => updateField('summary', e.target.value)}
                             className={`w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-900 outline-none transition-colors ${
@@ -210,7 +209,7 @@ const WebsitePageEditorPage = () => {
                         <textarea
                             id="editor-content"
                             rows={16}
-                            value={page.body}
+                            value={pageData.body}
                             readOnly={!isEditing}
                             onChange={(e) => updateField('body', e.target.value)}
                             className={`w-full rounded-[24px] border border-zinc-300 bg-white px-4 py-4 text-sm leading-6 text-zinc-900 outline-none transition-colors ${

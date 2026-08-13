@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Crown, IndianRupee, Sparkles, Layers, Pencil, Save, X, Lock, Plus, Trash2 } from 'lucide-react';
 import adminApi from '../services/adminApi';
-import { PageSpinner } from '../../../shared/components/ui/Spinner';
 import { Input } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
 
@@ -155,17 +154,6 @@ const SubscriptionsPage = () => {
         }
     };
 
-    if (loading) return <PageSpinner />;
-
-    if (loadError && plans.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-                <p className="text-sm font-semibold text-zinc-700">{loadError}</p>
-                <Button onClick={() => window.location.reload()}>Retry</Button>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6">
             <div>
@@ -175,6 +163,13 @@ const SubscriptionsPage = () => {
                 </p>
             </div>
 
+            {loadError && plans.length === 0 && (
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center rounded-xl bg-red-50 border border-red-100 p-4">
+                    <p className="text-sm font-semibold text-zinc-700">{loadError}</p>
+                    <Button onClick={() => window.location.reload()}>Retry</Button>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white rounded-xl shadow-sm border border-zinc-200 p-4 flex items-center">
                     <div className="p-2.5 rounded-lg bg-blue-50 ring-1 ring-blue-100/50 flex items-center justify-center mr-3.5">
@@ -182,7 +177,9 @@ const SubscriptionsPage = () => {
                     </div>
                     <div>
                         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Static Plans</p>
-                        <h3 className="text-xl font-medium text-zinc-900 tracking-tight leading-none">{plans.length}</h3>
+                        <h3 className="text-xl font-medium text-zinc-900 tracking-tight leading-none">
+                            {loading ? <span className="inline-block h-5 w-8 bg-zinc-200 rounded animate-pulse" /> : plans.length}
+                        </h3>
                     </div>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border border-zinc-200 p-4 flex items-center">
@@ -191,7 +188,9 @@ const SubscriptionsPage = () => {
                     </div>
                     <div>
                         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1">Active Plans</p>
-                        <h3 className="text-xl font-medium text-zinc-900 tracking-tight leading-none">{plans.filter((p) => p.isActive).length}</h3>
+                        <h3 className="text-xl font-medium text-zinc-900 tracking-tight leading-none">
+                            {loading ? <span className="inline-block h-5 w-8 bg-zinc-200 rounded animate-pulse" /> : plans.filter((p) => p.isActive).length}
+                        </h3>
                     </div>
                 </div>
             </div>
@@ -202,11 +201,28 @@ const SubscriptionsPage = () => {
                 </div>
             )}
 
-            <div className={plans.length === 1 ? "max-w-lg mx-auto w-full" : "grid grid-cols-1 md:grid-cols-3 gap-4"}>
-                {plans.map((plan) => (
-                    <PlanCard key={plan._id} plan={plan} onSavePlan={handleSavePlan} />
-                ))}
-            </div>
+            {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-64 rounded-2xl border border-zinc-200 bg-white p-5 animate-pulse flex flex-col justify-between">
+                            <div className="h-5 w-1/3 bg-zinc-200 rounded mb-2" />
+                            <div className="h-4 w-2/3 bg-zinc-100 rounded mb-4" />
+                            <div className="h-8 w-1/2 bg-zinc-200 rounded mb-4" />
+                            <div className="space-y-2 flex-1">
+                                <div className="h-3 w-full bg-zinc-100 rounded" />
+                                <div className="h-3 w-4/5 bg-zinc-100 rounded" />
+                                <div className="h-3 w-3/4 bg-zinc-100 rounded" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className={plans.length === 1 ? "max-w-lg mx-auto w-full" : "grid grid-cols-1 md:grid-cols-3 gap-4"}>
+                    {plans.map((plan) => (
+                        <PlanCard key={plan._id} plan={plan} onSavePlan={handleSavePlan} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

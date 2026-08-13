@@ -240,7 +240,9 @@ const AdminLayout = () => {
                             </div>
                         </div>
                     )}
-                    <Outlet />
+                    <div key={location.pathname} className="page-transition bg-zinc-50 min-h-full">
+                        <Outlet />
+                    </div>
                 </main>
             </div>
         </div>
