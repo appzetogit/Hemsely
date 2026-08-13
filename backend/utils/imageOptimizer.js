@@ -1,8 +1,8 @@
 import sharp from 'sharp';
 
 const FOLDER_PROFILES = {
-  'amora/profiles': { maxWidth: 600, maxHeight: 600, quality: 80 },
-  'amora/chats': { maxWidth: 800, maxHeight: 800, quality: 75 },
+  'hemsely/profiles': { maxWidth: 600, maxHeight: 600, quality: 80 },
+  'hemsely/chats': { maxWidth: 800, maxHeight: 800, quality: 75 },
   'profile-images': { maxWidth: 400, maxHeight: 400, quality: 80 },
   'menu-items': { maxWidth: 800, maxHeight: 800, quality: 75 },
   'banners': { maxWidth: 1200, maxHeight: 600, quality: 78 },

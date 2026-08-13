@@ -4,7 +4,7 @@ import AdminSidebar from './AdminSidebar';
 import adminApi from '../services/adminApi';
 import { Menu, Bell, User, LogOut } from 'lucide-react';
 
-const ADMIN_SESSION_KEY = 'amora_admin_session:v1';
+const ADMIN_SESSION_KEY = 'hemsely_admin_session:v1';
 
 const AdminLayout = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

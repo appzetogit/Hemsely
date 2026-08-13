@@ -49,7 +49,7 @@ app.use(csrfProtection);
 app.set('view engine', 'ejs');
 
 // Ensure required public/uploads subdirectories exist at startup
-const uploadFolders = ['amora/profiles', 'amora/chats', 'amora/selfies', 'test-fixtures'];
+const uploadFolders = ['hemsely/profiles', 'hemsely/chats', 'hemsely/selfies', 'test-fixtures'];
 uploadFolders.forEach((folder) => {
   const dirPath = path.join(__dirname, 'public', 'uploads', folder);
   if (!fs.existsSync(dirPath)) {
@@ -57,24 +57,24 @@ uploadFolders.forEach((folder) => {
   }
 });
 
-// Serve static assets using strict absolute paths (supports both /uploads, /api/uploads, /amora, and /public/uploads prefixes)
+// Serve static assets using strict absolute paths (supports both /uploads, /api/uploads, /hemsely, and /public/uploads prefixes)
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/public/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
-app.use('/amora', express.static(path.join(__dirname, 'public', 'uploads', 'amora')));
-app.use('/amora', express.static(path.join(__dirname, 'uploads', 'amora')));
+app.use('/hemsely', express.static(path.join(__dirname, 'public', 'uploads', 'hemsely')));
+app.use('/hemsely', express.static(path.join(__dirname, 'uploads', 'hemsely')));
 app.use(express.static(path.join(__dirname, 'public', 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Smart static file fallback for uploads (guarantees image delivery regardless of Nginx proxy path rewriting)
-app.get(['/uploads/*', '/api/uploads/*', '/amora/*', '/public/uploads/*'], (req, res, next) => {
+app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], (req, res, next) => {
   const cleanPath = req.path
     .replace(/^\/api\/uploads\//, '')
     .replace(/^\/uploads\//, '')
     .replace(/^\/public\/uploads\//, '')
-    .replace(/^\/amora\//, 'amora/');
+    .replace(/^\/hemsely\//, 'hemsely/');
 
   const uploadsRoot = path.join(__dirname, 'uploads');
   const publicUploadsRoot = path.join(__dirname, 'public', 'uploads');
@@ -83,12 +83,12 @@ app.get(['/uploads/*', '/api/uploads/*', '/amora/*', '/public/uploads/*'], (req,
   const candidatePaths = [
     path.join(publicUploadsRoot, cleanPath),
     path.join(uploadsRoot, cleanPath),
-    path.join(publicUploadsRoot, 'amora', 'profiles', filenameOnly),
-    path.join(publicUploadsRoot, 'amora', 'chats', filenameOnly),
-    path.join(publicUploadsRoot, 'amora', 'selfies', filenameOnly),
-    path.join(uploadsRoot, 'amora', 'profiles', filenameOnly),
-    path.join(uploadsRoot, 'amora', 'chats', filenameOnly),
-    path.join(uploadsRoot, 'amora', 'selfies', filenameOnly),
+    path.join(publicUploadsRoot, 'hemsely', 'profiles', filenameOnly),
+    path.join(publicUploadsRoot, 'hemsely', 'chats', filenameOnly),
+    path.join(publicUploadsRoot, 'hemsely', 'selfies', filenameOnly),
+    path.join(uploadsRoot, 'hemsely', 'profiles', filenameOnly),
+    path.join(uploadsRoot, 'hemsely', 'chats', filenameOnly),
+    path.join(uploadsRoot, 'hemsely', 'selfies', filenameOnly),
     path.join(publicUploadsRoot, filenameOnly),
     path.join(uploadsRoot, filenameOnly),
   ];

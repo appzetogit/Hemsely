@@ -18,7 +18,7 @@ export async function imageToBuffer(imageInput) {
     }
 
     if (typeof imageInput === 'string') {
-        // If local file path (uploads are served from backend/public, e.g. "/uploads/amora/profiles/xxx.jpg").
+        // If local file path (uploads are served from backend/public, e.g. "/uploads/hemsely/profiles/xxx.jpg").
         // Note: on Windows, path.isAbsolute('/foo') is true (drive-root-relative), so a naive isAbsolute
         // check would treat these web paths as OS-absolute and skip the public/ prefix entirely — always
         // resolve against backendDir/public first, and only fall back to a literal OS path if that misses.

@@ -488,29 +488,51 @@ export const verifyBoostPayment = asyncHandler(async (req, res) => {
 // memory to dedupe-by-user and paginate with .slice(), instead of paginating at the DB
 // layer. Fine at current admin-only scale; upgrade to a $group+$facet aggregation if
 // the transaction/premium-user history grows large enough for this page to slow down.
+// @desc Get all users with active or past subscription transactions for Admin Panel
+// @route GET /api/admin/subscription-users
+// @access Private/Admin
 export const getSubscriptionUsers = asyncHandler(async (req, res) => {
   const page = Math.max(parseInt(req.query.page || '1', 10), 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 50);
   const skip = (page - 1) * limit;
   const search = (req.query.search || '').trim();
 
-  // 1. Get subscription transactions (excluding one-time boost purchases)
-  const transactions = await Transaction.find({
-    status: 'success',
-    planName: { $not: /Boost/i },
-  })
-    .populate('user', 'firstName lastName email phoneNumber profilePicture isPremium premiumExpiry createdAt')
-    .populate('plan', 'name price durationDays')
-    .sort({ createdAt: -1 });
+  let transactions = [];
+  try {
+    transactions = await Transaction.find({
+      status: 'success',
+      planName: { $not: /Boost/i },
+    })
+      .populate({
+        path: 'user',
+        select: 'firstName lastName email phoneNumber profilePicture isPremium premiumExpiry createdAt',
+        strictPopulate: false,
+      })
+      .populate({
+        path: 'plan',
+        select: 'name price durationDays',
+        strictPopulate: false,
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+  } catch (err) {
+    console.warn('⚠️ [getSubscriptionUsers] Populate fallback triggered:', err.message);
+    transactions = await Transaction.find({
+      status: 'success',
+      planName: { $not: /Boost/i },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+  }
 
   const userSubMap = new Map();
 
   for (const txn of transactions) {
-    if (!txn.user) continue;
-    const userId = txn.user._id.toString();
+    if (!txn || !txn.user) continue;
+    const userId = txn.user._id ? txn.user._id.toString() : String(txn.user);
     if (!userSubMap.has(userId)) {
       const now = new Date();
-      const expiry = txn.user.premiumExpiry ? new Date(txn.user.premiumExpiry) : null;
+      const expiry = txn.user?.premiumExpiry ? new Date(txn.user.premiumExpiry) : null;
       let remainingDays = 0;
       let isExpired = false;
 
@@ -522,26 +544,33 @@ export const getSubscriptionUsers = asyncHandler(async (req, res) => {
 
       userSubMap.set(userId, {
         _id: userId,
-        user: txn.user,
+        user: typeof txn.user === 'object' ? txn.user : { _id: userId },
         subscriptionId: txn.subscriptionId || `SUB_${String(txn._id).slice(-8).toUpperCase()}`,
         transactionId: txn.transactionId || txn.gatewayPaymentId || String(txn._id),
         planName: txn.planName || txn.plan?.name || 'Premium',
-        amount: txn.amount,
+        amount: txn.amount || 0,
         startDate: txn.createdAt,
         expiryDate: expiry || new Date(new Date(txn.createdAt).getTime() + (txn.durationDays || 30) * 86400000),
         remainingDays,
-        isPremium: txn.user.isPremium && !isExpired,
-        isExpired: !txn.user.isPremium || isExpired,
+        isPremium: Boolean(txn.user?.isPremium) && !isExpired,
+        isExpired: !txn.user?.isPremium || isExpired,
         gateway: txn.gateway || 'Razorpay',
       });
     }
   }
 
   // 2. Also include users who are currently marked isPremium: true in DB
-  const premiumUsers = await User.find({ isPremium: true, _id: { $nin: Array.from(userSubMap.keys()) } })
-    .select('firstName lastName email phoneNumber profilePicture isPremium premiumExpiry createdAt');
+  let premiumUsers = [];
+  try {
+    premiumUsers = await User.find({ isPremium: true, _id: { $nin: Array.from(userSubMap.keys()) } })
+      .select('firstName lastName email phoneNumber profilePicture isPremium premiumExpiry createdAt')
+      .lean();
+  } catch (pErr) {
+    console.warn('⚠️ [getSubscriptionUsers] Premium users query fallback:', pErr.message);
+  }
 
   for (const pUser of premiumUsers) {
+    if (!pUser || !pUser._id) continue;
     const userId = pUser._id.toString();
     const now = new Date();
     const expiry = pUser.premiumExpiry ? new Date(pUser.premiumExpiry) : null;
@@ -575,6 +604,7 @@ export const getSubscriptionUsers = asyncHandler(async (req, res) => {
   if (search) {
     const s = search.toLowerCase();
     allList = allList.filter((item) => {
+      if (!item || !item.user) return false;
       const name = `${item.user.firstName || ''} ${item.user.lastName || ''}`.toLowerCase();
       const email = (item.user.email || '').toLowerCase();
       const phone = (item.user.phoneNumber || '').toLowerCase();
@@ -587,7 +617,7 @@ export const getSubscriptionUsers = asyncHandler(async (req, res) => {
   const total = allList.length;
   const paginated = allList.slice(skip, skip + limit);
 
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
     subscriptionUsers: paginated,
     pagination: {

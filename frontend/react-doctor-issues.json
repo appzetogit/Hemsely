@@ -76,7 +76,7 @@
     {
       "rule": "client-localstorage-no-version",
       "line": 27,
-      "message": "localStorage.setItem(\"amora_admin_queue_settings\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_admin_queue_settings:v1\")."
+      "message": "localStorage.setItem(\"hemsely_admin_queue_settings\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"hemsely_admin_queue_settings:v1\")."
     }
   ],
   "src/modules/admin/components/AdminLayout.jsx": [
@@ -135,7 +135,7 @@
     {
       "rule": "client-localstorage-no-version",
       "line": 35,
-      "message": "localStorage.setItem(\"amora_admin_profile\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_admin_profile:v1\")."
+      "message": "localStorage.setItem(\"hemsely_admin_profile\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"hemsely_admin_profile:v1\")."
     },
     {
       "rule": "no-nested-component-definition",
@@ -157,7 +157,7 @@
     {
       "rule": "client-localstorage-no-version",
       "line": 42,
-      "message": "localStorage.setItem(\"amora_admin_settings\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_admin_settings:v1\")."
+      "message": "localStorage.setItem(\"hemsely_admin_settings\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"hemsely_admin_settings:v1\")."
     },
     {
       "rule": "no-nested-component-definition",
@@ -184,12 +184,12 @@
     {
       "rule": "client-localstorage-no-version",
       "line": 49,
-      "message": "localStorage.setItem(\"amora_app_config\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_app_config:v1\")."
+      "message": "localStorage.setItem(\"hemsely_app_config\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"hemsely_app_config:v1\")."
     },
     {
       "rule": "client-localstorage-no-version",
       "line": 56,
-      "message": "localStorage.setItem(\"amora_app_config\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_app_config:v1\")."
+      "message": "localStorage.setItem(\"hemsely_app_config\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"hemsely_app_config:v1\")."
     },
     {
       "rule": "no-nested-component-definition",
@@ -446,7 +446,7 @@
     {
       "rule": "client-localstorage-no-version",
       "line": 60,
-      "message": "localStorage.setItem(\"amora_admin_subscriptions\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_admin_subscriptions:v1\")."
+      "message": "localStorage.setItem(\"hemsely_admin_subscriptions\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"hemsely_admin_subscriptions:v1\")."
     }
   ],
   "src/modules/admin/pages/TransactionsPage.jsx": [
@@ -552,7 +552,7 @@
     {
       "rule": "client-localstorage-no-version",
       "line": 75,
-      "message": "localStorage.setItem(\"amora_website_pages_content\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"amora_website_pages_content:v1\")."
+      "message": "localStorage.setItem(\"hemsely_website_pages_content\", JSON.stringify(...)) has no version, so changing the data shape later crashes your users' saved sessions. Add one to the key (e.g. \"hemsely_website_pages_content:v1\")."
     },
     {
       "rule": "button-has-type",

@@ -4,16 +4,16 @@ import { resolveUploadsUrls } from '../apiClient';
 
 describe('resolveUploadsUrls', () => {
     it('rewrites relative /uploads paths to absolute backend URLs', () => {
-        const result = resolveUploadsUrls('/uploads/amora/profiles/photo.png', 'http://localhost:5000');
-        expect(result).toBe('http://localhost:5000/uploads/amora/profiles/photo.png');
+        const result = resolveUploadsUrls('/uploads/hemsely/profiles/photo.png', 'http://localhost:5000');
+        expect(result).toBe('http://localhost:5000/uploads/hemsely/profiles/photo.png');
     });
 
     it('rewrites uploads paths without leading slash or with /api/uploads prefix', () => {
-        expect(resolveUploadsUrls('uploads/amora/profiles/photo.png', 'http://localhost:5000')).toBe(
-            'http://localhost:5000/uploads/amora/profiles/photo.png'
+        expect(resolveUploadsUrls('uploads/hemsely/profiles/photo.png', 'http://localhost:5000')).toBe(
+            'http://localhost:5000/uploads/hemsely/profiles/photo.png'
         );
-        expect(resolveUploadsUrls('/api/uploads/amora/profiles/photo.png', 'http://localhost:5000')).toBe(
-            'http://localhost:5000/api/uploads/amora/profiles/photo.png'
+        expect(resolveUploadsUrls('/api/uploads/hemsely/profiles/photo.png', 'http://localhost:5000')).toBe(
+            'http://localhost:5000/api/uploads/hemsely/profiles/photo.png'
         );
     });
 

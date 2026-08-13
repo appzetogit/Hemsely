@@ -14,7 +14,7 @@ const request = async (endpoint, options = {}) => {
     const response = await fetch(url, { ...options, headers, credentials: 'include' });
 
     if (response.status === 401) {
-        sessionStorage.removeItem('amora_admin_session:v1');
+        sessionStorage.removeItem('hemsely_admin_session:v1');
         if (!window.location.pathname.startsWith('/admin/login')) {
             window.location.href = '/admin/login';
         }

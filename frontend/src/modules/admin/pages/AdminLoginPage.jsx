@@ -5,7 +5,7 @@ import adminApi from '../services/adminApi';
 import { Input, Label } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
 
-const ADMIN_SESSION_KEY = 'amora_admin_session:v1';
+const ADMIN_SESSION_KEY = 'hemsely_admin_session:v1';
 
 function AdminLoginPage() {
     const navigate = useNavigate();

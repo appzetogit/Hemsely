@@ -321,7 +321,7 @@ describe('Phase 6 — moderation, queue, ranking, selfie, static plans', () => {
 
   describe('Manual selfie verification', () => {
     it('leaves the user unverified while pending, and sets isVerified on approval', async () => {
-      const { user } = await makeUser({ selfiePhoto: '/uploads/amora/selfies/x.png', selfieStatus: 'pending' });
+      const { user } = await makeUser({ selfiePhoto: '/uploads/hemsely/selfies/x.png', selfieStatus: 'pending' });
       const { token: adminToken } = await makeAdminToken();
 
       expect((await User.findById(user._id)).isVerified).toBe(false);
@@ -339,7 +339,7 @@ describe('Phase 6 — moderation, queue, ranking, selfie, static plans', () => {
     });
 
     it('rejecting a selfie records a reason and does not verify the user', async () => {
-      const { user } = await makeUser({ selfiePhoto: '/uploads/amora/selfies/x.png', selfieStatus: 'pending' });
+      const { user } = await makeUser({ selfiePhoto: '/uploads/hemsely/selfies/x.png', selfieStatus: 'pending' });
       const { token: adminToken } = await makeAdminToken();
 
       const res = await request(app)
@@ -354,7 +354,7 @@ describe('Phase 6 — moderation, queue, ranking, selfie, static plans', () => {
     });
 
     it('rejects reviewing a selfie that was already reviewed', async () => {
-      const { user } = await makeUser({ selfiePhoto: '/uploads/amora/selfies/x.png', selfieStatus: 'approved' });
+      const { user } = await makeUser({ selfiePhoto: '/uploads/hemsely/selfies/x.png', selfieStatus: 'approved' });
       const { token: adminToken } = await makeAdminToken();
 
       const res = await request(app)

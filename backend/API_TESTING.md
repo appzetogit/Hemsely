@@ -1,4 +1,4 @@
-# Amora Dating App - API Testing Examples
+# hemsely Dating App - API Testing Examples
 
 ## Base URL
 ```
@@ -79,7 +79,7 @@ Content-Type: application/json
 
 {
   "username": "admin",
-  "email": "admin@amora.com",
+  "email": "admin@hemsely.com",
   "password": "admin123",
   "firstName": "Admin",
   "lastName": "User"
@@ -92,7 +92,7 @@ POST /api/admin/login
 Content-Type: application/json
 
 {
-  "email": "admin@amora.com",
+  "email": "admin@hemsely.com",
   "password": "admin123"
 }
 ```

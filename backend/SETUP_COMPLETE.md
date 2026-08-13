@@ -1,4 +1,4 @@
-# Backend Setup Summary - Amora Dating App
+# Backend Setup Summary - hemsely Dating App
 
 ## ✅ Completed Tasks
 
@@ -159,7 +159,7 @@ NODE_ENV=development
 BASE_URL=http://localhost:5000
 
 # Database
-MONGODB_URI=mongodb://localhost:27017/amora-dating-app
+MONGODB_URI=mongodb://localhost:27017/hemsely-dating-app
 
 # JWT
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production

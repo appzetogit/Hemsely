@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Amora Dating App - Backend Quick Setup Script
+# hemsely Dating App - Backend Quick Setup Script
 # This script helps configure your backend environment
 
 echo "========================================="
-echo "Amora Dating App - Backend Setup Guide"
+echo "hemsely Dating App - Backend Setup Guide"
 echo "========================================="
 echo ""
 
@@ -23,8 +23,8 @@ echo ""
 echo "2️⃣  Required credentials to fill in .env:"
 echo ""
 echo "   MongoDB URI:"
-echo "   - Local: mongodb://localhost:27017/amora-dating-app"
-echo "   - Atlas: mongodb+srv://username:password@cluster.mongodb.net/amora-dating-app"
+echo "   - Local: mongodb://localhost:27017/hemsely-dating-app"
+echo "   - Atlas: mongodb+srv://username:password@cluster.mongodb.net/hemsely-dating-app"
 echo ""
 
 echo "   JWT Secrets (generate using):"
@@ -54,7 +54,7 @@ echo "5️⃣  Create Admin User:"
 echo "   POST http://localhost:5000/api/admin/register"
 echo "   Body: {"
 echo "     \"username\": \"admin\","
-echo "     \"email\": \"admin@amora.com\","
+echo "     \"email\": \"admin@hemsely.com\","
 echo "     \"password\": \"strong_password\","
 echo "     \"firstName\": \"Admin\","
 echo "     \"lastName\": \"User\""
