@@ -98,6 +98,8 @@ adminSchema.methods.incLoginAttempts = function () {
 
 // Method to reset login attempts
 adminSchema.methods.resetLoginAttempts = function () {
+  this.loginAttempts = 0;
+  this.lockUntil = undefined;
   return this.updateOne({
     $set: { loginAttempts: 0 },
     $unset: { lockUntil: 1 },

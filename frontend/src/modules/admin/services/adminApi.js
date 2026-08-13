@@ -4,17 +4,21 @@ const request = async (endpoint, options = {}) => {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
+    const token = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken');
+
     const headers = {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers || {}),
     };
 
-    // Auth is carried by the httpOnly adminToken cookie (credentials: 'include') —
-    // never duplicate it into localStorage, which an XSS could read directly.
+    // Auth is carried by both Authorization header and httpOnly adminToken cookie (credentials: 'include')
     const response = await fetch(url, { ...options, headers, credentials: 'include' });
 
     if (response.status === 401 || response.status === 403) {
         sessionStorage.removeItem('hemsely_admin_session:v1');
+        sessionStorage.removeItem('adminToken');
+        localStorage.removeItem('adminToken');
         if (!window.location.pathname.startsWith('/admin/login')) {
             window.location.href = '/admin/login';
         }

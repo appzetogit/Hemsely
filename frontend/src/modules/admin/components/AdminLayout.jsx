@@ -29,7 +29,10 @@ const AdminLayout = () => {
         setCheckingAuth(true);
         setAuthCheckError('');
 
-        if (!sessionStorage.getItem(ADMIN_SESSION_KEY)) {
+        const token = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken');
+        const sessionActive = sessionStorage.getItem(ADMIN_SESSION_KEY);
+
+        if (!token && !sessionActive) {
             navigate('/admin/login', { replace: true });
             return;
         }
@@ -41,6 +44,8 @@ const AdminLayout = () => {
                 setAuthCheckError('');
             } else if (status === 401 || status === 403 || !data?.success) {
                 sessionStorage.removeItem(ADMIN_SESSION_KEY);
+                sessionStorage.removeItem('adminToken');
+                localStorage.removeItem('adminToken');
                 navigate('/admin/login', { replace: true });
             } else {
                 setAuthCheckError('Could not verify your session. Please retry or log in again.');
@@ -80,6 +85,8 @@ const AdminLayout = () => {
             // Clearing the local session is what actually matters here.
         }
         sessionStorage.removeItem(ADMIN_SESSION_KEY);
+        sessionStorage.removeItem('adminToken');
+        localStorage.removeItem('adminToken');
         navigate('/admin/login', { replace: true });
     };
 

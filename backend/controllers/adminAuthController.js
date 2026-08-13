@@ -87,8 +87,12 @@ export const adminLogin = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Check for admin
-  const admin = await Admin.findOne({ email }).select('+password');
+  const inputIdentifier = email.trim();
+
+  // Check for admin by email OR username
+  const admin = await Admin.findOne({
+    $or: [{ email: inputIdentifier.toLowerCase() }, { username: inputIdentifier }],
+  }).select('+password');
 
   if (!admin) {
     return res.status(401).json({
@@ -121,9 +125,8 @@ export const adminLogin = asyncHandler(async (req, res, next) => {
   }
 
   // Reset login attempts on successful login
-  if (admin.loginAttempts > 0) {
-    admin.resetLoginAttempts();
-  }
+  admin.loginAttempts = 0;
+  admin.lockUntil = undefined;
 
   // Update last login
   admin.lastLogin = new Date();

@@ -41,8 +41,10 @@ function AdminLoginPage() {
                 throw new Error('Login succeeded but no session token was returned.');
             }
 
-            // The httpOnly adminToken cookie is already set by the response (credentials: 'include') —
-            // only a lightweight session flag is kept client-side, never the token itself.
+            if (data.token) {
+                sessionStorage.setItem('adminToken', data.token);
+                localStorage.setItem('adminToken', data.token);
+            }
             sessionStorage.setItem(ADMIN_SESSION_KEY, 'active');
             navigate('/admin', { replace: true });
         } catch (submitError) {

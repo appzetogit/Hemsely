@@ -103,6 +103,44 @@ describe('Admin auth', () => {
     });
   });
 
+  describe('Login identifier options & attempt resets', () => {
+    it('allows logging in using username instead of email', async () => {
+      await createSuperAdmin();
+      const res = await request(app).post('/api/admin/login').send({
+        email: 'ajaypanchal',
+        password: '123456',
+      });
+      expect(res.status).toBe(200);
+      expect(res.body.token).toBeTruthy();
+    });
+
+    it('resets failed login attempts counter in database upon successful login', async () => {
+      await createSuperAdmin();
+
+      // Make 3 failed attempts
+      for (let i = 0; i < 3; i += 1) {
+        await request(app).post('/api/admin/login').send({
+          email: 'panchalajay717@gmail.com',
+          password: 'wrong-password',
+        });
+      }
+
+      const adminBeforeSuccess = await Admin.findOne({ email: 'panchalajay717@gmail.com' });
+      expect(adminBeforeSuccess.loginAttempts).toBe(3);
+
+      // Now log in successfully
+      const successRes = await request(app).post('/api/admin/login').send({
+        email: 'panchalajay717@gmail.com',
+        password: '123456',
+      });
+      expect(successRes.status).toBe(200);
+
+      // Verify loginAttempts is 0 in DB
+      const adminAfterSuccess = await Admin.findOne({ email: 'panchalajay717@gmail.com' });
+      expect(adminAfterSuccess.loginAttempts).toBe(0);
+    });
+  });
+
   describe('Login lockout', () => {
     it('locks the account after 10 failed attempts', async () => {
       await createSuperAdmin();
