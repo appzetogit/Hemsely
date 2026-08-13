@@ -70,6 +70,7 @@ const notificationSchema = new mongoose.Schema(
 );
 
 notificationSchema.index({ createdAt: -1 });
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 259200 }); // TTL index: auto-delete notifications after 3 days (259,200 seconds)
 notificationSchema.index({ recipientUserId: 1, createdAt: -1 });
 notificationSchema.index({ target: 1, segment: 1, createdAt: -1 });
 

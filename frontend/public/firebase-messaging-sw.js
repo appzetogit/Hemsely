@@ -51,6 +51,7 @@ messaging.onBackgroundMessage((payload) => {
     icon: payload.notification?.image || payload.data?.image || '/icon.png',
     data: payload.data || {},
     tag,
+    renotify: false,
   };
 
   self.registration.showNotification(title, options);

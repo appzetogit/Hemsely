@@ -44,18 +44,52 @@ export async function saveFcmToken({ userId, fcmToken, platform = 'web' }) {
     throw new Error('userId and fcmToken are required');
   }
 
+  const tokenStr = fcmToken.trim();
   const objectId = mongoose.Types.ObjectId.isValid(userId)
     ? new mongoose.Types.ObjectId(userId)
     : userId;
 
   const updateField = getFieldByPlatform(platform);
-  const updateDoc = { [updateField]: fcmToken.trim() };
 
   console.log(`💾 [FCM] Saving token for user ${userId}... (platform: ${platform}, field: ${updateField})`);
 
+  // Clean up this token if it exists in any other field or under another user account
+  // to ensure duplicate token dispatches never happen for a single device.
+  await User.updateMany(
+    {
+      $or: [
+        { fcmtokenweb: tokenStr },
+        { fcmtokenmobile: tokenStr },
+        { fcmtokenios: tokenStr },
+      ],
+    },
+    {
+      $unset: {
+        fcmtokenweb: tokenStr === '$fcmtokenweb' ? 1 : undefined,
+      },
+    }
+  );
+
+  // Clear existing duplicate references to tokenStr across all users
+  const matchingUsers = await User.find({
+    $or: [
+      { fcmtokenweb: tokenStr },
+      { fcmtokenmobile: tokenStr },
+      { fcmtokenios: tokenStr },
+    ],
+  });
+
+  for (const doc of matchingUsers) {
+    let modified = false;
+    if (doc.fcmtokenweb === tokenStr) { doc.fcmtokenweb = null; modified = true; }
+    if (doc.fcmtokenmobile === tokenStr) { doc.fcmtokenmobile = null; modified = true; }
+    if (doc.fcmtokenios === tokenStr) { doc.fcmtokenios = null; modified = true; }
+    if (modified) await doc.save();
+  }
+
   const result = await User.findByIdAndUpdate(
     objectId,
-    { $set: updateDoc },
+    { $set: { [updateField]: tokenStr } },
     { new: true, runValidators: true }
   );
 
@@ -140,9 +174,8 @@ export async function sendNotification(tokens, notification, data = {}) {
   }
 
   const dataWithTag = { ...data };
-  if (!dataWithTag.tag) {
-    dataWithTag.tag = dataWithTag.notificationId || Date.now().toString();
-  }
+  const tag = String(dataWithTag.tag || dataWithTag.notificationId || `hemsely_notif_${Date.now()}`);
+  dataWithTag.tag = tag;
 
   const imageUrl = dataWithTag.image || null;
 
@@ -162,9 +195,11 @@ export async function sendNotification(tokens, notification, data = {}) {
 
   const androidConfig = {
     priority: 'high',
+    collapseKey: tag,
     notification: {
       title: notificationObj.title,
       body: notificationObj.body,
+      tag: tag,
       sound: dataWithTag.sound ? String(dataWithTag.sound) : 'default',
       ...(dataWithTag.channelId && { channelId: String(dataWithTag.channelId) }),
       ...(imageUrl && { imageUrl }),
@@ -173,6 +208,9 @@ export async function sendNotification(tokens, notification, data = {}) {
 
   const apnsSound = dataWithTag.sound ? String(dataWithTag.sound) : 'default';
   const apnsConfig = {
+    headers: {
+      'apns-collapse-id': tag.substring(0, 64),
+    },
     payload: {
       aps: {
         alert: { title: notificationObj.title, body: notificationObj.body },
@@ -185,12 +223,10 @@ export async function sendNotification(tokens, notification, data = {}) {
     apnsConfig.payload.imageUrl = imageUrl;
   }
 
-  // No top-level `notification` and no `webpush.notification`: on web, either
-  // one makes the browser auto-display a system notification, while our
-  // service worker's onBackgroundMessage ALSO calls showNotification() from
-  // `data` — together that's 2 notifications for 1 push. Android/iOS get
-  // their display payload from android.notification / apns.payload.aps.alert
-  // above instead.
+  // Top-level `notification` is omitted to prevent double notifications on web/PWAs.
+  // Android/iOS get their display payload from android.notification / apns.payload.aps.alert
+  // with matching tag and collapseKey to ensure exactly 1 notification is rendered per push.
+  const webpushTopic = tag.replace(/[^a-zA-Z0-9\-_]/g, '').substring(0, 32) || 'hemsely';
   const message = {
     data: Object.fromEntries(
       Object.entries(dataWithTag).map(([k, v]) => [String(k), String(v)])
@@ -199,7 +235,10 @@ export async function sendNotification(tokens, notification, data = {}) {
     android: androidConfig,
     apns: apnsConfig,
     webpush: {
-      headers: { Urgency: 'high' },
+      headers: {
+        Urgency: 'high',
+        Topic: webpushTopic,
+      },
     },
   };
 
