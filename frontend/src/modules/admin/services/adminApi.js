@@ -13,7 +13,7 @@ const request = async (endpoint, options = {}) => {
     // never duplicate it into localStorage, which an XSS could read directly.
     const response = await fetch(url, { ...options, headers, credentials: 'include' });
 
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
         sessionStorage.removeItem('hemsely_admin_session:v1');
         if (!window.location.pathname.startsWith('/admin/login')) {
             window.location.href = '/admin/login';

@@ -25,33 +25,36 @@ const AdminLayout = () => {
         setIsMobileMenuOpen(false);
     }, [location.pathname]);
 
-    useEffect(() => {
+    const verifySession = async () => {
+        setCheckingAuth(true);
+        setAuthCheckError('');
+
         if (!sessionStorage.getItem(ADMIN_SESSION_KEY)) {
             navigate('/admin/login', { replace: true });
             return;
         }
 
-        (async () => {
-            try {
-                const { data, ok, status } = await adminApi.get('/admin/me');
-                if (ok && data.success) {
-                    setAdmin(data.admin);
-                    setCheckingAuth(false);
-                } else if (status === 401 || status === 403) {
-                    // Genuinely unauthenticated/unauthorized - clear the stale session and send them to login.
-                    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-                    navigate('/admin/login', { replace: true });
-                } else {
-                    // A transient failure (network hiccup, 500, etc.) shouldn't force-logout an
-                    // otherwise-valid session - let the admin retry instead of losing their session.
-                    setAuthCheckError('Could not verify your session. Please retry.');
-                    setCheckingAuth(false);
-                }
-            } catch {
-                setAuthCheckError('Could not verify your session. Please retry.');
-                setCheckingAuth(false);
+        try {
+            const { data, ok, status } = await adminApi.get('/admin/me');
+            if (ok && data.success) {
+                setAdmin(data.admin);
+                setAuthCheckError('');
+            } else if (status === 401 || status === 403 || !data?.success) {
+                sessionStorage.removeItem(ADMIN_SESSION_KEY);
+                navigate('/admin/login', { replace: true });
+            } else {
+                setAuthCheckError('Could not verify your session. Please retry or log in again.');
             }
-        })();
+        } catch {
+            setAuthCheckError('Could not verify your session. Please retry or log in again.');
+        } finally {
+            setCheckingAuth(false);
+        }
+    };
+
+    useEffect(() => {
+        verifySession();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigate]);
 
     useEffect(() => {
@@ -210,15 +213,24 @@ const AdminLayout = () => {
                 {/* Main Content Area Scrollable */}
                 <main className="flex-1 overflow-y-auto w-full p-4 sm:p-6 lg:p-8 relative z-[1] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     {authCheckError && (
-                        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
                             <span>{authCheckError}</span>
-                            <button
-                                type="button"
-                                onClick={() => window.location.reload()}
-                                className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold cursor-pointer border-0"
-                            >
-                                Retry
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={verifySession}
+                                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer border-0 transition-colors"
+                                >
+                                    Retry
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleLogout}
+                                    className="px-3 py-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-800 text-white text-xs font-bold cursor-pointer border-0 transition-colors"
+                                >
+                                    Log in again
+                                </button>
+                            </div>
                         </div>
                     )}
                     <Outlet />
