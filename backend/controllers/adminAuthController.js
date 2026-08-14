@@ -75,24 +75,31 @@ export const adminRegister = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc Admin Login
+// @desc Admin Login (Strictly Database Authenticated)
 // @route POST /api/admin/login
 // @access Public
 export const adminLogin = asyncHandler(async (req, res, next) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
 
-  // Validate input
-  if (!email || !password) {
+  // Validate input types
+  if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
     return res.status(400).json({
       success: false,
       message: 'Please provide email and password',
     });
   }
 
-  const inputIdentifier = email.trim();
+  const inputIdentifier = String(email).trim();
+  if (!inputIdentifier) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide email and password',
+    });
+  }
+
   const safeIdentifier = escapeRegex(inputIdentifier);
 
-  // Check for admin by email OR username (case-insensitive)
+  // Query MongoDB Admin collection strictly from Database
   const admin = await Admin.findOne({
     $or: [
       { email: inputIdentifier.toLowerCase() },
@@ -108,7 +115,7 @@ export const adminLogin = asyncHandler(async (req, res, next) => {
   }
 
   // Check if account is locked
-  if (admin.isLocked()) {
+  if (typeof admin.isLocked === 'function' && admin.isLocked()) {
     const lockMinutesLeft = admin.lockUntil
       ? Math.ceil((new Date(admin.lockUntil).getTime() - Date.now()) / (60 * 1000))
       : 30;
@@ -118,37 +125,33 @@ export const adminLogin = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Check if password matches
+  // Check if password matches database bcrypt hash
   const isMatch = await admin.matchPassword(password);
 
   if (!isMatch) {
-    // Must be awaited: the next login attempt re-fetches the admin and reads
-    // loginAttempts to decide whether to lock the account, so an unawaited
-    // (fire-and-forget) increment here is a race that can let a brute-force
-    // attempt slip through without ever tripping the lockout.
-    await admin.incLoginAttempts();
+    if (typeof admin.incLoginAttempts === 'function') {
+      await admin.incLoginAttempts();
+    }
     return res.status(401).json({
       success: false,
       message: 'Invalid credentials',
     });
   }
 
-  // Reset login attempts on successful login
+  // Reset login attempts on successful database login
   admin.loginAttempts = 0;
   admin.lockUntil = undefined;
-
-  // Update last login
   admin.lastLogin = new Date();
   await admin.save();
 
-  // Generate tokens
+  // Generate session tokens
   const token = generateToken(admin._id, admin.role);
   const refreshToken = generateRefreshToken(admin._id);
 
   // Set cookies
   setCookie(res, token, refreshToken, 'adminToken', 'adminRefreshToken');
 
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
     message: 'Admin logged in successfully',
     token,
