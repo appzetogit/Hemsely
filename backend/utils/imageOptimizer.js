@@ -1,4 +1,16 @@
-import sharp from 'sharp';
+let sharpModule = null;
+
+async function getSharp() {
+  if (sharpModule !== null) return sharpModule;
+  try {
+    const mod = await import('sharp');
+    sharpModule = mod.default || mod;
+  } catch (err) {
+    console.warn('⚠️ [ImageOptimizer] Sharp package is not available:', err.message);
+    sharpModule = false;
+  }
+  return sharpModule;
+}
 
 const FOLDER_PROFILES = {
   'hemsely/profiles': { maxWidth: 600, maxHeight: 600, quality: 80 },
@@ -12,6 +24,17 @@ const FOLDER_PROFILES = {
 export async function compressImage(inputBuffer, opts = {}) {
   const originalSize = inputBuffer.length;
   if (opts.isVideo) return { buffer: inputBuffer, originalSize, compressedSize: originalSize, mimeType: 'video/mp4', extension: 'mp4' };
+
+  const sharp = await getSharp();
+  if (!sharp) {
+    return {
+      buffer: inputBuffer,
+      originalSize,
+      compressedSize: originalSize,
+      mimeType: opts.mimeType || 'image/jpeg',
+      extension: 'jpg',
+    };
+  }
 
   const folderKey = opts.folder || 'default';
   const { maxWidth, maxHeight, quality } = FOLDER_PROFILES[folderKey] || FOLDER_PROFILES.default;
@@ -53,3 +76,4 @@ export async function compressImage(inputBuffer, opts = {}) {
     throw new Error('File could not be processed as a valid image');
   }
 }
+

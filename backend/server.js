@@ -40,9 +40,19 @@ const killPortProcess = (port) => {
       });
       return killed;
     } else {
-      execSync(`npx kill-port ${port}`);
-      console.log(`🧹 Auto-cleared stale process holding port ${port}`);
-      return true;
+      let killed = false;
+      try {
+        execSync(`fuser -k ${port}/tcp 2>/dev/null || lsof -t -i:${port} | xargs -r kill -9 2>/dev/null`);
+        console.log(`🧹 Auto-cleared stale process holding port ${port}`);
+        killed = true;
+      } catch (_) {
+        try {
+          execSync(`npx --yes kill-port ${port}`, { stdio: 'ignore' });
+          console.log(`🧹 Auto-cleared stale process holding port ${port}`);
+          killed = true;
+        } catch (_) {}
+      }
+      return killed;
     }
   } catch (err) {
     return false;
