@@ -43,11 +43,11 @@ const AdminLayout = () => {
             if (ok && data.success) {
                 setAdmin(data.admin);
                 setAuthCheckError('');
-            } else if (status === 401 || status === 403 || !data?.success) {
+            } else if (status === 401) {
                 clearAdminSession();
                 navigate('/admin/login', { replace: true });
             } else {
-                setAuthCheckError('Could not verify your session. Please retry or log in again.');
+                setAuthCheckError(data?.message || 'Could not verify your session. Please retry or log in again.');
             }
         } catch {
             setAuthCheckError('Could not verify your session. Please retry or log in again.');

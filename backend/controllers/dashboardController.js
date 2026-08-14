@@ -11,7 +11,12 @@ import { logAdminAction } from '../utils/auditLog.js';
 // @access Private/Admin
 export const getDashboardStats = asyncHandler(async (req, res) => {
   const currentYear = new Date().getFullYear();
-  const selectedYear = parseInt(req.query.year || currentYear, 10);
+  const rawYear = req.query.year;
+  const parsedYear = parseInt(rawYear, 10);
+  const selectedYear =
+    Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= currentYear + 10
+      ? parsedYear
+      : currentYear;
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -31,36 +36,49 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     growthAgg,
     yearListAgg,
   ] = await Promise.all([
-    User.countDocuments({}),
-    User.countDocuments({ createdAt: { $gte: startOfToday } }),
-    User.countDocuments({ createdAt: { $gte: startOfWeek } }),
-    Match.countDocuments({ status: 'accepted' }),
-    Message.countDocuments({}),
-    User.countDocuments({ isPremium: true }),
+    User.countDocuments({}).catch(() => 0),
+    User.countDocuments({ createdAt: { $gte: startOfToday } }).catch(() => 0),
+    User.countDocuments({ createdAt: { $gte: startOfWeek } }).catch(() => 0),
+    Match.countDocuments({ status: 'accepted' }).catch(() => 0),
+    Message.countDocuments({}).catch(() => 0),
+    User.countDocuments({ isPremium: true }).catch(() => 0),
     Transaction.aggregate([
       { $match: { status: 'success' } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]),
+    ]).catch(() => []),
     User.aggregate([
-      { $match: { createdAt: { $gte: startOfYear, $lt: endOfYear } } },
+      {
+        $match: {
+          createdAt: {
+            $type: 'date',
+            $gte: startOfYear,
+            $lt: endOfYear,
+          },
+        },
+      },
       {
         $group: {
           _id: { $month: '$createdAt' },
           count: { $sum: 1 },
         },
       },
-    ]),
+    ]).catch(() => []),
     User.aggregate([
+      { $match: { createdAt: { $type: 'date' } } },
       { $group: { _id: { $year: '$createdAt' } } },
       { $sort: { _id: -1 } },
-    ]),
+    ]).catch(() => []),
   ]);
 
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
   const monthlyMap = {};
-  growthAgg.forEach((g) => {
-    monthlyMap[g._id] = g.count;
-  });
+  if (Array.isArray(growthAgg)) {
+    growthAgg.forEach((g) => {
+      if (g && typeof g._id === 'number' && g._id >= 1 && g._id <= 12) {
+        monthlyMap[g._id] = g.count;
+      }
+    });
+  }
 
   const growth = MONTH_NAMES.map((monthName, idx) => ({
     month: monthName,
@@ -68,7 +86,12 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     count: monthlyMap[idx + 1] || 0,
   }));
 
-  const existingYears = yearListAgg.map((y) => y._id).filter(Boolean);
+  const existingYears = Array.isArray(yearListAgg)
+    ? yearListAgg
+        .map((y) => y._id)
+        .filter((y) => typeof y === 'number' && !isNaN(y) && y >= 2000 && y <= currentYear + 10)
+    : [];
+
   const minYear = existingYears.length ? Math.min(currentYear, ...existingYears) : currentYear;
   const availableYears = [];
   for (let y = minYear; y <= currentYear + 5; y++) {
@@ -84,7 +107,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       activeMatches,
       totalMessages,
       premiumUsers,
-      totalRevenue: revenueAgg[0]?.total || 0,
+      totalRevenue: (revenueAgg && revenueAgg[0]?.total) || 0,
     },
     selectedYear,
     availableYears,

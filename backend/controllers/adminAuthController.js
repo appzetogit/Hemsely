@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { generateToken, generateRefreshToken, setCookie, clearCookie } from '../utils/tokenUtils.js';
 import { validatePassword } from '../utils/validators.js';
+import { escapeRegex } from '../utils/regexUtils.js';
 
 // @desc Admin Register (Create additional admin accounts)
 // @route POST /api/admin/register
@@ -89,10 +90,14 @@ export const adminLogin = asyncHandler(async (req, res, next) => {
   }
 
   const inputIdentifier = email.trim();
+  const safeIdentifier = escapeRegex(inputIdentifier);
 
-  // Check for admin by email OR username
+  // Check for admin by email OR username (case-insensitive)
   const admin = await Admin.findOne({
-    $or: [{ email: inputIdentifier.toLowerCase() }, { username: inputIdentifier }],
+    $or: [
+      { email: inputIdentifier.toLowerCase() },
+      { username: new RegExp(`^${safeIdentifier}$`, 'i') },
+    ],
   }).select('+password');
 
   if (!admin) {
@@ -104,9 +109,12 @@ export const adminLogin = asyncHandler(async (req, res, next) => {
 
   // Check if account is locked
   if (admin.isLocked()) {
+    const lockMinutesLeft = admin.lockUntil
+      ? Math.ceil((new Date(admin.lockUntil).getTime() - Date.now()) / (60 * 1000))
+      : 30;
     return res.status(403).json({
       success: false,
-      message: 'Account locked due to multiple failed login attempts. Try again later.',
+      message: `Account locked due to multiple failed login attempts. Try again in ${Math.max(lockMinutesLeft, 1)} minute(s).`,
     });
   }
 

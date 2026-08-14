@@ -137,7 +137,7 @@ const request = async (endpoint, options = {}) => {
                 window.location.href = '/admin/login';
             }
         }
-    } else if ((response.status === 401 || response.status === 403) && !endpoint.includes('/admin/login') && !endpoint.includes('/admin/refresh')) {
+    } else if (response.status === 401 && !endpoint.includes('/admin/login') && !endpoint.includes('/admin/refresh')) {
         clearAdminSession();
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
             window.location.href = '/admin/login';

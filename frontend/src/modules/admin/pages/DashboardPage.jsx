@@ -77,13 +77,10 @@ const DashboardPage = () => {
 
     useEffect(() => {
         (async () => {
+            setLoading(true);
             try {
-                const [statsRes, usersRes] = await Promise.all([
-                    adminApi.get(`/admin/dashboard/stats?year=${selectedYear}`),
-                    adminApi.get('/admin/users?page=1&limit=5'),
-                ]);
-
-                if (statsRes.ok && statsRes.data.success) {
+                const statsRes = await adminApi.get(`/admin/dashboard/stats?year=${selectedYear}`);
+                if (statsRes.ok && statsRes.data?.success) {
                     setStats(statsRes.data.stats);
                     setGrowth(statsRes.data.growth || []);
                     if (statsRes.data.selectedYear) setSelectedYear(statsRes.data.selectedYear);
@@ -91,11 +88,17 @@ const DashboardPage = () => {
                 } else {
                     setLoadError(statsRes.data?.message || 'Could not load dashboard stats.');
                 }
-                if (usersRes.ok && usersRes.data.success) {
-                    setRecentUsers(usersRes.data.users);
-                }
-            } catch {
+            } catch (err) {
                 setLoadError('Could not load dashboard stats. Please try again.');
+            }
+
+            try {
+                const usersRes = await adminApi.get('/admin/users?page=1&limit=5');
+                if (usersRes.ok && usersRes.data?.success) {
+                    setRecentUsers(usersRes.data.users || []);
+                }
+            } catch (err) {
+                // Silently ignore or leave recent users empty if loading users fails
             }
             setLoading(false);
         })();
