@@ -1,0 +1,56 @@
+# Nginx Configuration for Hemsely Backend & Frontend Reverse Proxy
+# Copy this to /etc/nginx/sites-available/hemsely and link to /etc/nginx/sites-enabled/
+
+server {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com; # Replace with your actual domain or server IP
+
+    # Increase max upload size for user profile photo / selfie uploads (default is 1M)
+    client_max_body_size 20M;
+
+    # 1. API & Backend Requests
+    location /api/ {
+        # IMPORTANT: Use 127.0.0.1 instead of localhost to avoid IPv6 (::1) connection failures
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        
+        # Proxy Headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # WebSocket Support (for Socket.io)
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # Timeouts for long requests
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # 2. Socket.io Direct Fallback Location
+    location /socket.io/ {
+        proxy_pass http://127.0.0.1:5000/socket.io/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # 3. Static Uploaded Files (Images / Media)
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:5000/uploads/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    # 4. Frontend SPA React Static Files (if Nginx serves frontend build directly)
+    location / {
+        root /var/www/hemsely/frontend/dist; # Replace with path to your built frontend dist folder
+        try_files $uri $uri/ /index.html;
+    }
+}

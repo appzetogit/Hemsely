@@ -46,11 +46,13 @@ const AdminLayout = () => {
             } else if (status === 401) {
                 clearAdminSession();
                 navigate('/admin/login', { replace: true });
+            } else if (status === 502 || status === 503 || status === 504) {
+                setAuthCheckError(data?.message || `Server unavailable (${status} Bad Gateway). Please check if backend service is running on live server.`);
             } else {
                 setAuthCheckError(data?.message || 'Could not verify your session. Please retry or log in again.');
             }
         } catch {
-            setAuthCheckError('Could not verify your session. Please retry or log in again.');
+            setAuthCheckError('Network connection issue. Could not reach the backend server.');
         } finally {
             setCheckingAuth(false);
         }

@@ -148,7 +148,14 @@ const request = async (endpoint, options = {}) => {
     try {
         data = resolveUploadsUrls(await response.json());
     } catch {
-        // empty body
+        if (!response.ok) {
+            data = {
+                success: false,
+                message: response.status === 502 || response.status === 503 || response.status === 504
+                    ? `Server unavailable (${response.status} Bad Gateway). Backend service on live server may be stopped or restarting.`
+                    : `Server returned an error status (${response.status}).`
+            };
+        }
     }
 
     return { data, status: response.status, ok: response.ok };
