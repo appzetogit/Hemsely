@@ -123,7 +123,7 @@ const AudioPlayerBubble = ({ audioUrl, duration, isSent }) => {
 };
 
 /* ─── Chat Bubble ─── */
-const ChatBubble = ({ msg, photo, isSent, showAvatar, isUnmatched }) => {
+const ChatBubble = ({ msg, photo, isSent, showAvatar, isUnmatched, onImageClick }) => {
     const borderRadius = isSent ? '25px 5px 25px 25px' : '5px 25px 25px 25px';
 
     return (
@@ -157,7 +157,21 @@ const ChatBubble = ({ msg, photo, isSent, showAvatar, isUnmatched }) => {
 
             <div style={{ maxWidth: '75%', background: isSent ? '#6F3BCE' : '#F3F3F3', borderRadius, padding: msg.image ? '6px' : '12px 16px' }}>
                 {msg.image && (
-                    <img src={msg.image} alt="" style={{ width: '100%', maxWidth: '220px', borderRadius: '18px', display: 'block', marginBottom: msg.message ? '6px' : 0 }} />
+                    <img
+                        src={msg.image}
+                        alt="Chat photo"
+                        onClick={() => onImageClick && onImageClick(msg.image)}
+                        style={{
+                            width: '100%',
+                            maxWidth: '220px',
+                            borderRadius: '18px',
+                            display: 'block',
+                            marginBottom: msg.message ? '6px' : 0,
+                            cursor: 'pointer',
+                            transition: 'opacity 0.2s ease, transform 0.15s ease',
+                        }}
+                        className="hover:opacity-90 active:scale-[0.98]"
+                    />
                 )}
                 {msg.audio ? (
                     <AudioPlayerBubble audioUrl={msg.audio} duration={msg.audioDuration} isSent={isSent} />
@@ -168,6 +182,70 @@ const ChatBubble = ({ msg, photo, isSent, showAvatar, isUnmatched }) => {
                     }}>{msg.message}</p>
                 ) : null}
             </div>
+        </div>
+    );
+};
+
+/* ─── Image Preview Lightbox Modal ─── */
+const ImagePreviewModal = ({ src, onClose }) => {
+    if (!src) return null;
+
+    return (
+        <div
+            onClick={onClose}
+            style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 2000,
+                background: 'rgba(0, 0, 0, 0.85)',
+                backdropFilter: 'blur(6px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px',
+            }}
+        >
+            <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close image preview"
+                style={{
+                    position: 'absolute',
+                    top: '20px',
+                    right: '20px',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2001,
+                    transition: 'background 0.2s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'; }}
+            >
+                ✕
+            </button>
+
+            <img
+                src={src}
+                alt="Enlarged chat attachment"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    maxWidth: '100%',
+                    maxHeight: '85vh',
+                    objectFit: 'contain',
+                    borderRadius: '16px',
+                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
+                }}
+            />
         </div>
     );
 };
@@ -360,6 +438,19 @@ const ChatScreenPage = () => {
     const [unmatching, setUnmatching] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
+    const [previewImage, setPreviewImage] = useState(null);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setPreviewImage(null);
+            }
+        };
+        if (previewImage) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [previewImage]);
 
     const fileInputRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -837,7 +928,15 @@ const ChatScreenPage = () => {
                                 fontWeight: 500, fontSize: '13px', lineHeight: '16px', letterSpacing: '0.01em', color: '#797C7B',
                             }}>{row.text}</div>
                         ) : (
-                            <ChatBubble key={row.key} msg={row.msg} photo={currentPhoto} isSent={row.isSent} showAvatar={row.showAvatar} isUnmatched={isUnmatched} />
+                            <ChatBubble
+                                key={row.key}
+                                msg={row.msg}
+                                photo={currentPhoto}
+                                isSent={row.isSent}
+                                showAvatar={row.showAvatar}
+                                isUnmatched={isUnmatched}
+                                onImageClick={(imgSrc) => setPreviewImage(imgSrc)}
+                            />
                         )
                     ))
                 )}
@@ -1055,6 +1154,9 @@ const ChatScreenPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* Photo Lightbox / Zoom Preview Modal */}
+            <ImagePreviewModal src={previewImage} onClose={() => setPreviewImage(null)} />
         </div>
     );
 };

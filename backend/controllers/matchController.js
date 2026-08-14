@@ -2,8 +2,10 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Like from '../models/Like.js';
 import Match from '../models/Match.js';
+import Notification from '../models/Notification.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { emitToUser } from '../socket/index.js';
+import { sendToUser } from '../services/fcmService.js';
 import { getOrCreateConfig } from './appConfigController.js';
 import { isBlockedByQueue, getQueueStatusForUser } from '../utils/queueService.js';
 
@@ -119,7 +121,65 @@ export const likeUser = asyncHandler(async (req, res, next) => {
       await match.save();
     }
 
-    emitToUser(likedUser, 'new_match', { match, otherUserId: likedBy });
+    // Fetch user details for notification titles and bodies
+    const [liker, target] = await Promise.all([
+      User.findById(likedBy).select('firstName lastName profilePicture'),
+      User.findById(likedUser).select('firstName lastName profilePicture'),
+    ]);
+
+    const likerName = liker?.firstName || 'Someone';
+    const targetName = target?.firstName || 'Someone';
+
+    // 1. Create DB Notifications for both matched users
+    Notification.create([
+      {
+        title: "It's a Match! 💕",
+        body: `You matched with ${targetName}!`,
+        target: 'user',
+        recipientUserId: likedBy,
+        type: 'match',
+      },
+      {
+        title: "It's a Match! 💕",
+        body: `You matched with ${likerName}!`,
+        target: 'user',
+        recipientUserId: likedUser,
+        type: 'match',
+      },
+    ]).catch((err) => console.warn('Failed to save match notifications:', err?.message));
+
+    // 2. Send FCM Push Notifications (works when mobile is locked / app in background)
+    sendToUser(
+      likedUser,
+      {
+        title: "It's a Match! 💕",
+        body: `You matched with ${likerName}!`,
+      },
+      {
+        type: 'match',
+        partnerId: String(likedBy),
+        partnerName: likerName,
+        url: `/chat/${likedBy}`,
+      }
+    ).catch(() => {});
+
+    sendToUser(
+      likedBy,
+      {
+        title: "It's a Match! 💕",
+        body: `You matched with ${targetName}!`,
+      },
+      {
+        type: 'match',
+        partnerId: String(likedUser),
+        partnerName: targetName,
+        url: `/chat/${likedUser}`,
+      }
+    ).catch(() => {});
+
+    // 3. Socket emit for real-time foreground updates
+    emitToUser(likedUser, 'new_match', { match, otherUserId: likedBy, partnerName: likerName, partnerPhoto: liker?.profilePicture });
+    emitToUser(likedBy, 'new_match', { match, otherUserId: likedUser, partnerName: targetName, partnerPhoto: target?.profilePicture });
 
     return res.status(200).json({
       success: true,

@@ -2,8 +2,10 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Message from '../models/Message.js';
 import Match from '../models/Match.js';
+import Notification from '../models/Notification.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { emitToUser } from '../socket/index.js';
+import { sendToUser } from '../services/fcmService.js';
 
 const conversationKey = (idA, idB) => [idA.toString(), idB.toString()].sort().join('_');
 
@@ -72,6 +74,35 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
 
   emitToUser(receiver, 'new_message', newMessage);
   emitToUser(sender, 'new_message', newMessage);
+
+  // Send Notification & FCM Push to receiver for background / lockscreen
+  const senderFirstName = newMessage.sender?.firstName || 'User';
+  const senderLastName = newMessage.sender?.lastName || '';
+  const senderFullName = `${senderFirstName} ${senderLastName}`.trim();
+  const notificationBody = req.file ? '📷 Photo' : req.body.audio ? '🎵 Voice message' : message;
+
+  Notification.create({
+    title: senderFullName,
+    body: notificationBody,
+    target: 'user',
+    recipientUserId: receiver,
+    type: 'chat',
+  }).catch((err) => console.warn('Failed to save chat notification:', err?.message));
+
+  sendToUser(
+    receiver,
+    {
+      title: senderFullName,
+      body: notificationBody,
+    },
+    {
+      type: 'chat',
+      senderId: String(sender),
+      senderName: senderFullName,
+      senderPhoto: newMessage.sender?.profilePicture || '',
+      url: `/chat/${sender}`,
+    }
+  ).catch(() => {});
 
   res.status(201).json({
     success: true,

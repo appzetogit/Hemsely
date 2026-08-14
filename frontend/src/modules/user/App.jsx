@@ -4,6 +4,7 @@ import AppRoutes from './routes/AppRoutes';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
+import NotificationListener from './components/NotificationListener';
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <AuthProvider>
         <SocketProvider>
           <MaintenanceOverlay />
+          <NotificationListener />
           <AppRoutes />
         </SocketProvider>
       </AuthProvider>
