@@ -1,4 +1,5 @@
 import { body, param } from 'express-validator';
+import { validateEmailStrict } from '../utils/validators.js';
 
 export const mongoIdParam = (name) => param(name).isMongoId().withMessage(`Invalid ${name}`);
 
@@ -42,7 +43,14 @@ export const appConfigValidator = [
   body('discoveryRadiusKm').optional().isInt({ min: 1, max: 20000 }),
   body('maxAgeGapYears').optional().isInt({ min: 1, max: 100 }),
   body('minAppVersion').optional().isString(),
-  body('supportEmail').optional().isEmail(),
+  body('supportEmail')
+    .optional()
+    .custom((value) => {
+      if (!value) return true;
+      const res = validateEmailStrict(value);
+      if (!res.isValid) throw new Error(res.message);
+      return true;
+    }),
   body('genderQueueEnabled').optional().isBoolean(),
   body('queueRatioMale').optional().isInt({ min: 1, max: 100 }),
   body('queueRatioFemale').optional().isInt({ min: 1, max: 100 }),
@@ -59,7 +67,14 @@ export const websitePageValidator = [
 export const adminProfileValidator = [
   body('firstName').optional().isString().trim().isLength({ max: 50 }),
   body('lastName').optional().isString().trim().isLength({ max: 50 }),
-  body('email').optional().isEmail().withMessage('Please provide a valid email'),
+  body('email')
+    .optional()
+    .custom((value) => {
+      if (!value) return true;
+      const res = validateEmailStrict(value);
+      if (!res.isValid) throw new Error(res.message);
+      return true;
+    }),
 ];
 
 export const adminPasswordValidator = [

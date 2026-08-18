@@ -1,4 +1,5 @@
 import { body, param, query } from 'express-validator';
+import { validateEmailStrict } from '../utils/validators.js';
 
 export const mongoIdParam = (name) =>
   param(name)
@@ -22,7 +23,16 @@ export const discoveryFeedQueryValidator = [
 export const updateProfileValidator = [
   body('firstName').optional().isString().trim().isLength({ max: 50 }),
   body('lastName').optional().isString().trim().isLength({ max: 50 }),
-  body('email').optional().isEmail().withMessage('Please provide a valid email'),
+  body('email')
+    .optional()
+    .custom((value) => {
+      if (!value) return true;
+      const res = validateEmailStrict(value);
+      if (!res.isValid) {
+        throw new Error(res.message);
+      }
+      return true;
+    }),
   body('bio').optional().isString().isLength({ max: 500 }),
   body('age').optional().isInt({ min: 18, max: 120 }).withMessage('Age must be between 18 and 120'),
   body('gender').optional().isIn(['male', 'female', 'other', '']),

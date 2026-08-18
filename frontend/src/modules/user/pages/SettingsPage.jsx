@@ -4,6 +4,7 @@ import checkMarkIcon from '../assets/icons/tick.png';
 import { deleteUserProfile, requestAccountDeletionOtp, updateUserProfile } from '../services/userApi';
 import apiClient from '../../../shared/services/apiClient';
 import { devError } from '../../../shared/utils/logger';
+import { validateEmailStrict } from '../../../shared/utils/emailValidator';
 import { useAuth } from '../context/AuthContext';
 
 const SectionHeader = ({ title }) => (
@@ -155,6 +156,7 @@ const SettingsPage = () => {
     // Email Modal state
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [emailInput, setEmailInput] = useState('');
+    const [emailError, setEmailError] = useState('');
     const [savingEmail, setSavingEmail] = useState(false);
 
     // Blocked Accounts state
@@ -264,17 +266,19 @@ const SettingsPage = () => {
 
     const handleSaveEmail = async (e) => {
         e.preventDefault();
+        setEmailError('');
         const trimmedEmail = emailInput.trim();
-        if (!trimmedEmail) {
-            alert("Please enter a valid email address");
+        const validation = validateEmailStrict(trimmedEmail);
+        if (!validation.isValid) {
+            setEmailError(validation.message);
             return;
         }
 
         setSavingEmail(true);
         try {
-            await updateUserProfile('me', { email: trimmedEmail });
+            await updateUserProfile('me', { email: validation.email });
 
-            setEmail(trimmedEmail);
+            setEmail(validation.email);
 
             // Sync with local stored user object
             const userObjStr = localStorage.getItem('user');
@@ -282,13 +286,18 @@ const SettingsPage = () => {
             if (userObjStr) {
                 try { userObj = JSON.parse(userObjStr); } catch { }
             }
-            userObj.email = trimmedEmail;
+            userObj.email = validation.email;
             localStorage.setItem('user', JSON.stringify(userObj));
 
             setShowEmailModal(false);
         } catch (error) {
             devError('Failed to save email:', error);
-            alert("Failed to update email. Please try again.");
+            const serverMsg =
+                error?.response?.data?.message ||
+                error?.data?.message ||
+                error?.message ||
+                "Failed to update email. Please try again.";
+            setEmailError(serverMsg);
         } finally {
             setSavingEmail(false);
         }
@@ -483,16 +492,29 @@ const SettingsPage = () => {
                             Enter your email to receive account recovery & updates.
                         </p>
 
-                        <form onSubmit={handleSaveEmail} className="flex flex-col gap-4">
-                            <input
-                                type="email"
-                                required
-                                autoFocus
-                                placeholder="name@example.com"
-                                value={emailInput}
-                                onChange={(e) => setEmailInput(e.target.value)}
-                                className="w-full h-12 px-4 rounded-xl border border-gray-200 focus:border-[#733FE0] focus:outline-none text-[15px] font-medium text-gray-900 bg-gray-50/50"
-                            />
+                        <form onSubmit={handleSaveEmail} noValidate className="flex flex-col gap-3">
+                            <div>
+                                <input
+                                    type="email"
+                                    required
+                                    autoFocus
+                                    placeholder="name@example.com"
+                                    value={emailInput}
+                                    onChange={(e) => {
+                                        setEmailInput(e.target.value);
+                                        if (emailError) setEmailError('');
+                                    }}
+                                    className={`w-full h-12 px-4 rounded-xl border ${emailError ? 'border-red-500 focus:border-red-500 text-red-900' : 'border-gray-200 focus:border-[#733FE0] text-gray-900'} focus:outline-none text-[15px] font-medium bg-gray-50/50 transition-colors`}
+                                />
+                                {emailError && (
+                                    <div className="mt-2 p-2.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[12px] font-semibold leading-snug flex items-start gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                                        <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <span>{emailError}</span>
+                                    </div>
+                                )}
+                            </div>
 
                             <div className="flex gap-2 mt-1">
                                 <button

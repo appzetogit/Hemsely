@@ -3,6 +3,7 @@ import { Lock, Eye, EyeOff, ShieldCheck, Save, Mail } from 'lucide-react';
 import adminApi from '../services/adminApi';
 import { Input, Label } from '../../../shared/components/ui/Input';
 import { Button } from '../../../shared/components/ui/Button';
+import { validateEmailStrict } from '../../../shared/utils/emailValidator';
 
 const PasswordInput = ({ label, name, placeholder, value, onChange, isVisible, onToggleShow }) => (
     <div>
@@ -94,13 +95,19 @@ const AdminProfilePage = () => {
             return;
         }
 
+        const emailVal = validateEmailStrict(profile.email);
+        if (!emailVal.isValid) {
+            setProfileMsg({ text: emailVal.message, type: 'error' });
+            return;
+        }
+
         setProfileSaving(true);
         setProfileMsg({ text: '', type: '' });
         try {
             const { data, ok } = await adminApi.put('/admin/profile', {
                 firstName: profile.firstName,
                 lastName: profile.lastName,
-                email: profile.email,
+                email: emailVal.email,
             });
             if (ok && data.success) {
                 setProfileMsg({ text: 'Profile saved successfully!', type: 'success' });
@@ -112,7 +119,7 @@ const AdminProfilePage = () => {
         } finally {
             setProfileSaving(false);
         }
-        setTimeout(() => setProfileMsg({ text: '', type: '' }), 3000);
+        setTimeout(() => setProfileMsg({ text: '', type: '' }), 4000);
     };
 
     const handlePwChange = (event) => {
@@ -167,10 +174,17 @@ const AdminProfilePage = () => {
             setSupportMsg({ text: 'Support email is required.', type: 'error' });
             return;
         }
+
+        const emailVal = validateEmailStrict(supportEmail);
+        if (!emailVal.isValid) {
+            setSupportMsg({ text: emailVal.message, type: 'error' });
+            return;
+        }
+
         setSupportSaving(true);
         setSupportMsg({ text: '', type: '' });
         try {
-            const { data, ok } = await adminApi.put('/admin/app-config', { supportEmail });
+            const { data, ok } = await adminApi.put('/admin/app-config', { supportEmail: emailVal.email });
             if (ok && data.success) {
                 setSupportMsg({ text: 'Support email updated successfully!', type: 'success' });
             } else {
@@ -181,7 +195,7 @@ const AdminProfilePage = () => {
         } finally {
             setSupportSaving(false);
         }
-        setTimeout(() => setSupportMsg({ text: '', type: '' }), 3000);
+        setTimeout(() => setSupportMsg({ text: '', type: '' }), 4000);
     };
 
 

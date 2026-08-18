@@ -14,6 +14,7 @@ import { generateOtpCode, getOtpExpiry, isOtpValid, lastTenDigits } from '../uti
 import { compareFacesWithAWS } from '../services/awsRekognitionService.js';
 import { escapeRegex } from '../utils/regexUtils.js';
 import { cascadeDeleteUserData } from '../utils/userCleanup.js';
+import { validateEmailStrict } from '../utils/validators.js';
 
 
 // @desc Get the current user's gender-ratio queue status
@@ -125,6 +126,17 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
       question: p?.question || '',
       answer: p?.answer || '',
     }));
+  }
+
+  if (req.body.email) {
+    const emailRes = validateEmailStrict(req.body.email);
+    if (!emailRes.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: emailRes.message,
+      });
+    }
+    req.body.email = emailRes.email;
   }
 
   // Fields that can be updated

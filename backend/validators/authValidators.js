@@ -1,4 +1,5 @@
 import { body, param } from 'express-validator';
+import { validateEmailStrict } from '../utils/validators.js';
 
 export const sendOtpValidator = [
   body('phoneNumber')
@@ -18,14 +19,26 @@ export const verifyOtpValidator = [
 ];
 
 export const registerValidator = [
-  body('email').optional().isEmail().withMessage('Please provide a valid email'),
+  body('email')
+    .optional()
+    .custom((value) => {
+      if (!value) return true;
+      const res = validateEmailStrict(value);
+      if (!res.isValid) throw new Error(res.message);
+      return true;
+    }),
   body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('firstName').optional().isString().trim().isLength({ max: 50 }),
   body('lastName').optional().isString().trim().isLength({ max: 50 }),
 ];
 
 export const loginValidator = [
-  body('email').isEmail().withMessage('Please provide a valid email'),
+  body('email')
+    .custom((value) => {
+      const res = validateEmailStrict(value);
+      if (!res.isValid) throw new Error(res.message);
+      return true;
+    }),
   body('password').notEmpty().withMessage('Password is required'),
 ];
 

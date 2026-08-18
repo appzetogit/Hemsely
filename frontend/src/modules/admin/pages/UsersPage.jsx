@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Eye, Search, Star, UserRound, Crown, Gem, Pe
 import adminApi from '../services/adminApi';
 import { Table, TableHead, TableRow, TableHeader, TableCell } from '../components/Table';
 import { Button } from '../../../shared/components/ui/Button';
+import { validateEmailStrict } from '../../../shared/utils/emailValidator';
 
 const PAGE_SIZE = 8;
 
@@ -32,9 +33,18 @@ const EditUserModal = ({ user, onClose, onSave }) => {
         isBanned: Boolean(user.isBanned),
     });
     const [saving, setSaving] = useState(false);
+    const [emailErr, setEmailErr] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setEmailErr('');
+        if (formData.email && formData.email.trim()) {
+            const val = validateEmailStrict(formData.email.trim());
+            if (!val.isValid) {
+                setEmailErr(val.message);
+                return;
+            }
+        }
         setSaving(true);
         await onSave(formData);
         setSaving(false);
@@ -50,7 +60,7 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-3">
+                <form onSubmit={handleSubmit} noValidate className="space-y-3">
                     <div className="grid grid-cols-2 gap-2.5">
                         <div>
                             <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">First Name</label>
@@ -79,9 +89,13 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                             <input
                                 type="email"
                                 value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                                onChange={(e) => {
+                                    setFormData({ ...formData, email: e.target.value });
+                                    if (emailErr) setEmailErr('');
+                                }}
+                                className={`w-full px-2.5 py-1.5 text-xs border ${emailErr ? 'border-red-500 focus:border-red-500' : 'border-zinc-300 focus:border-purple-600'} rounded-lg outline-none font-medium`}
                             />
+                            {emailErr && <p className="text-[11px] text-red-500 font-semibold mt-1">{emailErr}</p>}
                         </div>
                         <div>
                             <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Phone Number</label>
