@@ -396,7 +396,7 @@ const SupportManagementPage = () => {
 
                             <div>
                                 <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
-                                    Admin Response
+                                    SUPPORT Response
                                 </label>
                                 <textarea
                                     value={adminResponseInput}

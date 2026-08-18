@@ -156,22 +156,20 @@ const SupportPage = () => {
                     <button
                         type="button"
                         onClick={() => setActiveTab('new')}
-                        className={`flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all border-0 cursor-pointer ${
-                            activeTab === 'new'
+                        className={`flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all border-0 cursor-pointer ${activeTab === 'new'
                                 ? 'bg-white text-[#733FE0] shadow-2xs'
                                 : 'text-gray-500 hover:text-gray-800'
-                        }`}
+                            }`}
                     >
                         Submit Ticket
                     </button>
                     <button
                         type="button"
                         onClick={() => setActiveTab('history')}
-                        className={`flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all border-0 cursor-pointer ${
-                            activeTab === 'history'
+                        className={`flex-1 py-1.5 rounded-full text-[12px] font-bold transition-all border-0 cursor-pointer ${activeTab === 'history'
                                 ? 'bg-white text-[#733FE0] shadow-2xs'
                                 : 'text-gray-500 hover:text-gray-800'
-                        }`}
+                            }`}
                     >
                         My Tickets ({tickets.length})
                     </button>
@@ -295,7 +293,7 @@ const SupportPage = () => {
                                     {t.adminResponse && (
                                         <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-100 text-[13px] text-purple-900 leading-relaxed mt-2">
                                             <p className="font-extrabold text-[#733FE0] text-[11.5px] uppercase tracking-wider mb-1 flex items-center gap-1">
-                                                💬 Admin Response
+                                                💬 Support Response
                                             </p>
                                             <p className="font-medium text-gray-800">{t.adminResponse}</p>
                                             {t.respondedAt && (
