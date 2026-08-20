@@ -148,62 +148,57 @@ export async function sendNotification(tokens, notification, data = {}) {
     title: notification.title || 'Hemsely Notification',
     body: notification.body || '',
   };
-  if (imageUrl) {
-    notificationObj.image = imageUrl;
-  }
 
-  // Web display is data-only (see message.webpush below) — the service
-  // worker reads title/body from `data`, so they must travel here too.
+  // Title/body/image must also be in the data payload so the service worker
+  // can read them to build the notification display.
   dataWithTag.title = notificationObj.title;
   dataWithTag.body = notificationObj.body;
   if (imageUrl) dataWithTag.image = imageUrl;
 
-  const androidConfig = {
-    priority: 'high',
-    collapseKey: tag,
-    notification: {
-      title: notificationObj.title,
-      body: notificationObj.body,
-      tag: tag,
-      sound: dataWithTag.sound ? String(dataWithTag.sound) : 'default',
-      ...(dataWithTag.channelId && { channelId: String(dataWithTag.channelId) }),
-      ...(imageUrl && { imageUrl }),
-    },
-  };
-
-  const apnsSound = dataWithTag.sound ? String(dataWithTag.sound) : 'default';
-  const apnsConfig = {
-    headers: {
-      'apns-collapse-id': tag.substring(0, 64),
-    },
-    payload: {
-      aps: {
-        alert: { title: notificationObj.title, body: notificationObj.body },
-        sound: apnsSound,
-        ...(imageUrl && { 'mutable-content': 1 }),
-      },
-    },
-  };
-  if (imageUrl) {
-    apnsConfig.payload.imageUrl = imageUrl;
-  }
-
-  // Top-level `notification` is omitted to prevent double notifications on web/PWAs.
-  // Android/iOS get their display payload from android.notification / apns.payload.aps.alert
-  // with matching tag and collapseKey to ensure exactly 1 notification is rendered per push.
+  // ─── WHY DATA-ONLY? ───────────────────────────────────────────────────────
+  // firebase-messaging-compat.js (used in the service worker) has a well-known
+  // double-notification bug:
+  //   1. If the FCM message contains an android.notification block, Android
+  //      system layer auto-shows notification #1 without any app code running.
+  //   2. Then firebase-messaging-compat.js fires onBackgroundMessage which
+  //      our handler uses to call showNotification() → notification #2.
+  // Result: user sees the SAME push twice.
+  //
+  // Fix: send a pure data-only message (no notification block anywhere).
+  //   • Android OS: receives data push, does NOT auto-display anything.
+  //   • firebase-messaging-compat.js SW: fires onBackgroundMessage ONCE.
+  //   • Our handler calls showNotification() exactly once → 1 notification.
+  // ─────────────────────────────────────────────────────────────────────────
   const webpushTopic = tag.replace(/[^a-zA-Z0-9\-_]/g, '').substring(0, 32) || 'hemsely';
   const message = {
     data: Object.fromEntries(
       Object.entries(dataWithTag).map(([k, v]) => [String(k), String(v)])
     ),
     tokens: tokenArray,
-    android: androidConfig,
-    apns: apnsConfig,
+    android: {
+      priority: 'high',   // Required for data-only to wake device in Doze mode
+      collapseKey: tag,   // FCM drops older pushes with same key on server side
+      // NO android.notification → Android system will NOT auto-show anything
+    },
+    apns: {
+      headers: {
+        'apns-priority': '10',
+        'apns-collapse-id': tag.substring(0, 64),
+        'apns-push-type': 'background',
+      },
+      payload: {
+        aps: {
+          'content-available': 1,
+          // NO alert → iOS will NOT auto-show anything
+        },
+      },
+    },
     webpush: {
       headers: {
         Urgency: 'high',
-        Topic: webpushTopic,
+        Topic: webpushTopic,  // Browser collapses repeated pushes server-side
       },
+      // NO webpush.notification → browser will NOT auto-show anything
     },
   };
 
