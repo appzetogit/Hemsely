@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # hemsely Dating App - Backend Quick Setup Script
-# This script helps configure your backend environment
+# This script helps configure your backend environments
 
 echo "========================================="
 echo "hemsely Dating App - Backend Setup Guide"
