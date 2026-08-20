@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Bell, Send, Users, Crown, Clock, CheckCircle2, Plus, X, Trash2 } from 'lucide-react';
 import adminApi from '../services/adminApi';
 
@@ -28,6 +28,7 @@ const NotificationsPage = () => {
     const [form, setForm] = useState(defaultForm);
     const [error, setError] = useState('');
     const [sending, setSending] = useState(false);
+    const sendingRef = useRef(false);
 
     const loadHistory = async () => {
         setLoading(true);
@@ -43,8 +44,9 @@ const NotificationsPage = () => {
             }
         } catch {
             setLoadError('Could not load notification history. Please try again.');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     useEffect(() => {
@@ -62,11 +64,14 @@ const NotificationsPage = () => {
 
     const handleSend = async (e) => {
         e.preventDefault();
+        if (sendingRef.current || sending) return;
+
         if (!form.title.trim() || !form.body.trim()) {
             setError('Title and message body are required.');
             return;
         }
 
+        sendingRef.current = true;
         setSending(true);
         setError('');
         const payload = form.audience === 'all'
@@ -80,11 +85,12 @@ const NotificationsPage = () => {
                 setPage(1);
                 loadHistory();
             } else {
-                setError(data.message || 'Could not send notification.');
+                setError(data?.message || 'Could not send notification.');
             }
         } catch {
             setError('Could not send notification. Please try again.');
         } finally {
+            sendingRef.current = false;
             setSending(false);
         }
     };

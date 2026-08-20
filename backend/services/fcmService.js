@@ -53,39 +53,13 @@ export async function saveFcmToken({ userId, fcmToken, platform = 'web' }) {
 
   console.log(`💾 [FCM] Saving token for user ${userId}... (platform: ${platform}, field: ${updateField})`);
 
-  // Clean up this token if it exists in any other field or under another user account
-  // to ensure duplicate token dispatches never happen for a single device.
-  await User.updateMany(
-    {
-      $or: [
-        { fcmtokenweb: tokenStr },
-        { fcmtokenmobile: tokenStr },
-        { fcmtokenios: tokenStr },
-      ],
-    },
-    {
-      $unset: {
-        fcmtokenweb: tokenStr === '$fcmtokenweb' ? 1 : undefined,
-      },
-    }
-  );
-
-  // Clear existing duplicate references to tokenStr across all users
-  const matchingUsers = await User.find({
-    $or: [
-      { fcmtokenweb: tokenStr },
-      { fcmtokenmobile: tokenStr },
-      { fcmtokenios: tokenStr },
-    ],
-  });
-
-  for (const doc of matchingUsers) {
-    let modified = false;
-    if (doc.fcmtokenweb === tokenStr) { doc.fcmtokenweb = null; modified = true; }
-    if (doc.fcmtokenmobile === tokenStr) { doc.fcmtokenmobile = null; modified = true; }
-    if (doc.fcmtokenios === tokenStr) { doc.fcmtokenios = null; modified = true; }
-    if (modified) await doc.save();
-  }
+  // Clean up this token if it exists anywhere across any user account
+  // to ensure a single token is never attached to multiple accounts/fields.
+  await Promise.all([
+    User.updateMany({ fcmtokenweb: tokenStr }, { $set: { fcmtokenweb: null } }),
+    User.updateMany({ fcmtokenmobile: tokenStr }, { $set: { fcmtokenmobile: null } }),
+    User.updateMany({ fcmtokenios: tokenStr }, { $set: { fcmtokenios: null } }),
+  ]);
 
   const result = await User.findByIdAndUpdate(
     objectId,
@@ -108,25 +82,18 @@ export async function removeFcmToken(fcmToken) {
   if (!fcmToken) return;
 
   const tokenStr = String(fcmToken).trim();
-  const doc = await User.findOne({
-    $or: [
-      { fcmtokenweb: tokenStr },
-      { fcmtokenmobile: tokenStr },
-      { fcmtokenios: tokenStr },
-    ],
-  });
-
-  if (doc) {
-    if (doc.fcmtokenweb === tokenStr) doc.fcmtokenweb = null;
-    if (doc.fcmtokenmobile === tokenStr) doc.fcmtokenmobile = null;
-    if (doc.fcmtokenios === tokenStr) doc.fcmtokenios = null;
-    await doc.save();
-    console.log(`✅ [FCM] Token removed from User ${doc._id}`);
-  }
+  await Promise.all([
+    User.updateMany({ fcmtokenweb: tokenStr }, { $set: { fcmtokenweb: null } }),
+    User.updateMany({ fcmtokenmobile: tokenStr }, { $set: { fcmtokenmobile: null } }),
+    User.updateMany({ fcmtokenios: tokenStr }, { $set: { fcmtokenios: null } }),
+  ]);
+  console.log(`✅ [FCM] Token cleanup completed for token`);
 }
 
 /**
- * Get all active FCM tokens for a user
+ * Get the active primary FCM token for a user.
+ * Priority: Native mobile/android/ios token first, then web token fallback.
+ * Guarantees exactly 1 token is returned per user account to prevent duplicate pushes.
  */
 export async function getTokensForUser(userId) {
   if (!userId) return [];
@@ -144,13 +111,11 @@ export async function getTokensForUser(userId) {
     return [];
   }
 
-  const tokens = [];
-  if (doc.fcmtokenweb) tokens.push(String(doc.fcmtokenweb));
-  if (doc.fcmtokenmobile) tokens.push(String(doc.fcmtokenmobile));
-  if (doc.fcmtokenios) tokens.push(String(doc.fcmtokenios));
+  // Primary selection: mobile/ios takes precedence over web to avoid double alerts on phone
+  const primaryToken = doc.fcmtokenmobile || doc.fcmtokenios || doc.fcmtokenweb;
+  if (!primaryToken) return [];
 
-  const uniqueTokens = Array.from(new Set(tokens.filter(Boolean)));
-  return uniqueTokens;
+  return [String(primaryToken).trim()];
 }
 
 /**

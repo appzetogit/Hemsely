@@ -6,6 +6,10 @@ import { logAdminAction } from '../utils/auditLog.js';
 import { sendNotification as sendFcmPushNotification } from '../services/fcmService.js';
 import { stripAllHtml } from '../utils/sanitize.js';
 
+// In-memory guard to prevent duplicate concurrent or rapid double-submissions of the same broadcast
+const recentBroadcastLocks = new Map();
+const BROADCAST_DEDUP_WINDOW_MS = 5000;
+
 /**
  * @desc Create and send push notification to targeted audience with real FCM dispatch
  * @route POST /api/admin/notifications
@@ -25,6 +29,24 @@ export const sendNotification = asyncHandler(async (req, res) => {
   title = stripAllHtml(title);
   body = stripAllHtml(body);
 
+  const adminId = String(req.admin?.id || req.admin?._id || 'admin');
+  const dedupKey = `${adminId}:${title}:${body}:${target}:${segment}`;
+  const now = Date.now();
+  const lastSentTime = recentBroadcastLocks.get(dedupKey);
+
+  if (lastSentTime && now - lastSentTime < BROADCAST_DEDUP_WINDOW_MS) {
+    return res.status(429).json({
+      success: false,
+      message: 'A duplicate notification was just sent. Please wait a few seconds before resending.',
+    });
+  }
+  recentBroadcastLocks.set(dedupKey, now);
+
+  // Prune expired entries
+  for (const [key, time] of recentBroadcastLocks.entries()) {
+    if (now - time > BROADCAST_DEDUP_WINDOW_MS) recentBroadcastLocks.delete(key);
+  }
+
   // Build target query based on selected audience
   let userQuery = { isBanned: { $ne: true } };
 
@@ -43,15 +65,17 @@ export const sendNotification = asyncHandler(async (req, res) => {
     userQuery = { _id: { $in: validIds }, isBanned: { $ne: true } };
   }
 
-  // Find matching users and extract FCM tokens
+  // Find matching users and extract single primary FCM token per recipient
   const targetUserDocs = await User.find(userQuery).select('_id fcmtokenweb fcmtokenmobile fcmtokenios').lean();
   const recipientCount = targetUserDocs.length;
 
   const fcmTokens = [];
   targetUserDocs.forEach((u) => {
-    if (u.fcmtokenweb) fcmTokens.push(String(u.fcmtokenweb));
-    if (u.fcmtokenmobile) fcmTokens.push(String(u.fcmtokenmobile));
-    if (u.fcmtokenios) fcmTokens.push(String(u.fcmtokenios));
+    // Select exactly 1 primary token per user account: Mobile/iOS first, then Web fallback
+    const primaryToken = u.fcmtokenmobile || u.fcmtokenios || u.fcmtokenweb;
+    if (primaryToken) {
+      fcmTokens.push(String(primaryToken).trim());
+    }
   });
 
   const uniqueTokens = Array.from(new Set(fcmTokens.filter(Boolean)));
