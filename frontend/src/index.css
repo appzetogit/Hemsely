@@ -88,24 +88,47 @@ select:autofill {
   animation: replyBarSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes highlightMessagePulse {
+@keyframes messageRowHighlight {
   0% {
     background-color: rgba(111, 59, 206, 0.28);
-    transform: scale(1.02);
   }
-  50% {
-    background-color: rgba(111, 59, 206, 0.16);
-    transform: scale(1.01);
+  30% {
+    background-color: rgba(111, 59, 206, 0.08);
+  }
+  60% {
+    background-color: rgba(111, 59, 206, 0.32);
   }
   100% {
     background-color: transparent;
+  }
+}
+
+@keyframes bubbleHighlightBlink {
+  0% {
+    filter: brightness(1.28) drop-shadow(0 0 10px rgba(111, 59, 206, 0.6));
+    transform: scale(1.03);
+  }
+  30% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  60% {
+    filter: brightness(1.32) drop-shadow(0 0 12px rgba(111, 59, 206, 0.7));
+    transform: scale(1.03);
+  }
+  100% {
+    filter: brightness(1);
     transform: scale(1);
   }
 }
 
-.message-highlight-pulse {
-  animation: highlightMessagePulse 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  border-radius: 20px;
+.message-row-highlight {
+  animation: messageRowHighlight 1.5s ease-in-out forwards !important;
+  border-radius: 16px;
+}
+
+.bubble-highlight-blink {
+  animation: bubbleHighlightBlink 1.5s ease-in-out forwards !important;
 }
 
 /* Chat text no-select to prevent accidental copy/highlighting on hold/swipe */

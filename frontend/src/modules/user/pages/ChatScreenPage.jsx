@@ -143,7 +143,13 @@ const ChatBubble = ({
 
     // Quoted message data extraction
     const quotedMsg = msg.replyTo || msg.replyToMessage;
-    const quotedId = msg.replyTo?._id || msg.replyToMessage?.id || (typeof msg.replyTo === 'string' ? msg.replyTo : null);
+    const quotedId = String(
+        msg.replyTo?._id ||
+        msg.replyToMessage?.id ||
+        msg.replyToMessage?._id ||
+        (typeof msg.replyTo === 'string' ? msg.replyTo : '') ||
+        ''
+    );
 
     let quotedSenderName = '';
     if (quotedMsg) {
@@ -335,7 +341,7 @@ const ChatBubble = ({
     return (
         <div
             id={`msg-${msg._id}`}
-            className={`no-select select-none ${isHighlighted ? 'message-highlight-pulse' : ''}`}
+            className={`no-select select-none ${isHighlighted ? 'message-row-highlight' : ''}`}
             style={{
                 position: 'relative',
                 display: 'flex',
@@ -441,6 +447,7 @@ const ChatBubble = ({
 
             {/* Chat Bubble Body */}
             <div
+                className={isHighlighted ? 'bubble-highlight-blink' : ''}
                 style={{
                     maxWidth: '78%',
                     background: isSent ? '#6F3BCE' : '#F3F3F3',
@@ -457,17 +464,22 @@ const ChatBubble = ({
                 {/* Quoted message card if this message is a reply */}
                 {quotedMsg && (
                     <div
+                        role="button"
+                        tabIndex={0}
                         onClick={(e) => {
                             e.stopPropagation();
+                            e.preventDefault();
                             if (quotedId && onScrollToQuoted) {
                                 onScrollToQuoted(quotedId);
                             }
                         }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
                         style={{
                             background: isSent ? 'rgba(0, 0, 0, 0.22)' : 'rgba(111, 59, 206, 0.08)',
                             borderLeft: isSent ? '3.5px solid #FFFFFF' : '3.5px solid #6F3BCE',
                             borderRadius: '8px',
-                            padding: '5px 8px',
+                            padding: '6px 10px',
                             marginBottom: '6px',
                             cursor: 'pointer',
                             display: 'flex',
@@ -475,7 +487,10 @@ const ChatBubble = ({
                             justifyContent: 'space-between',
                             gap: '8px',
                             maxWidth: '100%',
+                            transition: 'opacity 0.15s ease, transform 0.1s ease',
+                            userSelect: 'none',
                         }}
+                        className="active:opacity-80 active:scale-[0.98]"
                     >
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{
@@ -940,13 +955,14 @@ const ChatScreenPage = () => {
 
     const handleScrollToQuoted = (targetId) => {
         if (!targetId) return;
-        const el = document.getElementById(`msg-${targetId}`);
+        const strId = String(targetId);
+        const el = document.getElementById(`msg-${strId}`);
         if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setHighlightedMessageId(targetId);
+            setHighlightedMessageId(strId);
             setTimeout(() => {
-                setHighlightedMessageId((prev) => (prev === targetId ? null : prev));
-            }, 1400);
+                setHighlightedMessageId((prev) => (prev === strId ? null : prev));
+            }, 1500);
         }
     };
 
@@ -1402,7 +1418,7 @@ const ChatScreenPage = () => {
                                 onImageClick={(imgSrc) => setPreviewImage(imgSrc)}
                                 onReply={handleSetReply}
                                 onScrollToQuoted={handleScrollToQuoted}
-                                isHighlighted={highlightedMessageId === row.msg._id}
+                                isHighlighted={String(highlightedMessageId) === String(row.msg._id)}
                                 partnerName={currentName}
                                 myId={myId}
                             />
