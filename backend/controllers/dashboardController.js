@@ -69,8 +69,8 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       .lean()
       .catch(() => []),
     Match.find({ status: 'accepted' })
-      .populate('user1', 'interests location isPremium isBoosted boostUntil isSuperUser isVerified totalActiveMinutes sessionCount age relationshipGoal')
-      .populate('user2', 'interests location isPremium isBoosted boostUntil isSuperUser isVerified totalActiveMinutes sessionCount age relationshipGoal')
+      .populate('user1', 'interests location isPremium isBoosted boostUntil isSuperPremium isSuperUser isVerified totalActiveMinutes sessionCount age relationshipGoal')
+      .populate('user2', 'interests location isPremium isBoosted boostUntil isSuperPremium isSuperUser isVerified totalActiveMinutes sessionCount age relationshipGoal')
       .limit(100)
       .lean()
       .catch(() => []),
@@ -137,8 +137,8 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       if (hasBoost) boostScore += 2;
       else boostScore += 0.5;
 
-      // 4. Premium & Super User Tier (0.75x - 1.0x Priority)
-      const hasPremium = u1.isPremium || u2.isPremium || u1.isSuperUser || u2.isSuperUser;
+      // 4. Super Premium / Premium & Super User Tier (0.75x - 2.0x Priority)
+      const hasPremium = u1.isSuperPremium || u2.isSuperPremium || u1.isPremium || u2.isPremium || u1.isSuperUser || u2.isSuperUser;
       if (hasPremium) premiumScore += 2;
       else premiumScore += 0.5;
 

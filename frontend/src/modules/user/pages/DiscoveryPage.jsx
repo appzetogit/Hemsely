@@ -144,7 +144,7 @@ const DiscoveryPage = () => {
     const [isPremium, setIsPremium] = useState(() => {
         try {
             const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-            return Boolean(u.isPremium || u.isSuperUser || u.isSuperSubscriber);
+            return Boolean(u.isSuperPremium || u.isPremium || u.isSuperUser || u.isSuperSubscriber);
         } catch {
             return false;
         }
@@ -180,7 +180,7 @@ const DiscoveryPage = () => {
             const { ok, data } = await apiClient.get('/users/me');
             if (ok && data?.user) {
                 const verified = Boolean(data.user.isVerified || data.user.selfieStatus === 'approved');
-                const prem = Boolean(data.user.isPremium || data.user.isSuperUser || data.user.isSuperSubscriber);
+                const prem = Boolean(data.user.isSuperPremium || data.user.isPremium || data.user.isSuperUser || data.user.isSuperSubscriber);
                 setIsUserVerified(verified);
                 setIsPremium(prem);
                 setSelfieStatus(data.user.selfieStatus || (verified ? 'approved' : 'not_submitted'));

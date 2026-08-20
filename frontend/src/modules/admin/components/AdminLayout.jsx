@@ -3,14 +3,11 @@ import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import adminApi, { clearAdminSession } from '../services/adminApi';
 import { Menu, Bell, User, LogOut } from 'lucide-react';
+import { AdminProvider, useAdmin } from '../context/AdminContext';
 
-const ADMIN_SESSION_KEY = 'hemsely_admin_session:v1';
-
-const AdminLayout = () => {
+const AdminLayoutContent = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [checkingAuth, setCheckingAuth] = useState(true);
-    const [admin, setAdmin] = useState(null);
-    const [authCheckError, setAuthCheckError] = useState('');
+    const { admin, loading: checkingAuth, isSuperAdmin, authCheckError, refreshAdminProfile, hasPermission, getFirstAllowedRoute } = useAdmin();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [recentNotifications, setRecentNotifications] = useState([]);
@@ -19,54 +16,35 @@ const AdminLayout = () => {
     const userMenuRef = useRef(null);
     const notifRef = useRef(null);
 
-    // Close the full-screen mobile sidebar overlay whenever the route changes,
-    // otherwise it stays open on top of the page the admin just navigated to.
+    // Close mobile menu on route change
     useEffect(() => {
         setIsMobileMenuOpen(false);
     }, [location.pathname]);
 
-    const verifySession = async () => {
-        setCheckingAuth(true);
-        setAuthCheckError('');
-
-        const token = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken');
-        const refreshToken = sessionStorage.getItem('adminRefreshToken') || localStorage.getItem('adminRefreshToken');
-        const sessionActive = sessionStorage.getItem(ADMIN_SESSION_KEY) || localStorage.getItem(ADMIN_SESSION_KEY);
-
-        if (!token && !refreshToken && !sessionActive) {
-            navigate('/admin/login', { replace: true });
-            return;
-        }
-
-        try {
-            const { data, ok, status } = await adminApi.get('/admin/me');
-            if (ok && data.success) {
-                setAdmin(data.admin);
-                setAuthCheckError('');
-            } else if (status === 401) {
-                clearAdminSession();
-                navigate('/admin/login', { replace: true });
-            } else if (status === 502 || status === 503 || status === 504) {
-                setAuthCheckError(data?.message || `Server unavailable (${status} Bad Gateway). Please check if backend service is running on live server.`);
-            } else {
-                setAuthCheckError(data?.message || 'Could not verify your session. Please retry or log in again.');
-            }
-        } catch {
-            setAuthCheckError('Network connection issue. Could not reach the backend server.');
-        } finally {
-            setCheckingAuth(false);
-        }
-    };
-
+    // Handle initial redirect if sub-admin accesses unauthorized pages (e.g. /admin/profile or /admin/dashboard without permission)
     useEffect(() => {
-        verifySession();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [navigate]);
+        if (!checkingAuth && admin) {
+            if (location.pathname === '/admin/profile' && !isSuperAdmin) {
+                const fallback = getFirstAllowedRoute();
+                if (fallback && fallback !== location.pathname) {
+                    navigate(fallback, { replace: true });
+                }
+                return;
+            }
+            const isRootOrDashboard = location.pathname === '/admin' || location.pathname === '/admin/' || location.pathname === '/admin/dashboard';
+            if (isRootOrDashboard && !hasPermission('dashboard')) {
+                const fallback = getFirstAllowedRoute();
+                if (fallback && fallback !== location.pathname) {
+                    navigate(fallback, { replace: true });
+                }
+            }
+        }
+    }, [checkingAuth, admin, isSuperAdmin, location.pathname, hasPermission, getFirstAllowedRoute, navigate]);
 
     useEffect(() => {
         if (checkingAuth) return;
         adminApi.get('/admin/notifications?limit=5').then(({ data, ok }) => {
-            if (ok && data.success) setRecentNotifications(data.notifications);
+            if (ok && data.success) setRecentNotifications(data.notifications || []);
         });
     }, [checkingAuth]);
 
@@ -83,7 +61,7 @@ const AdminLayout = () => {
         try {
             await adminApi.post('/admin/logout', {});
         } catch {
-            // Clearing the local session is what actually matters here.
+            // Clearing local session
         }
         clearAdminSession();
         navigate('/admin/login', { replace: true });
@@ -113,10 +91,10 @@ const AdminLayout = () => {
             )}
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-zinc-50 relative">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-zinc-50">
 
                 {/* Top Header */}
-                <header className="bg-zinc-900 border-b border-white/5 h-16 flex flex-shrink-0 items-center justify-between px-4 sm:px-6 lg:px-8 z-10">
+                <header className="bg-zinc-900 border-b border-white/5 h-16 flex flex-shrink-0 items-center justify-between px-4 sm:px-6 lg:px-8 relative z-30">
 
                     <div className="flex items-center flex-1">
                         <button
@@ -128,7 +106,14 @@ const AdminLayout = () => {
                             <span className="sr-only">Open sidebar</span>
                             <Menu className="w-6 h-6" />
                         </button>
-                        <h2 className="hidden sm:block text-lg font-medium text-white tracking-tight">Admin Panel</h2>
+                        <div className="flex items-center gap-3">
+                            <h2 className="hidden sm:block text-lg font-medium text-white tracking-tight">Admin Panel</h2>
+                            {admin?.role === 'subadmin' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                                    Sub-Admin
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex items-center space-x-4">
@@ -193,16 +178,18 @@ const AdminLayout = () => {
                             {showUserMenu && (
                                 <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-2xl border border-zinc-200 py-2 z-50">
                                     <div className="px-4 py-2 border-b border-zinc-100">
-                                        <p className="text-sm font-semibold text-zinc-900 truncate">{admin?.firstName ? `${admin.firstName} ${admin.lastName || ''}` : admin?.username}</p>
+                                        <p className="text-sm font-semibold text-zinc-900 truncate">{admin?.firstName ? `${admin.firstName} ${admin.lastName || ''}` : admin?.email}</p>
                                         <p className="text-xs text-zinc-500 truncate">{admin?.email}</p>
                                     </div>
-                                    <Link
-                                        to="/admin/profile"
-                                        onClick={() => setShowUserMenu(false)}
-                                        className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-                                    >
-                                        <User className="w-4 h-4" /> My Profile
-                                    </Link>
+                                    {isSuperAdmin && (
+                                        <Link
+                                            to="/admin/profile"
+                                            onClick={() => setShowUserMenu(false)}
+                                            className="flex items-center gap-2 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                                        >
+                                            <User className="w-4 h-4" /> My Profile
+                                        </Link>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={handleLogout}
@@ -217,14 +204,14 @@ const AdminLayout = () => {
                 </header>
 
                 {/* Main Content Area Scrollable */}
-                <main className="flex-1 overflow-y-auto w-full p-4 sm:p-6 lg:p-8 relative z-[1] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <main className="flex-1 overflow-y-auto w-full p-4 sm:p-6 lg:p-8 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     {authCheckError && (
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
                             <span>{authCheckError}</span>
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    onClick={verifySession}
+                                    onClick={refreshAdminProfile}
                                     className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer border-0 transition-colors"
                                 >
                                     Retry
@@ -245,6 +232,16 @@ const AdminLayout = () => {
                 </main>
             </div>
         </div>
+    );
+};
+
+const AdminLayout = () => {
+    const navigate = useNavigate();
+
+    return (
+        <AdminProvider onUnauthorized={() => navigate('/admin/login', { replace: true })}>
+            <AdminLayoutContent />
+        </AdminProvider>
     );
 };
 

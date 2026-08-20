@@ -251,16 +251,15 @@ const NotificationsPage = () => {
 
             {/* Compose Modal */}
             {showModal && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-                    {/* Full-screen Backdrop */}
-                    <div
-                        className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm transition-opacity"
-                        onClick={closeModal}
-                        aria-hidden="true"
-                    />
-
+                <div
+                    className="fixed top-16 md:left-72 left-0 right-0 bottom-0 z-40 flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/35 overflow-y-auto"
+                    onClick={closeModal}
+                >
                     {/* Centered Modal Card */}
-                    <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-zinc-200/80 p-6 sm:p-7 my-auto max-h-[90vh] flex flex-col overflow-hidden">
+                    <div
+                        className="relative z-10 w-full max-w-lg rounded-3xl bg-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] p-6 sm:p-7 my-auto max-h-[85vh] flex flex-col overflow-hidden select-text [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         {/* Header */}
                         <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-4 mb-5 shrink-0">
                             <div className="flex items-center gap-3">

@@ -32,7 +32,7 @@ export const getModerationUsers = asyncHandler(async (req, res) => {
   const [users, totalUsers] = await Promise.all([
     User.find(query)
       .select(
-        'firstName lastName email phoneNumber profilePicture galleryImages isPremium premiumExpiry isVerified isActive isBanned banReason bannedAt createdAt age gender bio interests relationshipGoal education profession smokingStatus drinkingStatus location.address location.city location.state isSuperUser isSuperSubscriber selfiePhoto selfieStatus accessStatus queuedAt boostCount'
+        'firstName lastName email phoneNumber profilePicture galleryImages isPremium premiumExpiry isVerified isActive isBanned banReason bannedAt createdAt age gender bio interests relationshipGoal education profession smokingStatus drinkingStatus location.address location.city location.state isSuperPremium wasPremiumBeforeSuper isSuperUser isSuperSubscriber selfiePhoto selfieStatus accessStatus queuedAt boostCount'
       )
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -338,36 +338,70 @@ export const reviewSelfieVerification = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc Grant or revoke Super User / Super Subscriber admin-assigned status
+// @desc Grant or revoke Super Premium User status
 // @route PATCH /api/admin/users/:id/status
 // @access Private/Admin
 export const setUserStatus = asyncHandler(async (req, res) => {
-  const { isSuperUser, isSuperSubscriber } = req.body;
+  const { isSuperPremium, isSuperUser, isSuperSubscriber } = req.body;
 
-  const updates = {};
-  if (isSuperUser !== undefined) updates.isSuperUser = !!isSuperUser;
-  if (isSuperSubscriber !== undefined) updates.isSuperSubscriber = !!isSuperSubscriber;
-
-  let user = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
+  const user = await User.findById(req.params.id);
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
-  if (updates.isSuperUser || updates.isSuperSubscriber) {
-    await releaseFromQueue(user._id);
-    user = await User.findById(user._id);
+  const updates = {};
+  if (isSuperPremium !== undefined) {
+    const active = !!isSuperPremium;
+    updates.isSuperPremium = active;
+    updates.isSuperUser = active;
+    updates.isSuperSubscriber = active;
+
+    if (active) {
+      // Activating Super Premium:
+      // If user was not already Super Premium, record if they were genuinely a Premium user or had active subscription
+      if (!user.isSuperPremium) {
+        const hasValidExpiry = user.premiumExpiry && new Date(user.premiumExpiry) > new Date();
+        const wasAlreadyPremium = Boolean(user.isPremium || hasValidExpiry);
+        updates.wasPremiumBeforeSuper = wasAlreadyPremium;
+      }
+      updates.isPremium = true;
+    } else {
+      // Removing Super Premium:
+      // Check if user was already Premium before becoming Super Premium, or still has unexpired premium subscription
+      const hasValidExpiry = user.premiumExpiry && new Date(user.premiumExpiry) > new Date();
+      const shouldRemainPremium = Boolean(user.wasPremiumBeforeSuper || hasValidExpiry);
+
+      if (shouldRemainPremium) {
+        // Revert back to Premium User!
+        updates.isPremium = true;
+      } else {
+        // Revert back to Free User!
+        updates.isPremium = false;
+        updates.premiumExpiry = null;
+      }
+      updates.wasPremiumBeforeSuper = false;
+    }
+  }
+
+  if (isSuperUser !== undefined && updates.isSuperUser === undefined) updates.isSuperUser = !!isSuperUser;
+  if (isSuperSubscriber !== undefined && updates.isSuperSubscriber === undefined) updates.isSuperSubscriber = !!isSuperSubscriber;
+
+  const updatedUser = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
+
+  if (updates.isSuperPremium || updates.isSuperUser || updates.isSuperSubscriber) {
+    await releaseFromQueue(updatedUser._id);
   }
 
   await logAdminAction({
     adminId: req.admin.id,
     action: 'set_user_status',
     targetType: 'User',
-    targetId: user._id,
+    targetId: updatedUser._id,
     details: updates,
     ip: req.ip,
   });
 
-  res.status(200).json({ success: true, message: 'User status updated', user });
+  res.status(200).json({ success: true, message: 'User status updated', user: updatedUser });
 });
 
 // @desc Get a snapshot of gender-ratio queue health (active/queued counts, current ratio)

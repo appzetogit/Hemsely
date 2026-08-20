@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import { ChevronLeft, ChevronRight, Eye, Search, Star, UserRound, Crown, Gem, Pencil, ShieldCheck, Ban, Trash2, X, Zap } from 'lucide-react';
 import adminApi from '../services/adminApi';
 import { Table, TableHead, TableRow, TableHeader, TableCell } from '../components/Table';
@@ -8,8 +9,8 @@ import { validateEmailStrict } from '../../../shared/utils/emailValidator';
 const PAGE_SIZE = 8;
 
 const DetailRow = ({ label, value }) => (
-    <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">{label}</div>
+    <div className="rounded-2xl bg-zinc-50/80 px-4 py-3 transition-colors hover:bg-zinc-100/70">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">{label}</div>
         <div className="text-sm font-semibold text-zinc-900 break-words">{value || 'Not provided'}</div>
     </div>
 );
@@ -50,42 +51,48 @@ const EditUserModal = ({ user, onClose, onSave }) => {
         setSaving(false);
     };
 
-    return (
-        <div className="fixed inset-0 z-[160] bg-zinc-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="w-full max-w-[460px] max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl p-5 relative my-auto border border-zinc-100">
-                <div className="flex items-center justify-between border-b border-zinc-100 pb-3 mb-3">
+    return ReactDOM.createPortal(
+        <div
+            className="fixed top-16 md:left-72 left-0 right-0 bottom-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/35"
+            onClick={onClose}
+        >
+            <div
+                className="w-full max-w-[480px] max-h-[82vh] overflow-y-auto rounded-3xl bg-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] p-6 relative my-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between pb-3 mb-4">
                     <h2 className="text-lg font-bold text-zinc-900 tracking-tight">Edit User Profile</h2>
-                    <button type="button" onClick={onClose} className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors">
+                    <button type="button" onClick={onClose} className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} noValidate className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2.5">
+                <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">First Name</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">First Name</label>
                             <input
                                 type="text"
                                 value={formData.firstName}
                                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                                 required
-                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                                className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium transition-all shadow-2xs"
                             />
                         </div>
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Last Name</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Last Name</label>
                             <input
                                 type="text"
                                 value={formData.lastName}
                                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                                className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium transition-all shadow-2xs"
                             />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Email</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Email</label>
                             <input
                                 type="email"
                                 value={formData.email}
@@ -93,29 +100,29 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                                     setFormData({ ...formData, email: e.target.value });
                                     if (emailErr) setEmailErr('');
                                 }}
-                                className={`w-full px-2.5 py-1.5 text-xs border ${emailErr ? 'border-red-500 focus:border-red-500' : 'border-zinc-300 focus:border-purple-600'} rounded-lg outline-none font-medium`}
+                                className={`w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all shadow-2xs ${emailErr ? 'bg-red-50/60 border border-red-400 text-red-900 focus:ring-2 focus:ring-red-500/20' : 'bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white text-zinc-900 focus:ring-2 focus:ring-zinc-900/10'}`}
                             />
                             {emailErr && <p className="text-[11px] text-red-500 font-semibold mt-1">{emailErr}</p>}
                         </div>
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Phone Number</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Phone Number</label>
                             <input
                                 type="text"
                                 value={formData.phoneNumber}
                                 onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                                 required
-                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                                className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium transition-all shadow-2xs"
                             />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2.5">
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Gender</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Gender</label>
                             <select
                                 value={formData.gender}
                                 onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                                className="w-full px-2 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 capitalize font-medium"
+                                className="w-full px-3 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 capitalize font-medium text-zinc-900 transition-all shadow-2xs cursor-pointer"
                             >
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
@@ -123,20 +130,20 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Age</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Age</label>
                             <input
                                 type="number"
                                 value={formData.age}
                                 onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                                className="w-full px-3 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium transition-all shadow-2xs"
                             />
                         </div>
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Subscription</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Subscription</label>
                             <select
                                 value={formData.isPremium ? 'premium' : 'free'}
                                 onChange={(e) => setFormData({ ...formData, isPremium: e.target.value === 'premium' })}
-                                className="w-full px-2 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                                className="w-full px-3 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 font-medium text-zinc-900 transition-all shadow-2xs cursor-pointer"
                             >
                                 <option value="free">Free</option>
                                 <option value="premium">Premium</option>
@@ -144,83 +151,84 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">City</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">City</label>
                             <input
                                 type="text"
                                 placeholder="e.g. Mumbai"
                                 value={formData.city}
                                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                                className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium transition-all shadow-2xs"
                             />
                         </div>
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">State</label>
+                            <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">State</label>
                             <input
                                 type="text"
                                 placeholder="e.g. Maharashtra"
                                 value={formData.state}
                                 onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                                className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                                className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium transition-all shadow-2xs"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Profession</label>
+                        <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Profession</label>
                         <input
                             type="text"
                             value={formData.profession}
                             onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
-                            className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                            className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium transition-all shadow-2xs"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Bio</label>
+                        <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Bio</label>
                         <textarea
-                            rows={2}
+                            rows={3}
                             value={formData.bio}
                             onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                            className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 resize-none font-medium"
+                            className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium resize-none transition-all shadow-2xs"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Boost Credits</label>
+                        <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Boost Credits</label>
                         <input
                             type="number"
                             min="0"
                             value={formData.boostCount}
                             onChange={(e) => setFormData({ ...formData, boostCount: e.target.value })}
-                            className="w-full px-2.5 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                            className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium transition-all shadow-2xs"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-[11px] font-bold text-zinc-600 uppercase mb-1">Account Status</label>
+                        <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Account Status</label>
                         <select
                             value={formData.isBanned ? 'banned' : 'active'}
                             onChange={(e) => setFormData({ ...formData, isBanned: e.target.value === 'banned' })}
-                            className="w-full px-2 py-1.5 text-xs border border-zinc-300 rounded-lg outline-none focus:border-purple-600 font-medium"
+                            className="w-full px-3 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 font-medium text-zinc-900 transition-all shadow-2xs cursor-pointer"
                         >
                             <option value="active">Active</option>
                             <option value="banned">Banned</option>
                         </select>
                     </div>
 
-                    <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">
-                        <Button type="button" variant="outline" size="sm" onClick={onClose}>
+                    <div className="flex justify-end gap-2.5 pt-4">
+                        <Button type="button" variant="outline" size="sm" onClick={onClose} className="rounded-xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 px-4 py-2 text-xs font-semibold cursor-pointer">
                             Cancel
                         </Button>
-                        <Button type="submit" size="sm" disabled={saving}>
+                        <Button type="submit" size="sm" disabled={saving} className="rounded-xl border-0 bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm px-4 py-2 text-xs font-semibold cursor-pointer">
                             {saving ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
@@ -229,99 +237,108 @@ const UserDetailModal = ({ user, onClose, onToggleStatus, statusSaving, onEdit, 
     if (!user) return null;
     const gallery = [user.profilePicture, ...((user.galleryImages || []).map((img) => img.url))].filter(Boolean);
 
-    return (
+    return ReactDOM.createPortal(
         <div
-            className="fixed inset-0 z-[150] bg-zinc-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            className="fixed top-16 md:left-72 left-0 right-0 bottom-0 z-40 flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/35"
             onClick={onClose}
         >
             <div
-                className="w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl p-6 md:p-8"
+                className="w-full max-w-2xl max-h-[82vh] overflow-y-auto rounded-3xl bg-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] p-6 md:p-7 relative select-text [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header Area */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5 border-b border-zinc-100 pb-6">
-                    <div className="flex items-center gap-5">
-                        <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-400 font-bold text-xl shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold text-base shadow-xs shrink-0">
                             {user.profilePicture ? (
                                 <img src={user.profilePicture} alt={user.firstName || 'User'} className="w-full h-full object-cover" />
                             ) : (
-                                <UserRound className="w-8 h-8" />
+                                <UserRound className="w-7 h-7" />
                             )}
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-zinc-900 tracking-tight leading-tight">
+                            <h2 className="text-xl font-bold text-zinc-900 tracking-tight leading-tight">
                                 {user.firstName} {user.lastName}
                             </h2>
                             <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${user.subscriptionName === 'Premium' || user.isPremium ? 'bg-amber-100 text-amber-800' : 'bg-zinc-100 text-zinc-700'}`}>
-                                    {user.isPremium ? 'Premium' : 'Free'}
-                                </span>
-                                <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${user.isBanned ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                {(user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber) ? (
+                                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 via-purple-600 to-violet-600 text-white px-2.5 py-1 text-[11px] font-extrabold tracking-wide uppercase shadow-xs">
+                                        <Crown className="w-3.5 h-3.5 fill-amber-200 text-amber-200" /> Super Premium
+                                    </span>
+                                ) : (
+                                    <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold tracking-wide uppercase ${user.subscriptionName === 'Premium' || user.isPremium ? 'bg-amber-50 text-amber-800' : 'bg-zinc-100 text-zinc-700'}`}>
+                                        {user.isPremium ? 'Premium' : 'Free'}
+                                    </span>
+                                )}
+                                <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-bold tracking-wide uppercase ${user.isBanned ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
                                     {user.isBanned ? 'Banned' : 'Active'}
                                 </span>
-                                {user.isSuperUser && (
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-violet-100 text-violet-800 px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase">
-                                        <Crown className="w-3 h-3" /> Super User
-                                    </span>
-                                )}
-                                {user.isSuperSubscriber && (
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-cyan-100 text-cyan-800 px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase">
-                                        <Gem className="w-3 h-3" /> Super Subscriber
-                                    </span>
-                                )}
                             </div>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        <Button size="sm" variant="outline" onClick={() => onEdit(user)}>
+                        <button
+                            type="button"
+                            onClick={() => onEdit(user)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 text-xs font-semibold transition-colors cursor-pointer"
+                        >
                             <Pencil className="w-3.5 h-3.5" /> Edit
-                        </Button>
+                        </button>
                         {user.isBanned ? (
-                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => onUnban(user)}>
+                            <button
+                                type="button"
+                                onClick={() => onUnban(user)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                            >
                                 <ShieldCheck className="w-3.5 h-3.5" /> Unban
-                            </Button>
+                            </button>
                         ) : (
-                            <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={() => onBan(user)}>
+                            <button
+                                type="button"
+                                onClick={() => onBan(user)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                            >
                                 <Ban className="w-3.5 h-3.5" /> Ban
-                            </Button>
+                            </button>
                         )}
-                        <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white" onClick={() => onDelete(user)}>
+                        <button
+                            type="button"
+                            onClick={() => onDelete(user)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                        >
                             <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </Button>
+                        </button>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="inline-flex justify-center rounded-xl bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-200 hover:text-black transition-colors"
+                            className="inline-flex justify-center rounded-xl bg-zinc-100 px-3.5 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-200 hover:text-black transition-colors cursor-pointer"
                         >
                             Close
                         </button>
                     </div>
                 </div>
 
-                {/* Admin-assignable status badges */}
-                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Admin Status:</span>
-                    <Button
-                        size="sm"
-                        variant={user.isSuperUser ? 'primary' : 'outline'}
+                {/* Admin-assignable status */}
+                <div className="mt-2 flex flex-wrap items-center gap-2.5 rounded-2xl bg-zinc-50/90 p-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Admin Control:</span>
+                    <button
+                        type="button"
                         disabled={statusSaving}
-                        onClick={() => onToggleStatus(user, 'isSuperUser', !user.isSuperUser)}
+                        onClick={() => onToggleStatus(user, 'isSuperPremium', !(user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber))}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                            (user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber)
+                                ? 'bg-gradient-to-r from-amber-500 via-purple-600 to-violet-600 text-white ring-2 ring-purple-400/30 hover:opacity-95'
+                                : 'bg-white text-zinc-800 hover:bg-zinc-100 hover:text-black border border-zinc-200'
+                        }`}
                     >
-                        <Crown className="w-3.5 h-3.5" /> {user.isSuperUser ? 'Remove Super User' : 'Make Super User'}
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant={user.isSuperSubscriber ? 'primary' : 'outline'}
-                        disabled={statusSaving}
-                        onClick={() => onToggleStatus(user, 'isSuperSubscriber', !user.isSuperSubscriber)}
-                    >
-                        <Gem className="w-3.5 h-3.5" /> {user.isSuperSubscriber ? 'Remove Super Subscriber' : 'Make Super Subscriber'}
-                    </Button>
+                        <Crown className={`w-4 h-4 ${(user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber) ? 'fill-amber-200 text-amber-200 animate-pulse' : 'text-amber-500'}`} />
+                        {(user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber) ? 'Remove Super Premium User' : 'Make Super Premium User'}
+                    </button>
                 </div>
 
                 {/* Detail Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
+                <div className="grid grid-cols-2 gap-2.5 mt-3.5">
                     <DetailRow label="Email Address" value={user.email} />
                     <DetailRow label="Phone Number" value={user.phoneNumber} />
                     <DetailRow label="Age" value={user.age} />
@@ -339,44 +356,45 @@ const UserDetailModal = ({ user, onClose, onToggleStatus, statusSaving, onEdit, 
                 </div>
 
                 {/* Bio Block */}
-                <div className="mt-6 rounded-xl bg-zinc-50 border border-zinc-100 p-5">
-                    <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-2">Biography</div>
-                    <div className="text-sm font-medium text-zinc-800 leading-relaxed">{user.bio || 'No bio provided.'}</div>
+                <div className="mt-3 rounded-2xl bg-zinc-50/80 p-4">
+                    <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 mb-1.5">Biography</div>
+                    <div className="text-xs font-medium text-zinc-800 leading-relaxed">{user.bio || 'No bio provided.'}</div>
                 </div>
 
                 {/* Interests Block */}
-                <div className="mt-4 rounded-xl bg-zinc-50 border border-zinc-100 p-5">
-                    <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-3">Interests & Hobbies</div>
+                <div className="mt-2.5 rounded-2xl bg-zinc-50/80 p-4">
+                    <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 mb-2">Interests & Hobbies</div>
                     <div className="flex flex-wrap gap-2">
                         {(user.interests || []).length ? (
                             user.interests.map((interest) => (
-                                <span key={interest} className="inline-flex items-center rounded-full bg-white border border-zinc-200 text-zinc-700 px-3 py-1 text-[11px] font-bold shadow-sm">
+                                <span key={interest} className="inline-flex items-center rounded-xl bg-white text-zinc-700 px-3 py-1 text-[11px] font-bold shadow-xs">
                                     {interest}
                                 </span>
                             ))
                         ) : (
-                            <span className="text-sm text-zinc-500 font-medium">No interests specified.</span>
+                            <span className="text-sm text-zinc-400 font-medium">No interests specified.</span>
                         )}
                     </div>
                 </div>
 
                 {/* Gallery Block */}
-                <div className="mt-4 rounded-xl bg-zinc-50 border border-zinc-100 p-5">
-                    <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 mb-4">Gallery Images</div>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+                <div className="mt-2.5 rounded-2xl bg-zinc-50/80 p-4">
+                    <div className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 mb-2.5">Gallery Images</div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
                         {gallery.length ? (
                             gallery.map((imageUrl, idx) => (
-                                <div key={`${idx}-${imageUrl.slice(-40)}`} className="aspect-square rounded-xl overflow-hidden border border-zinc-200 bg-white shadow-sm hover:scale-105 transition-transform">
+                                <div key={`${idx}-${imageUrl.slice(-40)}`} className="aspect-square rounded-2xl overflow-hidden bg-zinc-100 shadow-xs hover:scale-105 transition-transform">
                                     <img src={imageUrl} alt="User gallery" className="w-full h-full object-cover" />
                                 </div>
                             ))
                         ) : (
-                            <span className="text-sm col-span-full text-zinc-500 font-medium">No gallery images uploaded.</span>
+                            <span className="text-sm col-span-full text-zinc-400 font-medium">No gallery images uploaded.</span>
                         )}
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
@@ -615,8 +633,9 @@ const UsersPage = () => {
                                             <div>
                                                 <div className="text-sm font-bold text-zinc-900 leading-tight flex items-center gap-1.5">
                                                     {user.firstName} {user.lastName}
-                                                    {user.isSuperUser && <Crown className="w-3.5 h-3.5 text-violet-600" aria-label="Super User" />}
-                                                    {user.isSuperSubscriber && <Gem className="w-3.5 h-3.5 text-cyan-600" aria-label="Super Subscriber" />}
+                                                    {(user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber) && (
+                                                        <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-400" aria-label="Super Premium User" />
+                                                    )}
                                                 </div>
                                                 <div className="text-xs text-zinc-500 mt-0.5">{user.email || user.phoneNumber}</div>
                                             </div>
@@ -644,17 +663,17 @@ const UsersPage = () => {
                                     <TableCell>
                                         {(() => {
                                             const isPrem = Boolean(user.isPremium || user.subscriptionName === 'Premium');
-                                            if (!isPrem && !user.isSuperUser && !user.isSuperSubscriber) {
+                                            if (user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber) {
                                                 return (
-                                                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase bg-zinc-100 text-zinc-700">
-                                                        Free
+                                                    <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-extrabold tracking-wide uppercase bg-gradient-to-r from-amber-500 via-purple-600 to-violet-600 text-white shadow-2xs">
+                                                        <Crown className="w-3 h-3 fill-amber-200 text-amber-200" /> Super Premium
                                                     </span>
                                                 );
                                             }
-                                            if (user.isSuperUser || user.isSuperSubscriber) {
+                                            if (!isPrem) {
                                                 return (
-                                                    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase bg-purple-100 text-purple-800">
-                                                        <Crown className="w-3 h-3 fill-current" /> Super
+                                                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase bg-zinc-100 text-zinc-700">
+                                                        Free
                                                     </span>
                                                 );
                                             }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import adminApi from '../services/adminApi';
 import { devError } from '../../../shared/utils/logger';
-import { LifeBuoy, Search, Filter, MessageSquare, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { LifeBuoy, Search, Filter, MessageSquare, CheckCircle2, Clock, XCircle, AlertCircle, X } from 'lucide-react';
 
 const CATEGORY_LABELS = {
     general: 'General Inquiry',
@@ -306,10 +307,16 @@ const SupportManagementPage = () => {
             </div>
 
             {/* Ticket Response Modal */}
-            {selectedTicket && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-                    <div className="bg-white rounded-2xl w-full max-w-lg p-5 shadow-2xl space-y-4 relative max-h-[90vh] overflow-y-auto border border-zinc-200 m-auto">
-                        <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+            {selectedTicket && ReactDOM.createPortal(
+                <div
+                    className="fixed top-16 md:left-72 left-0 right-0 bottom-0 z-40 flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/35"
+                    onClick={() => setSelectedTicket(null)}
+                >
+                    <div
+                        className="bg-white rounded-3xl w-full max-w-lg p-6 md:p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] space-y-4 relative max-h-[82vh] overflow-y-auto m-auto select-text [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between pb-3">
                             <div>
                                 <span className="text-[11px] font-bold text-[#733FE0] uppercase tracking-wider">
                                     Ticket Details • {selectedTicket.ticketId}
@@ -321,22 +328,22 @@ const SupportManagementPage = () => {
                             <button
                                 type="button"
                                 onClick={() => setSelectedTicket(null)}
-                                className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 flex items-center justify-center text-sm transition-colors border-0 cursor-pointer shrink-0"
+                                className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-colors border-0 cursor-pointer shrink-0"
                             >
-                                ✕
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
 
                         {/* User Details */}
-                        <div className="flex items-center gap-3 bg-zinc-50 p-3 rounded-xl border border-zinc-200/80">
+                        <div className="flex items-center gap-3 bg-zinc-50/80 p-3.5 rounded-2xl">
                             {selectedTicket.user?.profilePicture ? (
                                 <img
                                     src={selectedTicket.user.profilePicture}
                                     alt=""
-                                    className="w-10 h-10 rounded-full object-cover border border-zinc-200"
+                                    className="w-10 h-10 rounded-xl object-cover shadow-xs"
                                 />
                             ) : (
-                                <div className="w-10 h-10 rounded-full bg-[#733FE0]/10 text-[#733FE0] font-bold flex items-center justify-center text-sm shrink-0 border border-[#733FE0]/20">
+                                <div className="w-10 h-10 rounded-xl bg-[#733FE0]/10 text-[#733FE0] font-bold flex items-center justify-center text-sm shrink-0">
                                     {(selectedTicket.user?.firstName || 'U').charAt(0).toUpperCase()}
                                 </div>
                             )}
@@ -344,7 +351,7 @@ const SupportManagementPage = () => {
                                 <h4 className="font-bold text-zinc-900 text-sm truncate">
                                     {selectedTicket.user?.firstName || selectedTicket.user?.name || 'User'}
                                 </h4>
-                                <p className="text-xs text-zinc-500 truncate mt-0.5">
+                                <p className="text-xs text-zinc-400 truncate mt-0.5">
                                     {[selectedTicket.user?.email, selectedTicket.user?.phoneNumber].filter(Boolean).join(' • ') || 'No contact details'}
                                 </p>
                             </div>
@@ -352,24 +359,24 @@ const SupportManagementPage = () => {
 
                         {/* User Message */}
                         <div>
-                            <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
+                            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">
                                 User Message
                             </label>
-                            <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-800 whitespace-pre-wrap leading-relaxed font-medium">
+                            <div className="p-3.5 rounded-2xl bg-zinc-50/80 text-xs text-zinc-800 whitespace-pre-wrap leading-relaxed font-medium">
                                 {selectedTicket.message}
                             </div>
                         </div>
 
-                        <form onSubmit={handleSaveTicket} className="space-y-3 pt-2 border-t border-zinc-100">
+                        <form onSubmit={handleSaveTicket} className="space-y-3.5 pt-2">
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
+                                    <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">
                                         Update Status
                                     </label>
                                     <select
                                         value={editStatus}
                                         onChange={(e) => setEditStatus(e.target.value)}
-                                        className="w-full py-2 px-3 bg-white border border-zinc-300 rounded-xl text-xs font-bold text-zinc-900 focus:outline-none focus:border-[#733FE0]"
+                                        className="w-full px-3.5 py-2.5 bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl text-xs font-semibold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all shadow-2xs cursor-pointer"
                                     >
                                         <option value="open">Open</option>
                                         <option value="in_progress">In Progress</option>
@@ -378,13 +385,13 @@ const SupportManagementPage = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
+                                    <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">
                                         Priority
                                     </label>
                                     <select
                                         value={editPriority}
                                         onChange={(e) => setEditPriority(e.target.value)}
-                                        className="w-full py-2 px-3 bg-white border border-zinc-300 rounded-xl text-xs font-bold text-zinc-900 focus:outline-none focus:border-[#733FE0]"
+                                        className="w-full px-3.5 py-2.5 bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl text-xs font-semibold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all shadow-2xs cursor-pointer"
                                     >
                                         <option value="low">Low</option>
                                         <option value="medium">Medium</option>
@@ -395,7 +402,7 @@ const SupportManagementPage = () => {
                             </div>
 
                             <div>
-                                <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
+                                <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">
                                     SUPPORT Response
                                 </label>
                                 <textarea
@@ -404,7 +411,7 @@ const SupportManagementPage = () => {
                                     rows={4}
                                     placeholder="Write a response for the user..."
                                     maxLength={2000}
-                                    className="w-full py-2 px-3 bg-white border border-zinc-300 rounded-xl text-xs font-medium text-zinc-900 focus:outline-none focus:border-[#733FE0] resize-none"
+                                    className="w-full px-3.5 py-2.5 bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl text-xs font-medium text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all shadow-2xs resize-none"
                                 />
                             </div>
 
@@ -412,18 +419,19 @@ const SupportManagementPage = () => {
                                 <p className="text-xs font-semibold text-red-600">{saveError}</p>
                             )}
 
-                            <div className="pt-1">
+                            <div className="pt-2">
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="w-full py-2.5 rounded-xl bg-[#733FE0] hover:bg-[#602ecc] text-white font-bold text-xs shadow-xs transition-colors border-0 cursor-pointer disabled:opacity-50"
+                                    className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs shadow-sm transition-colors border-0 cursor-pointer disabled:opacity-50"
                                 >
                                     {saving ? 'Saving...' : 'Save Status'}
                                 </button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

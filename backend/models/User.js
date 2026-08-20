@@ -168,6 +168,15 @@ const userSchema = new mongoose.Schema(
     ],
 
     // Admin-assignable status badges
+    isSuperPremium: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    wasPremiumBeforeSuper: {
+      type: Boolean,
+      default: false,
+    },
     isSuperUser: {
       type: Boolean,
       default: false,

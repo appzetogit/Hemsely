@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Flag, ShieldCheck, Ban, Eye, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import ReactDOM from 'react-dom';
+import { Flag, ShieldCheck, Ban, Eye, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, AlertTriangle, X } from 'lucide-react';
 import { Table, TableHead, TableRow, TableHeader, TableCell } from '../components/Table';
 import adminApi from '../services/adminApi';
 import { Button } from '../../../shared/components/ui/Button';
@@ -40,45 +41,45 @@ const userName = (u) => u ? [u.firstName, u.lastName].filter(Boolean).join(' ') 
 const ReportDetailModal = ({ report, onClose, onUpdateStatus, updating, updateError }) => {
     const [notes, setNotes] = useState(report?.notes || '');
     if (!report) return null;
-    return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 sm:p-6">
-            <button
-                type="button"
-                aria-label="Close modal backdrop"
-                className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm border-0 cursor-default"
-                onClick={onClose}
-            />
-            <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl p-6">
-                <div className="flex items-start justify-between gap-4 border-b border-zinc-100 pb-4 mb-5">
+    return ReactDOM.createPortal(
+        <div
+            className="fixed top-16 md:left-72 left-0 right-0 bottom-0 z-40 flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-black/35"
+            onClick={onClose}
+        >
+            <div
+                className="w-full max-w-lg rounded-3xl bg-white shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] p-6 md:p-7 relative select-text [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-start justify-between gap-4 pb-4 mb-4">
                     <div>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h2 className="text-lg font-semibold text-zinc-900">{userName(report.reportedUser)}</h2>
+                            <h2 className="text-lg font-bold text-zinc-900">{userName(report.reportedUser)}</h2>
                             <StatusBadge status={report.status} />
                         </div>
-                        {report.reportedUser?.isBanned && <p className="text-xs text-danger-600 font-semibold">Currently banned</p>}
+                        {report.reportedUser?.isBanned && <p className="text-xs text-red-600 font-semibold">Currently banned</p>}
                     </div>
                     <button
                         type="button"
                         aria-label="Close details"
                         onClick={onClose}
-                        className="text-zinc-400 hover:text-zinc-700 text-xl font-bold leading-none p-1 rounded hover:bg-zinc-100 bg-transparent border-0 cursor-pointer"
+                        className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 transition-colors cursor-pointer"
                     >
-                        ✕
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Reported By</div>
+                <div className="space-y-3.5">
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <div className="rounded-2xl bg-zinc-50/80 p-3.5">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Reported By</div>
                             <div className="text-sm font-semibold text-zinc-900">{userName(report.reporter)}</div>
                         </div>
-                        <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Category</div>
+                        <div className="rounded-2xl bg-zinc-50/80 p-3.5">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Category</div>
                             <div className="text-sm font-semibold text-zinc-900">{CATEGORY_LABELS[report.category] || report.category}</div>
                         </div>
-                        <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3 col-span-2">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Date Filed</div>
+                        <div className="rounded-2xl bg-zinc-50/80 p-3.5 col-span-2">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Date Filed</div>
                             <div className="text-sm font-semibold text-zinc-900">
                                 {new Date(report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
                             </div>
@@ -86,14 +87,14 @@ const ReportDetailModal = ({ report, onClose, onUpdateStatus, updating, updateEr
                     </div>
 
                     {report.reason && (
-                        <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Reporter's Notes</div>
-                            <div className="text-sm font-medium text-zinc-800 leading-relaxed">{report.reason}</div>
+                        <div className="rounded-2xl bg-zinc-50/80 p-3.5">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Reporter's Notes</div>
+                            <div className="text-xs font-medium text-zinc-800 leading-relaxed">{report.reason}</div>
                         </div>
                     )}
 
                     <div>
-                        <label htmlFor="report-admin-notes" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                        <label htmlFor="report-admin-notes" className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                             Admin Notes
                         </label>
                         <textarea
@@ -103,37 +104,57 @@ const ReportDetailModal = ({ report, onClose, onUpdateStatus, updating, updateEr
                             onChange={(e) => setNotes(e.target.value)}
                             maxLength={1000}
                             placeholder="Internal moderation notes (not shown to users)..."
-                            className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-800 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 resize-none"
+                            className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium resize-none transition-all shadow-2xs"
                         />
                     </div>
                 </div>
 
                 {updateError && (
-                    <p className="text-xs font-semibold text-danger-600 mt-3">{updateError}</p>
+                    <p className="text-xs font-semibold text-red-600 mt-3">{updateError}</p>
                 )}
 
-                <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-zinc-100">
+                <div className="flex flex-wrap gap-2.5 mt-6 pt-4 border-t border-zinc-100">
                     {report.status === 'pending' && (
-                        <Button variant="secondary" disabled={updating} onClick={() => onUpdateStatus(report._id, 'reviewed', false, notes)}>
-                            <ShieldCheck className="w-4 h-4" />
-                            Mark Reviewed
-                        </Button>
+                        <button
+                            type="button"
+                            disabled={updating}
+                            onClick={() => onUpdateStatus(report._id, 'reviewed', false, notes)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                            <ShieldCheck className="w-3.5 h-3.5" /> Mark Reviewed
+                        </button>
                     )}
                     {report.status !== 'actioned' && !report.reportedUser?.isBanned && (
-                        <Button variant="danger" disabled={updating} onClick={() => onUpdateStatus(report._id, 'actioned', true, notes)}>
-                            <Ban className="w-4 h-4" />
-                            Ban User
-                        </Button>
+                        <button
+                            type="button"
+                            disabled={updating}
+                            onClick={() => onUpdateStatus(report._id, 'actioned', true, notes)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                            <Ban className="w-3.5 h-3.5" /> Ban User
+                        </button>
                     )}
                     {report.status !== 'dismissed' && (
-                        <Button variant="outline" disabled={updating} onClick={() => onUpdateStatus(report._id, 'dismissed', false, notes)}>
+                        <button
+                            type="button"
+                            disabled={updating}
+                            onClick={() => onUpdateStatus(report._id, 'dismissed', false, notes)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                        >
                             Dismiss
-                        </Button>
+                        </button>
                     )}
-                    <Button variant="ghost" onClick={onClose}>Close</Button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 text-xs font-semibold transition-colors cursor-pointer ml-auto"
+                    >
+                        Close
+                    </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

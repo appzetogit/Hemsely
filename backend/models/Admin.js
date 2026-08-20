@@ -29,8 +29,16 @@ const adminSchema = new mongoose.Schema(
     profilePicture: String,
     role: {
       type: String,
-      enum: ['admin', 'superadmin'],
-      default: 'admin',
+      enum: ['admin', 'superadmin', 'subadmin'],
+      default: 'subadmin',
+    },
+    permissions: {
+      type: [String],
+      default: [],
+    },
+    createdById: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
     },
     isActive: {
       type: Boolean,

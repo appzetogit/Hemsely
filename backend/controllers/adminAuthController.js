@@ -161,6 +161,7 @@ export const adminLogin = asyncHandler(async (req, res, next) => {
       username: admin.username,
       email: admin.email,
       role: admin.role,
+      permissions: admin.permissions || [],
     },
   });
 });
@@ -221,6 +222,7 @@ export const refreshAdminToken = asyncHandler(async (req, res, next) => {
         username: admin.username,
         email: admin.email,
         role: admin.role,
+        permissions: admin.permissions || [],
       },
     });
   } catch (error) {

@@ -300,7 +300,7 @@ const DashboardPage = () => {
             {/* Main Content Area */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
-                {/* Left 2 Columns: User Growth Chart + Recent Matches directly underneath */}
+                {/* Left 2 Columns: User Growth Chart */}
                 <div className="lg:col-span-2 space-y-4">
                     {/* User Growth Chart */}
                     <div className="bg-white rounded-xl shadow-sm border border-zinc-200 p-3.5 flex flex-col">
@@ -331,121 +331,6 @@ const DashboardPage = () => {
                             </div>
                         ) : (
                             <GrowthChart data={growth} />
-                        )}
-                    </div>
-
-                    {/* Recent Matches (Last 5 matches) */}
-                    <div className="bg-white rounded-xl shadow-sm border border-zinc-200 p-3.5 flex flex-col">
-                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-100">
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-pink-50 border border-pink-100 flex items-center justify-center shadow-2xs">
-                                    <Heart className="w-3.5 h-3.5 text-pink-500 fill-pink-500" />
-                                </div>
-                                <div>
-                                    <h2 className="text-sm font-bold text-zinc-900">Recent Matches</h2>
-                                    <p className="text-[11px] text-zinc-500">Last 5 matches between users</p>
-                                </div>
-                            </div>
-                            <span className="text-[11px] font-bold text-pink-600 bg-pink-50 border border-pink-100 px-2 py-0.5 rounded-full">
-                                {recentMatches.length} Recent
-                            </span>
-                        </div>
-
-                        {loading ? (
-                            <div className="space-y-2.5 py-2">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="h-14 bg-zinc-100 rounded-xl animate-pulse" />
-                                ))}
-                            </div>
-                        ) : recentMatches.length === 0 ? (
-                            <div className="text-center py-7">
-                                <div className="w-9 h-9 rounded-full bg-pink-50 text-pink-400 flex items-center justify-center mx-auto mb-1.5 shadow-2xs">
-                                    <Heart className="w-4 h-4" />
-                                </div>
-                                <p className="text-[13px] text-zinc-600 font-semibold">No matches yet</p>
-                                <p className="text-[11px] text-zinc-400 mt-0.5">When users swipe right and match, they will appear here.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2.5">
-                                {recentMatches.map((match, idx) => {
-                                    const u1 = match.user1 || {};
-                                    const u2 = match.user2 || {};
-                                    return (
-                                        <div
-                                            key={match._id || idx}
-                                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-xl bg-zinc-50/90 hover:bg-pink-50/40 border border-zinc-150 hover:border-pink-200 transition-all group"
-                                        >
-                                            {/* Matched Pair */}
-                                            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                                                {/* User 1 */}
-                                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                    <div className="w-8 h-8 rounded-full bg-white border border-zinc-200 overflow-hidden flex items-center justify-center text-zinc-600 text-xs font-bold shrink-0 shadow-2xs">
-                                                        {u1.profilePicture ? (
-                                                            <img src={u1.profilePicture} alt="" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            (u1.firstName || 'U').charAt(0)
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-1">
-                                                            <p className="text-[12px] font-bold text-zinc-900 truncate leading-tight">
-                                                                {u1.firstName || 'User'}{u1.age ? `, ${u1.age}` : ''}
-                                                            </p>
-                                                            {u1.isPremium && <Crown className="w-3 h-3 text-amber-500 fill-amber-400 shrink-0" />}
-                                                        </div>
-                                                        {getDisplayLocation(u1.location) ? (
-                                                            <p className="text-[10px] text-zinc-500 truncate mt-0.5">
-                                                                {getDisplayLocation(u1.location)}
-                                                            </p>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-
-                                                {/* Connecting Heart */}
-                                                <div className="flex flex-col items-center justify-center shrink-0 px-1">
-                                                    <div className="w-6 h-6 rounded-full bg-white shadow-2xs border border-pink-200/80 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <Heart className="w-3 h-3 text-pink-500 fill-pink-500" />
-                                                    </div>
-                                                </div>
-
-                                                {/* User 2 */}
-                                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                    <div className="w-8 h-8 rounded-full bg-white border border-zinc-200 overflow-hidden flex items-center justify-center text-zinc-600 text-xs font-bold shrink-0 shadow-2xs">
-                                                        {u2.profilePicture ? (
-                                                            <img src={u2.profilePicture} alt="" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            (u2.firstName || 'U').charAt(0)
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-1">
-                                                            <p className="text-[12px] font-bold text-zinc-900 truncate leading-tight">
-                                                                {u2.firstName || 'User'}{u2.age ? `, ${u2.age}` : ''}
-                                                            </p>
-                                                            {u2.isPremium && <Crown className="w-3 h-3 text-amber-500 fill-amber-400 shrink-0" />}
-                                                        </div>
-                                                        {getDisplayLocation(u2.location) ? (
-                                                            <p className="text-[10px] text-zinc-500 truncate mt-0.5">
-                                                                {getDisplayLocation(u2.location)}
-                                                            </p>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Time & Badge */}
-                                            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 sm:pl-2 border-t sm:border-t-0 border-zinc-100 pt-1.5 sm:pt-0">
-                                                <span className="text-[10px] text-zinc-400 font-medium">
-                                                    {formatMatchTime(match.updatedAt || match.createdAt)}
-                                                </span>
-                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                                    Matched
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
                         )}
                     </div>
                 </div>

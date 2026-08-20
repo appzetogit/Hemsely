@@ -25,6 +25,7 @@ export const reviewSelfieValidator = [
 
 export const setUserStatusValidator = [
   mongoIdParam('id'),
+  body('isSuperPremium').optional().isBoolean(),
   body('isSuperUser').optional().isBoolean(),
   body('isSuperSubscriber').optional().isBoolean(),
 ];

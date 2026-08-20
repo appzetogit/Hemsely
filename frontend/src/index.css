@@ -8,7 +8,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
-  background-color: #FAFAFA;
+  background-color: #18181b;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,

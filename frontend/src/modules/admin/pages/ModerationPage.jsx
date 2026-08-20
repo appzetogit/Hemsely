@@ -1,28 +1,33 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Ban, ChevronLeft, ChevronRight, ImageIcon, Mail, Phone, Search, ShieldCheck, Users, FileText, Layers } from 'lucide-react';
+import ReactDOM from 'react-dom';
+import { Ban, ChevronLeft, ChevronRight, ImageIcon, Mail, Phone, Search, ShieldCheck, Users, FileText, Layers, X } from 'lucide-react';
 import adminApi from '../services/adminApi';
 
 const PAGE_SIZE = 8;
 
 const ModerationImageModal = ({ imageUrl, onClose }) => {
     if (!imageUrl) return null;
-    return (
+    return ReactDOM.createPortal(
         <div
-            className="fixed inset-0 z-[200] bg-zinc-900/80 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed top-16 md:left-72 left-0 right-0 bottom-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-6 cursor-pointer"
             onClick={onClose}
         >
-            <div className="max-w-3xl w-full rounded-xl overflow-hidden border border-white/10 shadow-2xl relative">
+            <div
+                className="max-w-3xl w-full rounded-3xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] relative"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <button
                     type="button"
                     aria-label="Close image modal"
-                    className="absolute top-3 right-3 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors border border-white/20 text-xs"
+                    className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors border-0 cursor-pointer text-xs"
                     onClick={onClose}
                 >
-                    ✕
+                    <X className="w-4 h-4" />
                 </button>
                 <img src={imageUrl} alt="User upload preview" className="w-full max-h-[80vh] object-contain bg-zinc-900" />
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

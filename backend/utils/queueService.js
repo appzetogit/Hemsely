@@ -3,7 +3,7 @@ import { getOrCreateConfig } from '../controllers/appConfigController.js';
 import { EARTH_RADIUS_KM } from './geoService.js';
 
 // Users with any of these get instant access regardless of the gender queue.
-const bypassesQueue = (user) => !!(user.isPremium || user.isSuperUser || user.isSuperSubscriber);
+const bypassesQueue = (user) => !!(user.isSuperPremium || user.isPremium || user.isSuperUser || user.isSuperSubscriber);
 
 // Radius-scope query fragment centered on originCoords, or null when scope is
 // 'country' or the origin's own location is unknown ([0,0]) — callers merge the
@@ -140,7 +140,7 @@ export const releaseFromQueue = async (userId) => {
 };
 
 export const getQueueStatusForUser = async (userId) => {
-  const user = await User.findById(userId).select('gender accessStatus queuedAt location isPremium isSuperUser isSuperSubscriber');
+  const user = await User.findById(userId).select('gender accessStatus queuedAt location isSuperPremium isPremium isSuperUser isSuperSubscriber');
   if (!user || user.accessStatus !== 'queued') {
     return { queued: false, position: null, totalQueued: 0 };
   }

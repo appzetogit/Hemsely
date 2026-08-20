@@ -98,7 +98,7 @@ const LikesYouPage = () => {
                 localStorage.getItem('Hemsely_user:v1') ||
                 '{}'
             );
-            return !!(storedUser.isPremium || storedUser.isSuperSubscriber || storedUser.isSuperUser);
+            return !!(storedUser.isSuperPremium || storedUser.isPremium || storedUser.isSuperSubscriber || storedUser.isSuperUser);
         } catch {
             return false;
         }
@@ -118,7 +118,7 @@ const LikesYouPage = () => {
                     const { data: userRes, ok: userOk } = await apiClient.get(`/users/${myId}`);
                     if (!cancelled && userOk && userRes?.user) {
                         const u = userRes.user;
-                        const activePrem = !!(u.isPremium || u.isSuperSubscriber || u.isSuperUser);
+                        const activePrem = !!(u.isSuperPremium || u.isPremium || u.isSuperSubscriber || u.isSuperUser);
                         setIsPremium(activePrem);
                         localStorage.setItem('user', JSON.stringify(u));
                         sessionStorage.setItem('user', JSON.stringify(u));

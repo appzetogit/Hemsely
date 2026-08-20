@@ -665,8 +665,8 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
     query['location.coordinates.coordinates'] = { $ne: [0, 0] };
   }
 
-  // Premium Advanced Matching Criteria Filters (Only enforced if current user is Premium)
-  const isPremiumUser = Boolean(currentUser.isPremium || currentUser.isSuperUser || currentUser.isSuperSubscriber);
+  // Premium Advanced Matching Criteria Filters (Only enforced if current user is Premium / Super Premium)
+  const isPremiumUser = Boolean(currentUser.isSuperPremium || currentUser.isPremium || currentUser.isSuperUser || currentUser.isSuperSubscriber);
   if (isPremiumUser) {
     if (req.query.relationshipGoal && req.query.relationshipGoal.toLowerCase() !== 'any') {
       query.relationshipGoal = { $regex: new RegExp(escapeRegex(req.query.relationshipGoal.trim()), 'i') };

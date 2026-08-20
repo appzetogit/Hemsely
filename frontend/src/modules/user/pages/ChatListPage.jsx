@@ -459,7 +459,7 @@ const ChatListPage = () => {
             const storedUser = JSON.parse(
                 localStorage.getItem('user') || sessionStorage.getItem('user') || '{}'
             );
-            return !!(storedUser.isPremium || storedUser.isSuperSubscriber || storedUser.isSuperUser);
+            return !!(storedUser.isSuperPremium || storedUser.isPremium || storedUser.isSuperSubscriber || storedUser.isSuperUser);
         } catch {
             return false;
         }
@@ -474,7 +474,7 @@ const ChatListPage = () => {
         apiClient.get(`/users/${myId}`).then(({ data, ok }) => {
             if (ok && data?.user) {
                 const u = data.user;
-                setIsPremium(!!(u.isPremium || u.isSuperSubscriber || u.isSuperUser));
+                setIsPremium(!!(u.isSuperPremium || u.isPremium || u.isSuperSubscriber || u.isSuperUser));
             }
         }).catch(() => {});
     }, []);

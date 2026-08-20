@@ -31,6 +31,7 @@ import TermsOfServicePage from '../pages/TermsOfServicePage';
 
 import AdminLoginPage from '../../admin/pages/AdminLoginPage';
 import AdminLayout from '../../admin/components/AdminLayout';
+import AdminRouteGuard from '../../admin/components/AdminRouteGuard';
 import DashboardPage from '../../admin/pages/DashboardPage';
 import ModerationPage from '../../admin/pages/ModerationPage';
 import SelfieVerificationPage from '../../admin/pages/SelfieVerificationPage';
@@ -94,20 +95,20 @@ const AppRoutes = () => {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />
-                <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="users" element={<UsersPage />} />
-                <Route path="moderation" element={<ModerationPage />} />
-                <Route path="selfie-verification" element={<SelfieVerificationPage />} />
-                <Route path="reports" element={<ReportsPage />} />
-                <Route path="support" element={<SupportManagementPage />} />
-                <Route path="subscriptions" element={<SubscriptionsPage />} />
-                <Route path="boost-edit" element={<BoostEditPage />} />
-                <Route path="subscription-users" element={<SubscriptionUsersPage />} />
-                <Route path="transactions" element={<TransactionsPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="app-config" element={<AppConfigPage />} />
-                <Route path="website-pages/:slug" element={<WebsitePageEditorPage />} />
-                <Route path="profile" element={<AdminProfilePage />} />
+                <Route path="dashboard" element={<AdminRouteGuard permission="dashboard"><DashboardPage /></AdminRouteGuard>} />
+                <Route path="users" element={<AdminRouteGuard permission="users"><UsersPage /></AdminRouteGuard>} />
+                <Route path="moderation" element={<AdminRouteGuard permission="moderation"><ModerationPage /></AdminRouteGuard>} />
+                <Route path="selfie-verification" element={<AdminRouteGuard permission="selfie-verification"><SelfieVerificationPage /></AdminRouteGuard>} />
+                <Route path="reports" element={<AdminRouteGuard permission="reports"><ReportsPage /></AdminRouteGuard>} />
+                <Route path="support" element={<AdminRouteGuard permission="support"><SupportManagementPage /></AdminRouteGuard>} />
+                <Route path="subscriptions" element={<AdminRouteGuard permission="subscriptions"><SubscriptionsPage /></AdminRouteGuard>} />
+                <Route path="boost-edit" element={<AdminRouteGuard permission="boost-edit"><BoostEditPage /></AdminRouteGuard>} />
+                <Route path="subscription-users" element={<AdminRouteGuard permission="subscription-users"><SubscriptionUsersPage /></AdminRouteGuard>} />
+                <Route path="transactions" element={<AdminRouteGuard permission="transactions"><TransactionsPage /></AdminRouteGuard>} />
+                <Route path="notifications" element={<AdminRouteGuard permission="notifications"><NotificationsPage /></AdminRouteGuard>} />
+                <Route path="app-config" element={<AdminRouteGuard permission="app-config"><AppConfigPage /></AdminRouteGuard>} />
+                <Route path="website-pages/:slug" element={<AdminRouteGuard permission="website-pages"><WebsitePageEditorPage /></AdminRouteGuard>} />
+                <Route path="profile" element={<AdminRouteGuard permission="superadmin"><AdminProfilePage /></AdminRouteGuard>} />
             </Route>
         </Routes>
     );
