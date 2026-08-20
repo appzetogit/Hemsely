@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import { onForegroundMessage } from '../../../lib/fcmService';
 
@@ -21,9 +21,28 @@ const getMyId = () => {
     }
 };
 
+// Deduplication cache to prevent same notification showing multiple times within a 30s window
+const seenNotificationKeys = new Map();
+const DEDUP_WINDOW_MS = 30000;
+
+const isDuplicateNotification = (key) => {
+    if (!key) return false;
+    const now = Date.now();
+    const lastSeen = seenNotificationKeys.get(key);
+    if (lastSeen && now - lastSeen < DEDUP_WINDOW_MS) {
+        return true;
+    }
+    seenNotificationKeys.set(key, now);
+
+    // Prune stale entries
+    for (const [k, ts] of seenNotificationKeys.entries()) {
+        if (now - ts > DEDUP_WINDOW_MS) seenNotificationKeys.delete(k);
+    }
+    return false;
+};
+
 const NotificationListener = () => {
     const { socket } = useSocket();
-    const location = useLocation();
     const navigate = useNavigate();
     const [toast, setToast] = useState(null);
 
@@ -34,6 +53,7 @@ const NotificationListener = () => {
         return () => clearTimeout(timer);
     }, [toast]);
 
+    // Socket message and match listeners
     useEffect(() => {
         if (!socket) return undefined;
 
@@ -54,10 +74,14 @@ const NotificationListener = () => {
                 return;
             }
 
-            // Otherwise show foreground toast notification
             const senderName = `${msg.sender?.firstName || 'User'} ${msg.sender?.lastName || ''}`.trim();
             const photo = msg.sender?.profilePicture || null;
             const bodyText = msg.image ? '📷 Photo' : msg.audio ? '🎵 Voice message' : (msg.message || 'Sent a message');
+            const dedupKey = `msg_${msg._id || `${senderId}_${bodyText}`}`;
+
+            if (isDuplicateNotification(dedupKey)) {
+                return;
+            }
 
             setToast({
                 id: msg._id || Date.now(),
@@ -85,6 +109,11 @@ const NotificationListener = () => {
             const partnerId = data.otherUserId || data.match?.user1 || data.match?.user2;
             const partnerName = data.partnerName || 'Someone';
             const photo = data.partnerPhoto || null;
+            const dedupKey = `match_${partnerId || partnerName}`;
+
+            if (isDuplicateNotification(dedupKey)) {
+                return;
+            }
 
             setToast({
                 id: `match-${Date.now()}`,
@@ -110,12 +139,34 @@ const NotificationListener = () => {
         socket.on('new_message', handleNewMessage);
         socket.on('new_match', handleNewMatch);
 
-        // Also handle FCM foreground notifications
-        let unsubscribeFcm = () => {};
+        return () => {
+            socket.off('new_message', handleNewMessage);
+            socket.off('new_match', handleNewMatch);
+        };
+    }, [socket]);
+
+    // Single persistent FCM foreground message listener (mounted once)
+    useEffect(() => {
+        let isMounted = true;
+        let unsubscribeFcm = null;
+
         onForegroundMessage((payload) => {
+            if (!isMounted) return;
+
             const data = payload.data || {};
             const notification = payload.notification || {};
             const type = data.type || 'general';
+            const title = notification.title || data.title || 'Hemsely Notification';
+            const body = notification.body || data.body || '';
+
+            // Generate deterministic dedup key
+            const dedupKey = data.notificationId || data.tag || `${title}:${body}`;
+
+            // Prevent duplicate notifications if already received or displayed recently
+            if (isDuplicateNotification(dedupKey)) {
+                console.log('[NotificationListener] Duplicate FCM notification suppressed:', dedupKey);
+                return;
+            }
 
             if (type === 'chat' && data.senderId) {
                 const currentPath = window.location.pathname;
@@ -129,22 +180,27 @@ const NotificationListener = () => {
 
             setToast({
                 id: `fcm-${Date.now()}`,
-                title: notification.title || data.title || 'Hemsely Notification',
-                body: notification.body || data.body || '',
+                title,
+                body,
                 photo: data.senderPhoto || notification.image || null,
                 type,
                 targetUrl: data.url || (data.senderId ? `/chat/${data.senderId}` : '/chats'),
             });
         }).then((unsub) => {
-            unsubscribeFcm = unsub;
+            if (isMounted) {
+                unsubscribeFcm = unsub;
+            } else if (typeof unsub === 'function') {
+                unsub();
+            }
         });
 
         return () => {
-            socket.off('new_message', handleNewMessage);
-            socket.off('new_match', handleNewMatch);
-            if (typeof unsubscribeFcm === 'function') unsubscribeFcm();
+            isMounted = false;
+            if (typeof unsubscribeFcm === 'function') {
+                unsubscribeFcm();
+            }
         };
-    }, [socket, location]);
+    }, []);
 
     if (!toast) return null;
 

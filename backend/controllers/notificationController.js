@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import Admin from '../models/Admin.js';
@@ -65,6 +66,10 @@ export const sendNotification = asyncHandler(async (req, res) => {
     userQuery = { _id: { $in: validIds }, isBanned: { $ne: true } };
   }
 
+  // Generate deterministic ID upfront for both DB and FCM tag/collapse-key deduplication
+  const notificationId = new mongoose.Types.ObjectId();
+  const notifTag = `admin_notif_${notificationId.toString()}`;
+
   // Find matching users and extract single primary FCM token per recipient
   const targetUserDocs = await User.find(userQuery).select('_id fcmtokenweb fcmtokenmobile fcmtokenios').lean();
   const recipientCount = targetUserDocs.length;
@@ -86,11 +91,16 @@ export const sendNotification = asyncHandler(async (req, res) => {
     fcmResult = await sendFcmPushNotification(
       uniqueTokens,
       { title, body },
-      { type: 'admin_broadcast', tag: `admin_notif_${Date.now()}` }
+      {
+        type: 'admin_broadcast',
+        notificationId: String(notificationId),
+        tag: notifTag,
+      }
     );
   }
 
   const notification = await Notification.create({
+    _id: notificationId,
     title,
     body,
     target,
