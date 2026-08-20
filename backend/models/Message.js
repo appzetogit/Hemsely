@@ -19,6 +19,17 @@ const messageSchema = new mongoose.Schema(
     image: String,
     audio: String,
     audioDuration: Number,
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Message',
+    },
+    replyToMessage: {
+      id: String,
+      senderName: String,
+      message: String,
+      image: String,
+      audio: String,
+    },
     isRead: {
       type: Boolean,
       default: false,

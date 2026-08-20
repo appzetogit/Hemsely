@@ -5,10 +5,6 @@ import { useSocket } from '../context/SocketContext';
 
 import demoPhoto2 from '../assets/853e31e910922fe7f47f66de5c5206f78a610037.jpg';
 
-// Chat Icons
-import chatGalleryIcon from '../assets/icons/chat-gallery.png';
-import chatSendIcon from '../assets/icons/chat-send.png';
-
 const getMyId = () => {
     try {
         const sUser = sessionStorage.getItem('user');
@@ -41,7 +37,8 @@ const AudioPlayerBubble = ({ audioUrl, duration, isSent }) => {
     const [currentTime, setCurrentTime] = useState(0);
     const audioRef = useRef(null);
 
-    const togglePlay = () => {
+    const togglePlay = (e) => {
+        e?.stopPropagation?.();
         if (!audioRef.current) return;
         if (isPlaying) {
             audioRef.current.pause();
@@ -122,63 +119,438 @@ const AudioPlayerBubble = ({ audioUrl, duration, isSent }) => {
     );
 };
 
-/* ─── Chat Bubble ─── */
-const ChatBubble = ({ msg, photo, isSent, showAvatar, isUnmatched, onImageClick }) => {
+/* ─── Swipeable Chat Bubble Component ─── */
+const ChatBubble = ({
+    msg,
+    photo,
+    isSent,
+    showAvatar,
+    isUnmatched,
+    onImageClick,
+    onReply,
+    onScrollToQuoted,
+    isHighlighted,
+    partnerName,
+    myId,
+}) => {
+    const [dragOffset, setDragOffset] = useState(0);
+    const [isTriggerActive, setIsTriggerActive] = useState(false);
+
     const borderRadius = isSent ? '25px 5px 25px 25px' : '5px 25px 25px 25px';
 
+    const THRESHOLD = 28;
+    const MAX_DRAG = 55;
+
+    // Quoted message data extraction
+    const quotedMsg = msg.replyTo || msg.replyToMessage;
+    const quotedId = msg.replyTo?._id || msg.replyToMessage?.id || (typeof msg.replyTo === 'string' ? msg.replyTo : null);
+
+    let quotedSenderName = '';
+    if (quotedMsg) {
+        if (msg.replyTo?.sender) {
+            const senderId = msg.replyTo.sender._id || msg.replyTo.sender;
+            quotedSenderName = String(senderId) === String(myId)
+                ? 'You'
+                : (msg.replyTo.sender.firstName ? `${msg.replyTo.sender.firstName} ${msg.replyTo.sender.lastName || ''}`.trim() : partnerName);
+        } else if (msg.replyToMessage?.senderName) {
+            quotedSenderName = msg.replyToMessage.senderName;
+        } else {
+            quotedSenderName = 'Reply';
+        }
+    }
+
+    const quotedText = quotedMsg
+        ? (quotedMsg.message || (quotedMsg.image ? '📷 Photo' : quotedMsg.audio ? '🎵 Voice message' : ''))
+        : null;
+    const quotedImage = quotedMsg?.image;
+
+    // Gesture State Ref for reliable tracking across events
+    const gestureRef = useRef({
+        startX: 0,
+        startY: 0,
+        currentOffset: 0,
+        isSwipingHorizontally: false,
+        isLocked: false,
+        isActive: false,
+        hasVibrated: false,
+    });
+
+    const handleTouchStart = (e) => {
+        if (isUnmatched) return;
+        const touch = e.touches[0];
+        gestureRef.current = {
+            startX: touch.clientX,
+            startY: touch.clientY,
+            currentOffset: 0,
+            isSwipingHorizontally: false,
+            isLocked: false,
+            isActive: false,
+            hasVibrated: false,
+        };
+    };
+
+    const handleTouchMove = (e) => {
+        if (isUnmatched || !e.touches[0]) return;
+        const touch = e.touches[0];
+        const dx = touch.clientX - gestureRef.current.startX;
+        const dy = touch.clientY - gestureRef.current.startY;
+
+        if (!gestureRef.current.isLocked) {
+            if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
+                gestureRef.current.isLocked = true;
+                gestureRef.current.isSwipingHorizontally = false;
+                return;
+            }
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
+                if ((!isSent && dx > 0) || (isSent && dx < 0)) {
+                    gestureRef.current.isLocked = true;
+                    gestureRef.current.isSwipingHorizontally = true;
+                } else {
+                    gestureRef.current.isLocked = true;
+                    gestureRef.current.isSwipingHorizontally = false;
+                    return;
+                }
+            }
+        }
+
+        if (gestureRef.current.isSwipingHorizontally) {
+            let offset = 0;
+            if (!isSent && dx > 0) {
+                offset = Math.min(MAX_DRAG, dx * 0.75);
+            } else if (isSent && dx < 0) {
+                offset = Math.max(-MAX_DRAG, dx * 0.75);
+            }
+            gestureRef.current.currentOffset = offset;
+            setDragOffset(offset);
+
+            const active = Math.abs(offset) >= THRESHOLD;
+            gestureRef.current.isActive = active;
+            setIsTriggerActive(active);
+
+            if (active && !gestureRef.current.hasVibrated) {
+                gestureRef.current.hasVibrated = true;
+                if (navigator.vibrate) {
+                    try { navigator.vibrate(15); } catch { }
+                }
+            } else if (!active) {
+                gestureRef.current.hasVibrated = false;
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (gestureRef.current.isSwipingHorizontally && gestureRef.current.isActive) {
+            if (onReply) onReply(msg);
+        }
+        setDragOffset(0);
+        setIsTriggerActive(false);
+        gestureRef.current.currentOffset = 0;
+        gestureRef.current.isSwipingHorizontally = false;
+        gestureRef.current.isLocked = false;
+        gestureRef.current.isActive = false;
+    };
+
+    // Pointer / Mouse Drag Support (works on browser & mobile simulators)
+    const handlePointerDown = (e) => {
+        if (isUnmatched || (e.button !== undefined && e.button !== 0)) return;
+        gestureRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            currentOffset: 0,
+            isSwipingHorizontally: false,
+            isLocked: false,
+            isActive: false,
+            hasVibrated: false,
+        };
+
+        const handlePointerMove = (ev) => {
+            const dx = ev.clientX - gestureRef.current.startX;
+            const dy = ev.clientY - gestureRef.current.startY;
+
+            if (!gestureRef.current.isLocked) {
+                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
+                    gestureRef.current.isLocked = true;
+                    gestureRef.current.isSwipingHorizontally = false;
+                    return;
+                }
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 5) {
+                    if ((!isSent && dx > 0) || (isSent && dx < 0)) {
+                        gestureRef.current.isLocked = true;
+                        gestureRef.current.isSwipingHorizontally = true;
+                    } else {
+                        gestureRef.current.isLocked = true;
+                        gestureRef.current.isSwipingHorizontally = false;
+                        return;
+                    }
+                }
+            }
+
+            if (gestureRef.current.isSwipingHorizontally) {
+                ev.preventDefault();
+                let offset = 0;
+                if (!isSent && dx > 0) {
+                    offset = Math.min(MAX_DRAG, dx * 0.75);
+                } else if (isSent && dx < 0) {
+                    offset = Math.max(-MAX_DRAG, dx * 0.75);
+                }
+                gestureRef.current.currentOffset = offset;
+                setDragOffset(offset);
+
+                const active = Math.abs(offset) >= THRESHOLD;
+                gestureRef.current.isActive = active;
+                setIsTriggerActive(active);
+
+                if (active && !gestureRef.current.hasVibrated) {
+                    gestureRef.current.hasVibrated = true;
+                    if (navigator.vibrate) {
+                        try { navigator.vibrate(15); } catch { }
+                    }
+                } else if (!active) {
+                    gestureRef.current.hasVibrated = false;
+                }
+            }
+        };
+
+        const handlePointerUp = () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+
+            if (gestureRef.current.isSwipingHorizontally && gestureRef.current.isActive) {
+                if (onReply) onReply(msg);
+            }
+            setDragOffset(0);
+            setIsTriggerActive(false);
+            gestureRef.current.currentOffset = 0;
+            gestureRef.current.isSwipingHorizontally = false;
+            gestureRef.current.isLocked = false;
+            gestureRef.current.isActive = false;
+        };
+
+        window.addEventListener('pointermove', handlePointerMove, { passive: false });
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+    };
+
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: isSent ? 'row-reverse' : 'row',
-            alignItems: 'flex-start',
-            gap: '8px',
-            padding: '1px 20px',
-            marginBottom: '10px',
-        }}>
+        <div
+            id={`msg-${msg._id}`}
+            className={`no-select select-none ${isHighlighted ? 'message-highlight-pulse' : ''}`}
+            style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: isSent ? 'row-reverse' : 'row',
+                alignItems: 'flex-end',
+                gap: '8px',
+                padding: '2px 16px',
+                marginBottom: '10px',
+                touchAction: 'pan-y',
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+                transition: 'background-color 0.3s ease',
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            onPointerDown={handlePointerDown}
+        >
+            {/* Swipe Reply Icon for Received Message (Left-to-Right) */}
+            {dragOffset > 0 && !isSent && (
+                <div style={{
+                    position: 'absolute',
+                    left: showAvatar ? '48px' : '16px',
+                    top: '50%',
+                    transform: `translateY(-50%) scale(${isTriggerActive ? 1.2 : Math.min(1, Math.max(0.4, dragOffset / 28))})`,
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: isTriggerActive ? '#6F3BCE' : 'rgba(111, 59, 206, 0.16)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isTriggerActive ? '#FFFFFF' : '#6F3BCE',
+                    opacity: Math.min(1, Math.max(0, dragOffset / 18)),
+                    transition: 'background-color 0.15s, color 0.15s, transform 0.15s',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    boxShadow: isTriggerActive ? '0 2px 8px rgba(111, 59, 206, 0.35)' : 'none',
+                }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 14 4 9 9 4" />
+                        <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+                    </svg>
+                </div>
+            )}
+
+            {/* Swipe Reply Icon for Sent Message (Right-to-Left) */}
+            {dragOffset < 0 && isSent && (
+                <div style={{
+                    position: 'absolute',
+                    right: '16px',
+                    top: '50%',
+                    transform: `translateY(-50%) scale(${isTriggerActive ? 1.2 : Math.min(1, Math.max(0.4, Math.abs(dragOffset) / 28))})`,
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: isTriggerActive ? '#6F3BCE' : 'rgba(111, 59, 206, 0.16)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isTriggerActive ? '#FFFFFF' : '#6F3BCE',
+                    opacity: Math.min(1, Math.max(0, Math.abs(dragOffset) / 18)),
+                    transition: 'background-color 0.15s, color 0.15s, transform 0.15s',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    boxShadow: isTriggerActive ? '0 2px 8px rgba(111, 59, 206, 0.35)' : 'none',
+                }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 14 4 9 9 4" />
+                        <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+                    </svg>
+                </div>
+            )}
+
+            {/* Avatar for received message */}
             {!isSent ? (
-                <div style={{ width: '32px', flexShrink: 0 }}>
+                <div style={{ width: '32px', flexShrink: 0, alignSelf: 'flex-start' }}>
                     {showAvatar && (
                         (isUnmatched || msg.sender?.firstName === 'Hemsely User') ? (
                             <div style={{
                                 width: '32px', height: '32px', borderRadius: '50%',
                                 background: '#E4E4E7', display: 'flex', alignItems: 'center',
-                                justifyContent: 'center', color: '#9CA3AF'
+                                justifyContent: 'center', color: '#9CA3AF',
                             }}>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                                 </svg>
                             </div>
                         ) : (
-                            <img src={photo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                            <img
+                                src={photo}
+                                alt=""
+                                draggable={false}
+                                style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', pointerEvents: 'none' }}
+                            />
                         )
                     )}
                 </div>
             ) : null}
 
-            <div style={{ maxWidth: '75%', background: isSent ? '#6F3BCE' : '#F3F3F3', borderRadius, padding: msg.image ? '6px' : '12px 16px' }}>
+            {/* Chat Bubble Body */}
+            <div
+                style={{
+                    maxWidth: '78%',
+                    background: isSent ? '#6F3BCE' : '#F3F3F3',
+                    borderRadius,
+                    padding: msg.image ? '6px' : '10px 14px',
+                    transform: `translateX(${dragOffset}px)`,
+                    transition: dragOffset !== 0 ? 'none' : 'transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    boxShadow: isSent ? '0 2px 8px rgba(111, 59, 206, 0.18)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+                    cursor: 'grab',
+                    position: 'relative',
+                    zIndex: 2,
+                }}
+            >
+                {/* Quoted message card if this message is a reply */}
+                {quotedMsg && (
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (quotedId && onScrollToQuoted) {
+                                onScrollToQuoted(quotedId);
+                            }
+                        }}
+                        style={{
+                            background: isSent ? 'rgba(0, 0, 0, 0.22)' : 'rgba(111, 59, 206, 0.08)',
+                            borderLeft: isSent ? '3.5px solid #FFFFFF' : '3.5px solid #6F3BCE',
+                            borderRadius: '8px',
+                            padding: '5px 8px',
+                            marginBottom: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                            maxWidth: '100%',
+                        }}
+                    >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                                fontFamily: "'Inter', sans-serif",
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: isSent ? '#FFFFFF' : '#6F3BCE',
+                                marginBottom: '1px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}>
+                                {quotedSenderName}
+                            </div>
+                            <div style={{
+                                fontFamily: "'Roboto', sans-serif",
+                                fontSize: '12px',
+                                color: isSent ? 'rgba(255, 255, 255, 0.85)' : '#52525B',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}>
+                                {quotedText}
+                            </div>
+                        </div>
+                        {quotedImage && (
+                            <img
+                                src={quotedImage}
+                                alt=""
+                                draggable={false}
+                                style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0, pointerEvents: 'none' }}
+                            />
+                        )}
+                    </div>
+                )}
+
+                {/* Message Image */}
                 {msg.image && (
                     <img
                         src={msg.image}
                         alt="Chat photo"
-                        onClick={() => onImageClick && onImageClick(msg.image)}
+                        draggable={false}
+                        onClick={(e) => {
+                            if (Math.abs(dragOffset) < 5 && onImageClick) {
+                                onImageClick(msg.image);
+                            }
+                        }}
                         style={{
                             width: '100%',
                             maxWidth: '220px',
-                            borderRadius: '18px',
+                            borderRadius: '16px',
                             display: 'block',
-                            marginBottom: msg.message ? '6px' : 0,
+                            marginBottom: msg.message && msg.message !== '📷 Photo' ? '6px' : 0,
                             cursor: 'pointer',
-                            transition: 'opacity 0.2s ease, transform 0.15s ease',
+                            userSelect: 'none',
                         }}
-                        className="hover:opacity-90 active:scale-[0.98]"
+                        className="hover:opacity-95 active:scale-[0.99]"
                     />
                 )}
+
+                {/* Audio or Text */}
                 {msg.audio ? (
                     <AudioPlayerBubble audioUrl={msg.audio} duration={msg.audioDuration} isSent={isSent} />
-                ) : msg.message ? (
+                ) : msg.message && (!msg.image || msg.message !== '📷 Photo') ? (
                     <p style={{
-                        fontFamily: "'Roboto', sans-serif", fontWeight: 500, fontSize: '14px',
-                        lineHeight: '18px', letterSpacing: '0.02em', color: isSent ? '#FFFFFF' : '#303030', margin: 0,
+                        fontFamily: "'Roboto', sans-serif",
+                        fontWeight: 500,
+                        fontSize: '14.5px',
+                        lineHeight: '19px',
+                        letterSpacing: '0.01em',
+                        color: isSent ? '#FFFFFF' : '#303030',
+                        margin: 0,
+                        wordBreak: 'break-word',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
                     }}>{msg.message}</p>
                 ) : null}
             </div>
@@ -440,19 +812,12 @@ const ChatScreenPage = () => {
     const [recordingTime, setRecordingTime] = useState(0);
     const [previewImage, setPreviewImage] = useState(null);
 
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.key === 'Escape') {
-                setPreviewImage(null);
-            }
-        };
-        if (previewImage) {
-            window.addEventListener('keydown', handleKeyDown);
-        }
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [previewImage]);
+    // Reply state
+    const [replyingTo, setReplyingTo] = useState(null);
+    const [highlightedMessageId, setHighlightedMessageId] = useState(null);
 
     const fileInputRef = useRef(null);
+    const textInputRef = useRef(null);
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const menuRef = useRef(null);
@@ -462,6 +827,17 @@ const ChatScreenPage = () => {
 
     const currentName = isUnmatched ? 'Hemsely User' : chatName;
     const currentPhoto = isUnmatched ? demoPhoto2 : chatPhoto;
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                if (previewImage) setPreviewImage(null);
+                if (replyingTo) setReplyingTo(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [previewImage, replyingTo]);
 
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -487,7 +863,7 @@ const ChatScreenPage = () => {
                 }
                 apiClient.put(`/messages/read/${partnerId}`, {}).catch(() => { });
             } catch {
-                // Network failure — fall through and stop the loading spinner below.
+                // Network failure — fall through and stop spinner
             }
             if (!cancelled) setLoading(false);
         })();
@@ -554,6 +930,26 @@ const ChatScreenPage = () => {
         typingTimeoutRef.current = setTimeout(() => notifyTyping(false), 1500);
     };
 
+    const handleSetReply = (msg) => {
+        if (isUnmatched || !msg) return;
+        setReplyingTo(msg);
+        setTimeout(() => {
+            textInputRef.current?.focus();
+        }, 50);
+    };
+
+    const handleScrollToQuoted = (targetId) => {
+        if (!targetId) return;
+        const el = document.getElementById(`msg-${targetId}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setHighlightedMessageId(targetId);
+            setTimeout(() => {
+                setHighlightedMessageId((prev) => (prev === targetId ? null : prev));
+            }, 1400);
+        }
+    };
+
     const handleSend = async () => {
         const trimmed = messageText.trim();
         if (!trimmed || !partnerId || sending || isUnmatched) return;
@@ -562,8 +958,23 @@ const ChatScreenPage = () => {
         setMessageText('');
         notifyTyping(false);
 
+        const currentReply = replyingTo;
+        setReplyingTo(null);
+
+        const payload = { message: trimmed };
+        if (currentReply) {
+            payload.replyTo = currentReply._id;
+            payload.replyToMessage = {
+                id: currentReply._id,
+                senderName: String(currentReply.sender?._id || currentReply.sender) === String(myId) ? 'You' : currentName,
+                message: currentReply.message || '',
+                image: currentReply.image || '',
+                audio: currentReply.audio || '',
+            };
+        }
+
         try {
-            const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, { message: trimmed });
+            const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, payload);
             if (ok && data.success) {
                 setMessages((prev) => {
                     if (prev.some((m) => String(m._id) === String(data.data._id))) {
@@ -576,10 +987,11 @@ const ChatScreenPage = () => {
                     setIsUnmatched(true);
                 }
                 setMessageText(trimmed);
+                if (currentReply) setReplyingTo(currentReply);
             }
         } catch {
-            // Network failure — restore the draft so the message isn't silently lost.
             setMessageText(trimmed);
+            if (currentReply) setReplyingTo(currentReply);
         } finally {
             setSending(false);
         }
@@ -670,6 +1082,9 @@ const ChatScreenPage = () => {
         if (!mediaRecorderRef.current || !isRecording) return;
         clearInterval(recordingTimerRef.current);
 
+        const currentReply = replyingTo;
+        setReplyingTo(null);
+
         mediaRecorderRef.current.onstop = async () => {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             if (mediaRecorderRef.current.stream) {
@@ -682,11 +1097,22 @@ const ChatScreenPage = () => {
             reader.onloadend = async () => {
                 const base64Audio = reader.result;
                 setSending(true);
-                const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, {
+                const payload = {
                     message: '🎵 Voice message',
                     audio: base64Audio,
                     audioDuration: duration,
-                });
+                };
+                if (currentReply) {
+                    payload.replyTo = currentReply._id;
+                    payload.replyToMessage = {
+                        id: currentReply._id,
+                        senderName: String(currentReply.sender?._id || currentReply.sender) === String(myId) ? 'You' : currentName,
+                        message: currentReply.message || '',
+                        image: currentReply.image || '',
+                        audio: currentReply.audio || '',
+                    };
+                }
+                const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, payload);
                 if (ok && data.success) {
                     setMessages((prev) => {
                         if (prev.some((m) => String(m._id) === String(data.data._id))) {
@@ -726,7 +1152,22 @@ const ChatScreenPage = () => {
     const handleSendLike = async () => {
         if (!partnerId || sending || isUnmatched) return;
         setSending(true);
-        const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, { message: '👍' });
+        const currentReply = replyingTo;
+        setReplyingTo(null);
+
+        const payload = { message: '👍' };
+        if (currentReply) {
+            payload.replyTo = currentReply._id;
+            payload.replyToMessage = {
+                id: currentReply._id,
+                senderName: String(currentReply.sender?._id || currentReply.sender) === String(myId) ? 'You' : currentName,
+                message: currentReply.message || '',
+                image: currentReply.image || '',
+                audio: currentReply.audio || '',
+            };
+        }
+
+        const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, payload);
         if (ok && data.success) {
             setMessages((prev) => {
                 if (prev.some((m) => String(m._id) === String(data.data._id))) {
@@ -744,9 +1185,23 @@ const ChatScreenPage = () => {
         if (!file || !partnerId || isUnmatched) return;
 
         setSending(true);
+        const currentReply = replyingTo;
+        setReplyingTo(null);
+
         const formData = new FormData();
         formData.append('message', '📷 Photo');
         formData.append('image', file);
+        if (currentReply) {
+            formData.append('replyTo', currentReply._id);
+            formData.append('replyToMessage', JSON.stringify({
+                id: currentReply._id,
+                senderName: String(currentReply.sender?._id || currentReply.sender) === String(myId) ? 'You' : currentName,
+                message: currentReply.message || '',
+                image: currentReply.image || '',
+                audio: currentReply.audio || '',
+            }));
+        }
+
         const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, formData);
         if (ok && data.success) {
             setMessages((prev) => [...prev, data.data]);
@@ -776,7 +1231,7 @@ const ChatScreenPage = () => {
     });
 
     return (
-        <div className="h-[100dvh] flex flex-col max-w-[414px] mx-auto relative overflow-hidden" style={{ background: '#FCFCFC' }}>
+        <div className="h-[100dvh] flex flex-col max-w-[414px] mx-auto relative overflow-hidden no-select select-none" style={{ background: '#FCFCFC' }}>
 
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
 
@@ -815,7 +1270,7 @@ const ChatScreenPage = () => {
                             </svg>
                         </div>
                     ) : (
-                        <img src={currentPhoto} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                        <img src={currentPhoto} alt="" draggable={false} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
                     )}
                 </button>
 
@@ -913,7 +1368,15 @@ const ChatScreenPage = () => {
             </header>
 
             {/* Messages Area */}
-            <main className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ padding: '10px 0' }}>
+            <main
+                className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden no-select"
+                style={{
+                    padding: '10px 0',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                }}
+            >
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="w-8 h-8 rounded-full border-4 border-[#F0EBFB] border-t-[#6F3BCE] animate-spin" />
@@ -926,6 +1389,7 @@ const ChatScreenPage = () => {
                             <div key={row.key} style={{
                                 textAlign: 'center', padding: '24px 0 12px', fontFamily: "'Roboto', sans-serif",
                                 fontWeight: 500, fontSize: '13px', lineHeight: '16px', letterSpacing: '0.01em', color: '#797C7B',
+                                userSelect: 'none',
                             }}>{row.text}</div>
                         ) : (
                             <ChatBubble
@@ -936,6 +1400,11 @@ const ChatScreenPage = () => {
                                 showAvatar={row.showAvatar}
                                 isUnmatched={isUnmatched}
                                 onImageClick={(imgSrc) => setPreviewImage(imgSrc)}
+                                onReply={handleSetReply}
+                                onScrollToQuoted={handleScrollToQuoted}
+                                isHighlighted={highlightedMessageId === row.msg._id}
+                                partnerName={currentName}
+                                myId={myId}
                             />
                         )
                     ))
@@ -943,7 +1412,7 @@ const ChatScreenPage = () => {
                 <div ref={messagesEndRef} />
             </main>
 
-            {/* Input Bar */}
+            {/* Input Bar with Integrated WhatsApp-Style Reply Box */}
             {isUnmatched ? (
                 <footer style={{
                     width: '100%', padding: '10px 12px 14px',
@@ -1010,82 +1479,176 @@ const ChatScreenPage = () => {
                 </footer>
             ) : (
                 <footer style={{
-                    width: '100%', padding: '10px 14px 28px',
-                    display: 'flex', alignItems: 'center', gap: '10px',
+                    width: '100%', padding: '8px 12px 24px',
+                    display: 'flex', flexDirection: 'column', gap: '6px',
                     flexShrink: 0, background: '#FFFFFF',
-                    borderTop: '1px solid rgba(0,0,0,0.03)',
+                    borderTop: '1px solid rgba(0,0,0,0.04)',
                 }}>
-                    <button
-                        type="button"
-                        aria-label="Attach photo"
-                        onClick={handleAttachImage}
-                        disabled={sending}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                    >
-                        <svg width="22" height="22" viewBox="0 0 24 24">
-                            <rect x="2" y="2" width="20" height="20" rx="5" fill="#6F3BCE" />
-                            <circle cx="7.5" cy="7.5" r="1.8" fill="#FFFFFF" />
-                            <path d="M19.5 18H4.5l4.5-6 3 4 3.5-4.5 4 6.5z" fill="#FFFFFF" />
-                        </svg>
-                    </button>
-
-                    <button
-                        type="button"
-                        aria-label="Voice message"
-                        onClick={startRecording}
-                        disabled={sending}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                    >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#6F3BCE">
-                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                        </svg>
-                    </button>
-
-                    <div style={{
-                        flex: 1, height: '40px', background: '#F4F4F6',
-                        borderRadius: '20px', display: 'flex', alignItems: 'center',
-                        padding: '0 8px 0 16px', gap: '8px',
-                    }}>
-                        <input
-                            value={messageText}
-                            onChange={handleInputChange}
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
-                            placeholder="Aa"
-                            aria-label="Type a message"
-                            disabled={sending}
+                    {/* Integrated WhatsApp-Style Reply Card */}
+                    {replyingTo && (
+                        <div
+                            className="animate-reply-bar no-select"
                             style={{
-                                width: '100%', background: 'transparent', border: 'none', outline: 'none',
-                                fontFamily: "'Roboto', sans-serif", fontWeight: 400, fontSize: '15px', color: '#18181B',
-                            }}
-                        />
-                        <button
-                            type="button"
-                            aria-label="Send message"
-                            onClick={handleSend}
-                            disabled={sending || !messageText.trim()}
-                            style={{
-                                background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
-                                opacity: sending || !messageText.trim() ? 0.35 : 1, display: 'flex', alignItems: 'center',
+                                background: '#F5F2FC',
+                                borderRadius: '16px 16px 8px 8px',
+                                padding: '8px 12px 8px 14px',
+                                position: 'relative',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                overflow: 'hidden',
+                                border: '1px solid rgba(111, 59, 206, 0.15)',
+                                boxShadow: '0 -2px 10px rgba(111, 59, 206, 0.06)',
                             }}
                         >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#6F3BCE">
-                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                            {/* Left purple vertical accent stripe */}
+                            <div style={{
+                                position: 'absolute',
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: '4.5px',
+                                background: '#6F3BCE',
+                                borderRadius: '4px 0 0 4px',
+                            }} />
+
+                            <div style={{ flex: 1, minWidth: 0, paddingRight: '8px', paddingLeft: '4px' }}>
+                                <div style={{
+                                    fontFamily: "'Inter', sans-serif",
+                                    fontSize: '13px',
+                                    fontWeight: 700,
+                                    color: '#6F3BCE',
+                                    lineHeight: '17px',
+                                    marginBottom: '2px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                }}>
+                                    {String(replyingTo.sender?._id || replyingTo.sender) === String(myId) ? 'You' : (replyingTo.sender?.firstName ? `${replyingTo.sender.firstName} ${replyingTo.sender.lastName || ''}`.trim() : currentName)}
+                                </div>
+                                <div style={{
+                                    fontFamily: "'Roboto', sans-serif",
+                                    fontSize: '12.5px',
+                                    color: '#555555',
+                                    lineHeight: '16px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                }}>
+                                    {replyingTo.image ? '📷 Photo' : replyingTo.audio ? '🎵 Voice message' : replyingTo.message}
+                                </div>
+                            </div>
+
+                            {replyingTo.image && (
+                                <img
+                                    src={replyingTo.image}
+                                    alt=""
+                                    draggable={false}
+                                    style={{ width: '34px', height: '34px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0, marginRight: '8px' }}
+                                />
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={() => setReplyingTo(null)}
+                                aria-label="Cancel reply"
+                                style={{
+                                    background: 'rgba(0,0,0,0.05)',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#71717A',
+                                    fontSize: '13px',
+                                    fontWeight: 'bold',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Bottom Controls Row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            type="button"
+                            aria-label="Attach photo"
+                            onClick={handleAttachImage}
+                            disabled={sending}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                        >
+                            <svg width="22" height="22" viewBox="0 0 24 24">
+                                <rect x="2" y="2" width="20" height="20" rx="5" fill="#6F3BCE" />
+                                <circle cx="7.5" cy="7.5" r="1.8" fill="#FFFFFF" />
+                                <path d="M19.5 18H4.5l4.5-6 3 4 3.5-4.5 4 6.5z" fill="#FFFFFF" />
+                            </svg>
+                        </button>
+
+                        <button
+                            type="button"
+                            aria-label="Voice message"
+                            onClick={startRecording}
+                            disabled={sending}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                        >
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="#6F3BCE">
+                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                            </svg>
+                        </button>
+
+                        <div style={{
+                            flex: 1, height: '40px', background: '#F4F4F6',
+                            borderRadius: '20px', display: 'flex', alignItems: 'center',
+                            padding: '0 8px 0 16px', gap: '8px',
+                        }}>
+                            <input
+                                ref={textInputRef}
+                                value={messageText}
+                                onChange={handleInputChange}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+                                placeholder="Aa"
+                                aria-label="Type a message"
+                                disabled={sending}
+                                style={{
+                                    width: '100%', background: 'transparent', border: 'none', outline: 'none',
+                                    fontFamily: "'Roboto', sans-serif", fontWeight: 400, fontSize: '15px', color: '#18181B',
+                                    userSelect: 'text', WebkitUserSelect: 'text',
+                                }}
+                            />
+                            <button
+                                type="button"
+                                aria-label="Send message"
+                                onClick={handleSend}
+                                disabled={sending || !messageText.trim()}
+                                style={{
+                                    background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
+                                    opacity: sending || !messageText.trim() ? 0.35 : 1, display: 'flex', alignItems: 'center',
+                                }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#6F3BCE">
+                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <button
+                            type="button"
+                            aria-label="Send like"
+                            onClick={handleSendLike}
+                            disabled={sending}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                        >
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="#6F3BCE">
+                                <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.58 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
                             </svg>
                         </button>
                     </div>
-
-                    <button
-                        type="button"
-                        aria-label="Send like"
-                        onClick={handleSendLike}
-                        disabled={sending}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                    >
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#6F3BCE">
-                            <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.58 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
-                        </svg>
-                    </button>
                 </footer>
             )}
 

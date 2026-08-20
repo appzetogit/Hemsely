@@ -72,3 +72,47 @@ select:autofill {
 .page-transition {
   animation: fadeInSmooth 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes replyBarSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reply-bar {
+  animation: replyBarSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes highlightMessagePulse {
+  0% {
+    background-color: rgba(111, 59, 206, 0.28);
+    transform: scale(1.02);
+  }
+  50% {
+    background-color: rgba(111, 59, 206, 0.16);
+    transform: scale(1.01);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+.message-highlight-pulse {
+  animation: highlightMessagePulse 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-radius: 20px;
+}
+
+/* Chat text no-select to prevent accidental copy/highlighting on hold/swipe */
+.no-select {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}

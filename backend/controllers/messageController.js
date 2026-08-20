@@ -60,6 +60,15 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
     });
   }
 
+  let parsedReplyToMessage = req.body.replyToMessage;
+  if (typeof parsedReplyToMessage === 'string') {
+    try {
+      parsedReplyToMessage = JSON.parse(parsedReplyToMessage);
+    } catch {
+      parsedReplyToMessage = null;
+    }
+  }
+
   let newMessage = await Message.create({
     sender,
     receiver,
@@ -67,10 +76,19 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
     image: req.file ? req.file.path : null,
     audio: req.body.audio || null,
     audioDuration: req.body.audioDuration || null,
+    replyTo: req.body.replyTo || null,
+    replyToMessage: parsedReplyToMessage || null,
   });
 
   newMessage = await newMessage.populate('sender', 'firstName lastName profilePicture');
   newMessage = await newMessage.populate('receiver', 'firstName lastName profilePicture');
+  if (newMessage.replyTo) {
+    newMessage = await newMessage.populate({
+      path: 'replyTo',
+      select: 'message image audio audioDuration sender',
+      populate: { path: 'sender', select: 'firstName lastName' },
+    });
+  }
 
   emitToUser(receiver, 'new_message', newMessage);
   emitToUser(sender, 'new_message', newMessage);
@@ -138,6 +156,11 @@ export const getConversation = asyncHandler(async (req, res, next) => {
   })
     .populate('sender', 'firstName lastName profilePicture')
     .populate('receiver', 'firstName lastName profilePicture')
+    .populate({
+      path: 'replyTo',
+      select: 'message image audio audioDuration sender',
+      populate: { path: 'sender', select: 'firstName lastName' },
+    })
     .sort({ createdAt: 1 });
 
   if (isUnmatched) {
