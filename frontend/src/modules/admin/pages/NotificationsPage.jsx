@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, Send, Users, Crown, Clock, CheckCircle2, Plus, X, Trash2 } from 'lucide-react';
 import adminApi from '../services/adminApi';
 
@@ -29,6 +30,16 @@ const NotificationsPage = () => {
     const [error, setError] = useState('');
     const [sending, setSending] = useState(false);
     const sendingRef = useRef(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && showModal) {
+                closeModal();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [showModal]);
 
     const loadHistory = async () => {
         setLoading(true);
@@ -239,53 +250,79 @@ const NotificationsPage = () => {
             </section>
 
             {/* Compose Modal */}
-            {showModal && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 sm:p-6">
-                    <button
-                        type="button"
-                        aria-label="Close modal backdrop"
-                        className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm border-0 cursor-default"
+            {showModal && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+                    {/* Full-screen Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-zinc-950/70 backdrop-blur-sm transition-opacity"
                         onClick={closeModal}
+                        aria-hidden="true"
                     />
-                    <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl p-6">
-                        <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-4 mb-5">
+
+                    {/* Centered Modal Card */}
+                    <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-zinc-200/80 p-6 sm:p-7 my-auto max-h-[90vh] flex flex-col overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-4 mb-5 shrink-0">
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center">
-                                    <Bell className="w-4 h-4 text-brand-600" />
+                                <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center shadow-xs">
+                                    <Bell className="w-5 h-5 text-brand-600" />
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-semibold text-zinc-900">New Notification</h2>
-                                    <p className="text-xs text-zinc-500 mt-0.5">Compose and send to your audience</p>
+                                    <h2 className="text-base font-semibold text-zinc-900 leading-tight">New Notification</h2>
+                                    <p className="text-xs text-zinc-500 mt-0.5">Compose and send push notification to your audience</p>
                                 </div>
                             </div>
-                            <button type="button" aria-label="Close modal" onClick={closeModal} className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors bg-transparent border-0 cursor-pointer">
+                            <button
+                                type="button"
+                                aria-label="Close modal"
+                                onClick={closeModal}
+                                className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors bg-transparent border-0 cursor-pointer"
+                            >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSend} className="space-y-5">
+                        {/* Form */}
+                        <form onSubmit={handleSend} className="space-y-4 overflow-y-auto flex-1 pr-1 pb-1">
                             <div>
-                                <span className="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-3">Target Audience</span>
-                                <div className="grid grid-cols-2 gap-2">
+                                <span className="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-2.5">Target Audience</span>
+                                <div className="grid grid-cols-2 gap-2.5">
                                     {AUDIENCES.map(({ value, label, icon: Icon, desc }) => (
                                         <label
                                             key={value}
                                             htmlFor={`audience-${value}`}
-                                            className={`flex flex-col gap-1.5 p-3 rounded-xl border cursor-pointer transition-colors ${form.audience === value ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500' : 'border-zinc-200 bg-white hover:border-zinc-400'}`}
+                                            className={`flex flex-col gap-1.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                                                form.audience === value
+                                                    ? 'border-brand-500 bg-brand-50/70 ring-2 ring-brand-500/20 shadow-xs'
+                                                    : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50/50'
+                                            }`}
                                         >
-                                            <input type="radio" id={`audience-${value}`} aria-label={label} name="audience" value={value} checked={form.audience === value} onChange={handleChange} className="sr-only" />
+                                            <input
+                                                type="radio"
+                                                id={`audience-${value}`}
+                                                aria-label={label}
+                                                name="audience"
+                                                value={value}
+                                                checked={form.audience === value}
+                                                onChange={handleChange}
+                                                className="sr-only"
+                                            />
                                             <div className="flex items-center gap-2">
                                                 <Icon className={`w-4 h-4 ${form.audience === value ? 'text-brand-600' : 'text-zinc-400'}`} />
-                                                <span className={`text-xs font-semibold ${form.audience === value ? 'text-brand-700' : 'text-zinc-600'}`}>{label}</span>
+                                                <span className={`text-xs font-semibold ${form.audience === value ? 'text-brand-700' : 'text-zinc-700'}`}>
+                                                    {label}
+                                                </span>
                                             </div>
-                                            <p className="text-[10px] text-zinc-400 leading-snug">{desc}</p>
+                                            <p className="text-[10.5px] text-zinc-400 leading-snug">{desc}</p>
                                         </label>
                                     ))}
                                 </div>
                             </div>
 
                             <div>
-                                <label htmlFor="notif-title" className="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Notification Title</label>
+                                <label htmlFor="notif-title" className="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                                    Notification Title
+                                </label>
                                 <input
                                     id="notif-title"
                                     type="text"
@@ -293,12 +330,14 @@ const NotificationsPage = () => {
                                     value={form.title}
                                     onChange={handleChange}
                                     placeholder="e.g. New Matches Waiting!"
-                                    className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 placeholder:text-zinc-400"
+                                    className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-zinc-400"
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="notif-body" className="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Message Body</label>
+                                <label htmlFor="notif-body" className="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                                    Message Body
+                                </label>
                                 <textarea
                                     id="notif-body"
                                     name="body"
@@ -306,24 +345,28 @@ const NotificationsPage = () => {
                                     onChange={handleChange}
                                     rows="3"
                                     placeholder="Write the notification message here..."
-                                    className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 placeholder:text-zinc-400 resize-none"
+                                    className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-zinc-400 resize-none"
                                 />
                             </div>
 
-                            {error && <p className="text-sm font-semibold text-danger-600">{error}</p>}
+                            {error && (
+                                <div className="rounded-lg bg-red-50 border border-red-200/80 px-3.5 py-2 text-xs font-semibold text-red-700">
+                                    {error}
+                                </div>
+                            )}
 
-                            <div className="flex gap-3 pt-2 border-t border-zinc-100">
+                            <div className="flex gap-3 pt-3 border-t border-zinc-100 shrink-0">
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-sm font-bold hover:bg-zinc-200 transition-colors cursor-pointer"
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-sm font-semibold transition-colors cursor-pointer border-0"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={sending}
-                                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-bold hover:bg-brand-600 transition-colors shadow-sm disabled:opacity-60 cursor-pointer"
+                                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all shadow-sm disabled:opacity-60 cursor-pointer border-0"
                                 >
                                     <Send className="w-4 h-4" />
                                     {sending ? 'Sending...' : 'Send Notification'}
@@ -331,7 +374,8 @@ const NotificationsPage = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

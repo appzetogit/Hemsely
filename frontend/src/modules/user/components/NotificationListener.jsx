@@ -21,18 +21,32 @@ const getMyId = () => {
     }
 };
 
-// Deduplication cache to prevent same notification showing multiple times within a 30s window
+// Cross-tab deduplication cache to prevent same notification showing multiple times across any open tab
 const seenNotificationKeys = new Map();
 const DEDUP_WINDOW_MS = 30000;
 
 const isDuplicateNotification = (key) => {
     if (!key) return false;
     const now = Date.now();
+    
+    // In-memory check
     const lastSeen = seenNotificationKeys.get(key);
     if (lastSeen && now - lastSeen < DEDUP_WINDOW_MS) {
         return true;
     }
     seenNotificationKeys.set(key, now);
+
+    // Cross-tab check via localStorage
+    try {
+        const storageKey = `hemsely_notif_seen_${key}`;
+        const storedTs = localStorage.getItem(storageKey);
+        if (storedTs && now - Number(storedTs) < DEDUP_WINDOW_MS) {
+            return true;
+        }
+        localStorage.setItem(storageKey, String(now));
+    } catch {
+        // Ignore localStorage errors (e.g. incognito quota)
+    }
 
     // Prune stale entries
     for (const [k, ts] of seenNotificationKeys.entries()) {
@@ -91,18 +105,6 @@ const NotificationListener = () => {
                 type: 'chat',
                 targetUrl: `/chat/${senderId}`,
             });
-
-            // Trigger browser notification if permitted and tab is unfocused/hidden
-            if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
-                try {
-                    new Notification(senderName, {
-                        body: bodyText,
-                        icon: photo || '/icon.png',
-                    });
-                } catch {
-                    // Ignore browser notification error
-                }
-            }
         };
 
         const handleNewMatch = (data) => {
@@ -123,17 +125,6 @@ const NotificationListener = () => {
                 type: 'match',
                 targetUrl: `/chat/${partnerId}`,
             });
-
-            if ('Notification' in window && Notification.permission === 'granted') {
-                try {
-                    new Notification("It's a Match! 💕", {
-                        body: `You matched with ${partnerName}!`,
-                        icon: photo || '/icon.png',
-                    });
-                } catch {
-                    // Ignore browser notification error
-                }
-            }
         };
 
         socket.on('new_message', handleNewMessage);

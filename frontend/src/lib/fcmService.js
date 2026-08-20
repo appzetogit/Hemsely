@@ -71,8 +71,12 @@ export async function getFcmToken() {
     let serviceWorkerRegistration;
     if ('serviceWorker' in navigator) {
       serviceWorkerRegistration = await navigator.serviceWorker.register(
-        '/firebase-messaging-sw.js'
+        '/firebase-messaging-sw.js',
+        { updateViaCache: 'none' }
       );
+      try {
+        await serviceWorkerRegistration.update();
+      } catch {}
       await navigator.serviceWorker.ready;
     }
 

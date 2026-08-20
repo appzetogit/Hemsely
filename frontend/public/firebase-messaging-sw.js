@@ -61,6 +61,19 @@ messaging.onBackgroundMessage(async (payload) => {
     console.warn('[firebase-messaging-sw.js] Window client check failed:', err);
   }
 
+  try {
+    const existing = await self.registration.getNotifications();
+    const isAlreadyShown = existing.some(
+      (n) => n.tag === tag || (n.title === title && n.body === body)
+    );
+    if (isAlreadyShown) {
+      console.log('[firebase-messaging-sw.js] Notification already active in system tray, suppressing duplicate.');
+      return;
+    }
+  } catch (err) {
+    console.warn('[firebase-messaging-sw.js] Notification query check failed:', err);
+  }
+
   const options = {
     body,
     icon: payload.notification?.image || payload.data?.image || '/icon.png',
