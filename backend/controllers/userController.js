@@ -576,25 +576,6 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
     ];
   }
 
-  // Enforce Max Age Gap if configured and requester has age
-  if (currentUser.age && config.maxAgeGapYears) {
-    const minAge = Math.max(18, currentUser.age - config.maxAgeGapYears);
-    const maxAge = currentUser.age + config.maxAgeGapYears;
-    const ageFilter = {
-      $or: [
-        { age: { $gte: minAge, $lte: maxAge } },
-        { age: { $exists: false } },
-        { age: null },
-      ],
-    };
-    if (query.$or) {
-      query.$and = [{ $or: query.$or }, ageFilter];
-      delete query.$or;
-    } else {
-      query.$or = ageFilter.$or;
-    }
-  }
-
   // If client specified explicit gender preference in query, use it; otherwise fallback to profile setting
   const targetInterest = (req.query.interestedIn && req.query.interestedIn !== 'both')
     ? req.query.interestedIn.toLowerCase()
@@ -610,38 +591,38 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
   const reqMinAge = req.query.minAge ? parseInt(req.query.minAge, 10) : null;
   const reqMaxAge = req.query.maxAge ? parseInt(req.query.maxAge, 10) : null;
 
+  let activeAgeFilter = null;
   if (reqMinAge || reqMaxAge) {
     const ageBounds = {};
     if (reqMinAge) ageBounds.$gte = reqMinAge;
     if (reqMaxAge) ageBounds.$lte = reqMaxAge;
-    const clientAgeFilter = {
+    activeAgeFilter = {
       $or: [
         { age: ageBounds },
         { age: { $exists: false } },
         { age: null },
       ],
     };
-    if (query.$or) {
-      query.$and = [{ $or: query.$or }, clientAgeFilter];
-      delete query.$or;
-    } else {
-      query.$or = clientAgeFilter.$or;
-    }
   } else if (currentUser.age && config.maxAgeGapYears) {
     const minAge = Math.max(18, currentUser.age - config.maxAgeGapYears);
     const maxAge = currentUser.age + config.maxAgeGapYears;
-    const ageFilter = {
+    activeAgeFilter = {
       $or: [
         { age: { $gte: minAge, $lte: maxAge } },
         { age: { $exists: false } },
         { age: null },
       ],
     };
+  }
+
+  if (activeAgeFilter) {
     if (query.$or) {
-      query.$and = [{ $or: query.$or }, ageFilter];
+      query.$and = [{ $or: query.$or }, activeAgeFilter];
       delete query.$or;
+    } else if (query.$and) {
+      query.$and.push(activeAgeFilter);
     } else {
-      query.$or = ageFilter.$or;
+      query.$or = activeAgeFilter.$or;
     }
   }
 
@@ -656,11 +637,10 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
   }
   const myLocationKnown = myLng !== 0 || myLat !== 0;
 
-  // Distance pre-filter: only apply strict geo radius limit when explicitly requested by client via distanceKm query parameter
-  if (req.query.distanceKm && myLocationKnown) {
-    const distanceKm = parseFloat(req.query.distanceKm);
+  // Distance filter: apply user requested distance or admin configured default discovery radius
+  if (effectiveRadiusKm && myLocationKnown) {
     query['location.coordinates'] = {
-      $geoWithin: { $centerSphere: [[myLng, myLat], distanceKm / EARTH_RADIUS_KM] },
+      $geoWithin: { $centerSphere: [[myLng, myLat], effectiveRadiusKm / EARTH_RADIUS_KM] },
     };
     query['location.coordinates.coordinates'] = { $ne: [0, 0] };
   }

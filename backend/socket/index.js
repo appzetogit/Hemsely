@@ -1,7 +1,8 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-
+import Match from '../models/Match.js';
+import { getOrCreateConfig } from '../controllers/appConfigController.js';
 import { isAllowedOrigin } from '../utils/originUtils.js';
 
 let io = null;
@@ -15,6 +16,25 @@ const sessionStartTimes = new Map();
 
 const userRoom = (userId) => `user:${userId}`;
 
+// High-speed targeted presence notification: only notify active matches instead of broadcasting to all 20,000+ users
+const notifyMatchesPresence = async (userId, event, data) => {
+  if (!io || !userId) return;
+  try {
+    const activeMatches = await Match.find({
+      $or: [{ user1: userId }, { user2: userId }],
+      status: 'accepted',
+    }).select('user1 user2').lean();
+
+    activeMatches.forEach((m) => {
+      const u1 = String(m.user1);
+      const partnerId = u1 === String(userId) ? String(m.user2) : u1;
+      io.to(userRoom(partnerId)).emit(event, data);
+    });
+  } catch (err) {
+    // Best-effort non-blocking notification
+  }
+};
+
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
@@ -27,6 +47,10 @@ export const initSocket = (httpServer) => {
       },
       credentials: true,
     },
+    // Performance tuning for 20,000+ concurrent connections
+    pingTimeout: 30000,
+    pingInterval: 25000,
+    transports: ['websocket', 'polling'],
   });
 
   io.use(async (socket, next) => {
@@ -65,14 +89,14 @@ export const initSocket = (httpServer) => {
     }
     onlineUsers.get(userId).add(socket.id);
 
-    // First connection for this user — tell their matches they're online
+    // First connection for this user — tell ONLY their matches they're online (O(K) instead of O(N))
     if (onlineUsers.get(userId).size === 1) {
       sessionStartTimes.set(userId, Date.now());
-      socket.broadcast.emit('presence:online', { userId });
+      notifyMatchesPresence(userId, 'presence:online', { userId });
     }
 
-    // Check if maintenance mode is currently active and notify new connection
-    AppConfig.findOne({}).then((cfg) => {
+    // Check if maintenance mode is currently active using in-memory cached config
+    getOrCreateConfig().then((cfg) => {
       if (cfg && cfg.maintenanceMode) {
         socket.emit('system:maintenance_mode', {
           active: true,
@@ -112,7 +136,8 @@ export const initSocket = (httpServer) => {
           } catch {
             // Best-effort — a failed lastSeen write shouldn't crash the socket server.
           }
-          socket.broadcast.emit('presence:offline', { userId, lastSeen: new Date() });
+          // Targeted offline notification to active matches only
+          notifyMatchesPresence(userId, 'presence:offline', { userId, lastSeen: new Date() });
         }
       }
     });
@@ -124,8 +149,6 @@ export const initSocket = (httpServer) => {
 export const getIO = () => io;
 
 export const isUserOnline = (userId) => onlineUsers.has(String(userId));
-
-import AppConfig from '../models/AppConfig.js';
 
 // Fire-and-forget push to every socket a user has open; safe to call before the
 // socket server exists (e.g. in tests) since it just no-ops.

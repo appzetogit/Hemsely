@@ -27,6 +27,7 @@ const ProfileDetailPage = () => {
     const [error, setError] = useState('');
     const [liking, setLiking] = useState(false);
     const [liked, setLiked] = useState(false);
+    const [likeLimitMessage, setLikeLimitMessage] = useState('');
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -58,8 +59,12 @@ const ProfileDetailPage = () => {
         if (!userId || liking || liked) return;
         setLiking(true);
         try {
-            const { ok } = await apiClient.post(`/matches/like/${userId}`, {});
-            if (ok) setLiked(true);
+            const { data, ok, status } = await apiClient.post(`/matches/like/${userId}`, {});
+            if (ok) {
+                setLiked(true);
+            } else if (status === 429 || (!ok && data?.message?.toLowerCase().includes('limit'))) {
+                setLikeLimitMessage(data?.message || "You've reached your daily like limit. Upgrade to Premium for unlimited likes or try again tomorrow.");
+            }
         } finally {
             setLiking(false);
         }
@@ -235,6 +240,75 @@ const ProfileDetailPage = () => {
                     )}
                 </div>
             </div>
+
+            {/* Daily Like Limit Exceeded Modal */}
+            {likeLimitMessage && (
+                <div
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 9999,
+                        background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
+                    }}
+                >
+                    <div
+                        className="animate-in fade-in zoom-in-95 duration-200"
+                        style={{
+                            background: '#FFFFFF', borderRadius: '24px',
+                            padding: '32px 24px', maxWidth: '360px', width: '100%',
+                            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: '64px', height: '64px', borderRadius: '50%',
+                                background: '#F0EBFB', display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', marginBottom: '20px',
+                            }}
+                        >
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6F3BCE" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                            </svg>
+                        </div>
+
+                        <h3 style={{
+                            fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: '20px',
+                            lineHeight: '26px', color: '#111827', marginBottom: '8px',
+                        }}>Daily Like Limit Reached</h3>
+
+                        <p style={{
+                            fontFamily: "'Inter', sans-serif", fontWeight: 400, fontSize: '14px',
+                            lineHeight: '145%', color: '#6B7280', marginBottom: '24px',
+                        }}>{likeLimitMessage}</p>
+
+                        <button
+                            type="button"
+                            onClick={() => { setLikeLimitMessage(''); navigate('/premium'); }}
+                            className="active:scale-[0.97] transition-transform"
+                            style={{
+                                width: '100%', height: '50px', background: 'linear-gradient(135deg, #7C3AED 0%, #6F3BCE 100%)',
+                                borderRadius: '80px', border: 'none', cursor: 'pointer',
+                                fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: '15px',
+                                color: '#FFFFFF', boxShadow: '0 4px 14px rgba(111, 59, 206, 0.4)',
+                            }}
+                        >
+                            Upgrade to Premium
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setLikeLimitMessage('')}
+                            style={{
+                                marginTop: '14px', background: 'none', border: 'none',
+                                fontFamily: "'Inter', sans-serif", fontWeight: 500, fontSize: '14px',
+                                color: '#6B7280', cursor: 'pointer',
+                            }}
+                        >
+                            Maybe Later
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

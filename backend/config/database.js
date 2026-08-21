@@ -25,9 +25,11 @@ const connectDB = async () => {
         useNewUrlParser: true,
         useUnifiedTopology: true,
         serverSelectionTimeoutMS: 5000,
-        maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE || '50', 10),
-        minPoolSize: parseInt(process.env.DB_MIN_POOL_SIZE || '5', 10),
+        maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE || '100', 10),
+        minPoolSize: parseInt(process.env.DB_MIN_POOL_SIZE || '10', 10),
         socketTimeoutMS: 45000,
+        connectTimeoutMS: 10000,
+        maxIdleTimeMS: 30000,
       });
 
       console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
