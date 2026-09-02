@@ -4,10 +4,11 @@
 // the login flow's mock-mode rules drifted out of sync between send/verify.
 
 export const isDefaultOtpPhone = (last10Digits) => {
-  const defaultPhones = (process.env.DEFAULT_OTP_NUMBERS || '9009925021')
+  const defaultPhones = (process.env.DEFAULT_OTP_NUMBERS || '')
     .split(',')
-    .map((p) => p.trim().replace(/\D/g, '').slice(-10));
-  return defaultPhones.includes(last10Digits);
+    .map((p) => p.trim().replace(/\D/g, '').slice(-10))
+    .filter(Boolean);
+  return defaultPhones.length > 0 && defaultPhones.includes(last10Digits);
 };
 
 export const generateOtpCode = (last10Digits) => {

@@ -15,6 +15,7 @@ import { compareFacesWithAWS } from '../services/awsRekognitionService.js';
 import { escapeRegex } from '../utils/regexUtils.js';
 import { cascadeDeleteUserData } from '../utils/userCleanup.js';
 import { validateEmailStrict } from '../utils/validators.js';
+import smsIndiaHubService from '../utils/smsService.js';
 
 
 // @desc Get the current user's gender-ratio queue status
@@ -831,7 +832,12 @@ export const requestAccountDeletionOtp = asyncHandler(async (req, res, next) => 
   user.otpExpires = getOtpExpiry();
   await user.save();
 
-  console.log(`📱 [ACCOUNT DELETION OTP] Phone: ${user.phoneNumber} | OTP: ${user.otpCode}`);
+  try {
+    await smsIndiaHubService.sendOTP(user.phoneNumber, user.otpCode, 'account deletion');
+    console.log(`📱 [ACCOUNT DELETION OTP SENT] Phone: ${user.phoneNumber}`);
+  } catch (smsErr) {
+    console.error(`❌ Failed to send deletion OTP SMS to ${user.phoneNumber}:`, smsErr.message);
+  }
 
   res.status(200).json({
     success: true,

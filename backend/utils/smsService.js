@@ -11,6 +11,8 @@ class SMSIndiaHubService {
   constructor() {
     this.apiKey = process.env.SMSINDIAHUB_API_KEY?.trim();
     this.senderId = process.env.SMSINDIAHUB_SENDER_ID?.trim() || "SMSHUB";
+    this.peId = process.env.SMSINDIAHUB_PE_ID?.trim();
+    this.templateId = process.env.SMSINDIAHUB_TEMPLATE_ID?.trim();
     this.baseUrl = "http://cloud.smsindiahub.in/vendorsms/pushsms.aspx";
 
     if (process.env.NODE_ENV === "development") {

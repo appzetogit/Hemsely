@@ -97,8 +97,18 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
   const isNewUser = !user.firstName;
   const purpose = isNewUser ? 'register' : 'login';
 
-  // Bypass external SMS service and use default OTP mode
-  console.log(`📱 [DEFAULT OTP MODE] Phone: ${normalizedPhone} | OTP: ${otpCode}`);
+  // Send real OTP via SMS service
+  try {
+    await smsIndiaHubService.sendOTP(normalizedPhone, otpCode, purpose);
+    console.log(`📱 [REAL OTP SENT] Phone: ${normalizedPhone} | Purpose: ${purpose}`);
+  } catch (smsError) {
+    console.error(`❌ [SMS SEND FAILED] Phone: ${normalizedPhone}:`, smsError.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP SMS to your phone number. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? smsError.message : undefined,
+    });
+  }
 
   res.status(200).json({
     success: true,
