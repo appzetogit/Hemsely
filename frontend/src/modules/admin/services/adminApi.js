@@ -127,7 +127,7 @@ const request = async (endpoint, options = {}) => {
                 refreshSubscribersAdmin = [];
                 clearAdminSession();
                 if (typeof window !== 'undefined' && !window.location.pathname.startsWith(ADMIN_LOGIN_PATH)) {
-                    window.location.href = ADMIN_LOGIN_PATH;
+                    window.location.href = '/';
                 }
             }
         } catch (refreshErr) {
@@ -135,13 +135,13 @@ const request = async (endpoint, options = {}) => {
             refreshSubscribersAdmin = [];
             clearAdminSession();
             if (typeof window !== 'undefined' && !window.location.pathname.startsWith(ADMIN_LOGIN_PATH)) {
-                window.location.href = ADMIN_LOGIN_PATH;
+                window.location.href = '/';
             }
         }
     } else if (response.status === 401 && !endpoint.includes('/admin/login') && !endpoint.includes('/admin/refresh')) {
         clearAdminSession();
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith(ADMIN_LOGIN_PATH)) {
-            window.location.href = ADMIN_LOGIN_PATH;
+            window.location.href = '/';
         }
     }
 

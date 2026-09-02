@@ -262,7 +262,7 @@ const AdminLayout = () => {
     const navigate = useNavigate();
 
     return (
-        <AdminProvider onUnauthorized={() => navigate(ADMIN_LOGIN_PATH, { replace: true })}>
+        <AdminProvider onUnauthorized={() => navigate('/', { replace: true })}>
             <AdminLayoutContent />
         </AdminProvider>
     );
