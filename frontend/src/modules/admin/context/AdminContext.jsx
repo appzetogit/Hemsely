@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import adminApi, { clearAdminSession } from '../services/adminApi';
 import { ADMIN_PERMISSIONS, ALL_PERMISSION_IDS } from '../constants/adminPermissions';
+import { ADMIN_LOGIN_PATH } from '../constants/adminRoutes';
 
 const ADMIN_SESSION_KEY = 'hemsely_admin_session:v1';
 
@@ -80,7 +81,7 @@ export const AdminProvider = ({ children, onUnauthorized }) => {
     const getFirstAllowedRoute = useCallback(() => {
         if (isSuperAdmin) return '/admin/dashboard';
         const first = ADMIN_PERMISSIONS.find((p) => permissions.includes(p.id));
-        return first ? first.path : '/admin/login';
+        return first ? first.path : ADMIN_LOGIN_PATH;
     }, [isSuperAdmin, permissions]);
 
     const value = useMemo(

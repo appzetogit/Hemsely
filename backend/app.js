@@ -142,7 +142,10 @@ import { getPublicWebsitePageBySlug } from './controllers/websitePageController.
 
 // Routes (supports both /api/* and direct /* paths for flexible reverse proxy setups)
 app.use(['/api/auth', '/auth'], authRoutes);
-app.use(['/api/admin', '/admin'], adminRoutes);
+app.use(['/api/admin', '/admin'], (req, res, next) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+  next();
+}, adminRoutes);
 app.use(['/api/users', '/users'], apiRateLimiter, userRoutes);
 app.use(['/api/subscriptions', '/subscriptions'], apiRateLimiter, subscriptionRouter);
 app.use(['/api/matches', '/matches'], apiRateLimiter, matchRoutes);

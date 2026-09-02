@@ -4,6 +4,7 @@ import AdminSidebar from './AdminSidebar';
 import adminApi, { clearAdminSession } from '../services/adminApi';
 import { Menu, Bell, User, LogOut } from 'lucide-react';
 import { AdminProvider, useAdmin } from '../context/AdminContext';
+import { ADMIN_LOGIN_PATH } from '../constants/adminRoutes';
 
 const AdminLayoutContent = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -15,6 +16,28 @@ const AdminLayoutContent = () => {
     const location = useLocation();
     const userMenuRef = useRef(null);
     const notifRef = useRef(null);
+
+    // Prevent search indexing across all admin routes
+    useEffect(() => {
+        let robotsMeta = document.querySelector('meta[name="robots"]');
+        let createdRobots = false;
+        if (!robotsMeta) {
+            robotsMeta = document.createElement('meta');
+            robotsMeta.name = 'robots';
+            document.head.appendChild(robotsMeta);
+            createdRobots = true;
+        }
+        const prevRobots = robotsMeta.getAttribute('content');
+        robotsMeta.setAttribute('content', 'noindex, nofollow, noarchive, nosnippet');
+
+        return () => {
+            if (createdRobots && robotsMeta.parentNode) {
+                robotsMeta.parentNode.removeChild(robotsMeta);
+            } else if (robotsMeta && prevRobots) {
+                robotsMeta.setAttribute('content', prevRobots);
+            }
+        };
+    }, []);
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -64,7 +87,7 @@ const AdminLayoutContent = () => {
             // Clearing local session
         }
         clearAdminSession();
-        navigate('/admin/login', { replace: true });
+        navigate(ADMIN_LOGIN_PATH, { replace: true });
     };
 
     if (checkingAuth) {
@@ -239,7 +262,7 @@ const AdminLayout = () => {
     const navigate = useNavigate();
 
     return (
-        <AdminProvider onUnauthorized={() => navigate('/admin/login', { replace: true })}>
+        <AdminProvider onUnauthorized={() => navigate(ADMIN_LOGIN_PATH, { replace: true })}>
             <AdminLayoutContent />
         </AdminProvider>
     );

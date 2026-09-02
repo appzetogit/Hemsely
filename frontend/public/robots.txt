@@ -1,0 +1,19 @@
+# robots.txt for Hemsely
+User-agent: *
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin/*
+Disallow: /hms-portal-*
+Disallow: /api/
+Disallow: /api/*
+
+# Allow public user pages
+Allow: /
+Allow: /login
+Allow: /phone-input
+Allow: /privacy-policy
+Allow: /terms-of-service
+Allow: /measurement-units
+
+# Sitemap
+Sitemap: https://hemsely.com/sitemap.xml

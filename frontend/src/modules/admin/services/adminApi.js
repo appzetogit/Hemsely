@@ -1,4 +1,5 @@
 import { API_BASE_URL, resolveUploadsUrls } from '../../../shared/services/apiClient';
+import { ADMIN_LOGIN_PATH } from '../constants/adminRoutes';
 
 const ADMIN_SESSION_KEY = 'hemsely_admin_session:v1';
 
@@ -125,22 +126,22 @@ const request = async (endpoint, options = {}) => {
                 isRefreshingAdmin = false;
                 refreshSubscribersAdmin = [];
                 clearAdminSession();
-                if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
-                    window.location.href = '/admin/login';
+                if (typeof window !== 'undefined' && !window.location.pathname.startsWith(ADMIN_LOGIN_PATH)) {
+                    window.location.href = ADMIN_LOGIN_PATH;
                 }
             }
         } catch (refreshErr) {
             isRefreshingAdmin = false;
             refreshSubscribersAdmin = [];
             clearAdminSession();
-            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
-                window.location.href = '/admin/login';
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith(ADMIN_LOGIN_PATH)) {
+                window.location.href = ADMIN_LOGIN_PATH;
             }
         }
     } else if (response.status === 401 && !endpoint.includes('/admin/login') && !endpoint.includes('/admin/refresh')) {
         clearAdminSession();
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
-            window.location.href = '/admin/login';
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith(ADMIN_LOGIN_PATH)) {
+            window.location.href = ADMIN_LOGIN_PATH;
         }
     }
 

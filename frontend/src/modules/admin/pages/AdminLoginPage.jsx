@@ -14,6 +14,32 @@ function AdminLoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Prevent search indexing & set discreet page title
+    React.useEffect(() => {
+        const prevTitle = document.title;
+        document.title = 'Portal Access';
+
+        let robotsMeta = document.querySelector('meta[name="robots"]');
+        let createdRobots = false;
+        if (!robotsMeta) {
+            robotsMeta = document.createElement('meta');
+            robotsMeta.name = 'robots';
+            document.head.appendChild(robotsMeta);
+            createdRobots = true;
+        }
+        const prevRobots = robotsMeta.getAttribute('content');
+        robotsMeta.setAttribute('content', 'noindex, nofollow, noarchive, nosnippet');
+
+        return () => {
+            document.title = prevTitle;
+            if (createdRobots && robotsMeta.parentNode) {
+                robotsMeta.parentNode.removeChild(robotsMeta);
+            } else if (robotsMeta && prevRobots) {
+                robotsMeta.setAttribute('content', prevRobots);
+            }
+        };
+    }, []);
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError('');

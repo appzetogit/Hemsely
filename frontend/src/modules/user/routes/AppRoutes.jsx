@@ -30,6 +30,7 @@ import PrivacyPolicyPage from '../pages/PrivacyPolicyPage';
 import TermsOfServicePage from '../pages/TermsOfServicePage';
 
 import AdminLoginPage from '../../admin/pages/AdminLoginPage';
+import { ADMIN_LOGIN_PATH } from '../../admin/constants/adminRoutes';
 import AdminLayout from '../../admin/components/AdminLayout';
 import AdminRouteGuard from '../../admin/components/AdminRouteGuard';
 import DashboardPage from '../../admin/pages/DashboardPage';
@@ -89,8 +90,10 @@ const AppRoutes = () => {
             <Route path="/support" element={<PrivateRoute><SupportPage /></PrivateRoute>} />
             <Route path="/measurement-units" element={<MeasurementUnitsPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-            <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-            <Route path="/admin/login" element={<AdminLoginPage />} />
+            {/* Obfuscated Secret Admin Login Route */}
+            <Route path={ADMIN_LOGIN_PATH} element={<AdminLoginPage />} />
+            {/* Legacy/Public /admin/login redirect to protect admin panel */}
+            <Route path="/admin/login" element={<Navigate to="/" replace />} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
