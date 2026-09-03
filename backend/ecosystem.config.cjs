@@ -11,14 +11,17 @@ module.exports = {
     {
       name: 'hemsely-backend',
       script: 'server.js',
-      instances: process.env.PM2_INSTANCES || 'max', // Spawns 1 worker per CPU core
-      exec_mode: 'cluster',
+      instances: process.env.PM2_INSTANCES ? (process.env.PM2_INSTANCES === 'max' ? 'max' : parseInt(process.env.PM2_INSTANCES, 10)) : 1,
+      exec_mode: process.env.PM2_INSTANCES === 'max' ? 'cluster' : 'fork',
       watch: false,
-      max_memory_restart: '1G',
+      max_memory_restart: '512M',
+      min_uptime: '10s',
+      max_restarts: 10,
       kill_timeout: 5000,
       listen_timeout: 8000,
-      restart_delay: 1000,
-      exp_backoff_restart_delay: 100,
+      restart_delay: 2000,
+      exp_backoff_restart_delay: 200,
+      node_args: '--max-old-space-size=512',
       env: {
         NODE_ENV: 'development',
       },

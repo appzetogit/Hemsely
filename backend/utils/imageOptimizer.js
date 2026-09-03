@@ -4,7 +4,24 @@ async function getSharp() {
   if (sharpModule !== null) return sharpModule;
   try {
     const mod = await import('sharp');
-    sharpModule = mod.default || mod;
+    const sharp = mod.default || mod;
+    
+    // CPU & Memory Protection for VPS environments:
+    // Limit libvips concurrency to prevent pegging 100% of all VPS CPU cores
+    if (typeof sharp.concurrency === 'function') {
+      const maxThreads = parseInt(process.env.SHARP_CONCURRENCY || '1', 10);
+      sharp.concurrency(maxThreads);
+    }
+    // Enable SIMD vector instructions for faster CPU processing
+    if (typeof sharp.simd === 'function') {
+      sharp.simd(true);
+    }
+    // Restrict cache size to prevent memory bloat and CPU cache thrashing
+    if (typeof sharp.cache === 'function') {
+      sharp.cache({ memory: 50, files: 20, items: 100 });
+    }
+
+    sharpModule = sharp;
   } catch (err) {
     console.warn('⚠️ [ImageOptimizer] Sharp package is not available:', err.message);
     sharpModule = false;
@@ -57,8 +74,8 @@ export async function compressImage(inputBuffer, opts = {}) {
     const outputExt = hasAlpha ? 'png' : 'jpg';
 
     const outBuffer = hasAlpha
-      ? await resized.png({ quality, compressionLevel: 8 }).toBuffer()
-      : await resized.jpeg({ quality, mozjpeg: true }).toBuffer();
+      ? await resized.png({ quality, compressionLevel: 6 }).toBuffer()
+      : await resized.jpeg({ quality, mozjpeg: false }).toBuffer();
 
     return {
       buffer: outBuffer,

@@ -18,10 +18,12 @@ const httpServer = http.createServer(app);
 
 initSocket(httpServer);
 
-// Helper to kill orphan process on port (e.g. a crashed/zombie previous
-// instance left LISTENING after PM2 SIGKILLs it instead of a clean restart).
-// Scoped to the exact port and excludes our own PID, so it's safe in production too.
+// Helper to kill orphan process on port (in local dev / nodemon restarts).
+// In production PM2 cluster mode, let PM2 manage worker lifecycles to prevent worker kill loops.
 const killPortProcess = (port) => {
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
   try {
     if (process.platform === 'win32') {
       const output = execSync(`netstat -ano | findstr :${port}`).toString();
@@ -45,13 +47,7 @@ const killPortProcess = (port) => {
         execSync(`fuser -k ${port}/tcp 2>/dev/null || lsof -t -i:${port} | xargs -r kill -9 2>/dev/null`);
         console.log(`🧹 Auto-cleared stale process holding port ${port}`);
         killed = true;
-      } catch (_) {
-        try {
-          execSync(`npx --yes kill-port ${port}`, { stdio: 'ignore' });
-          console.log(`🧹 Auto-cleared stale process holding port ${port}`);
-          killed = true;
-        } catch (_) {}
-      }
+      } catch (_) {}
       return killed;
     }
   } catch (err) {

@@ -69,6 +69,10 @@ app.use('/hemsely', express.static(path.join(__dirname, 'uploads', 'hemsely')));
 app.use(express.static(path.join(__dirname, 'public', 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// In-memory negative cache for missing static files (TTL 60s) to prevent CPU and network thrashing
+const missingStaticFilesCache = new Map();
+const MISSING_CACHE_TTL = 60 * 1000;
+
 // Smart static file fallback for uploads (guarantees image delivery regardless of Nginx proxy path rewriting + fetches from VPS if missing locally)
 app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], async (req, res, next) => {
   const cleanPath = req.path
@@ -81,6 +85,13 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], asy
   const publicUploadsRoot = path.join(__dirname, 'public', 'uploads');
   const filenameOnly = path.basename(cleanPath);
 
+  // Quick check against negative cache to avoid repetitive CPU & network storms
+  const now = Date.now();
+  const cachedMiss = missingStaticFilesCache.get(cleanPath);
+  if (cachedMiss && now - cachedMiss < MISSING_CACHE_TTL) {
+    return res.status(404).send('Image file not found');
+  }
+
   const candidatePaths = [
     path.join(publicUploadsRoot, cleanPath),
     path.join(uploadsRoot, cleanPath),
@@ -90,8 +101,6 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], asy
     path.join(uploadsRoot, 'hemsely', 'profiles', filenameOnly),
     path.join(uploadsRoot, 'hemsely', 'chats', filenameOnly),
     path.join(uploadsRoot, 'hemsely', 'selfies', filenameOnly),
-    path.join(publicUploadsRoot, filenameOnly),
-    path.join(uploadsRoot, filenameOnly),
   ];
 
   const resolvedPublicRoot = path.resolve(publicUploadsRoot).toLowerCase();
@@ -106,12 +115,17 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], asy
       normalizedLower.startsWith(resolvedPublicRoot) ||
       normalizedLower.startsWith(resolvedUploadsRoot);
 
-    if (isContained && fs.existsSync(normalized) && fs.statSync(normalized).isFile()) {
-      return res.sendFile(path.resolve(normalized));
+    if (isContained && fs.existsSync(normalized)) {
+      try {
+        if (fs.statSync(normalized).isFile()) {
+          missingStaticFilesCache.delete(cleanPath);
+          return res.sendFile(path.resolve(normalized));
+        }
+      } catch (_) {}
     }
   }
 
-  // If file is not found on local disk, attempt fetching from remote VPS if configured
+  // If file is not found on local disk and remote VPS is configured (and in non-production)
   const vpsMediaUrl = process.env.VPS_MEDIA_URL || (process.env.NODE_ENV !== 'production' ? 'https://hemsely.com' : null);
   if (vpsMediaUrl) {
     try {
@@ -121,19 +135,17 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], asy
         `${cleanVps}/uploads/hemsely/profiles/${filenameOnly}`,
         `${cleanVps}/uploads/hemsely/chats/${filenameOnly}`,
         `${cleanVps}/uploads/hemsely/selfies/${filenameOnly}`,
-        `${cleanVps}/${cleanPath}`,
       ];
 
       for (const remoteUrl of remoteUrls) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
           const remoteRes = await fetch(remoteUrl, { signal: controller.signal });
           clearTimeout(timeoutId);
 
           if (remoteRes.ok) {
             const contentType = remoteRes.headers.get('content-type') || 'image/jpeg';
-            // Only accept valid media content types
             if (contentType.includes('text/html') || contentType.includes('application/json')) {
               continue;
             }
@@ -153,6 +165,7 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], asy
               console.warn('[Upload Fallback Cache Notice]:', cacheErr.message);
             }
 
+            missingStaticFilesCache.delete(cleanPath);
             res.setHeader('Content-Type', contentType);
             res.setHeader('Cache-Control', 'public, max-age=86400');
             return res.status(200).send(buffer);
@@ -166,7 +179,12 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], asy
     }
   }
 
-  console.warn(`[Upload Fallback] File not found on disk or remote VPS for URL: ${req.url}`);
+  // Record miss in cache to protect CPU and network from subsequent immediate calls
+  if (missingStaticFilesCache.size > 2000) {
+    missingStaticFilesCache.clear();
+  }
+  missingStaticFilesCache.set(cleanPath, now);
+
   res.status(404).send('Image file not found on server disk or remote VPS');
 });
 

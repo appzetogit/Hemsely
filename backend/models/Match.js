@@ -48,5 +48,9 @@ const matchSchema = new mongoose.Schema(
 
 // Ensure unique match between two users
 matchSchema.index({ user1: 1, user2: 1 }, { unique: true });
+matchSchema.index({ user1: 1, status: 1 });
+matchSchema.index({ user2: 1, status: 1 });
+matchSchema.index({ user1: 1, isActive: 1 });
+matchSchema.index({ user2: 1, isActive: 1 });
 
 export default mongoose.model('Match', matchSchema);
