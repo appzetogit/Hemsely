@@ -121,7 +121,7 @@ const AddPhotosPage = () => {
         if (returnPath) {
             navigate(returnPath, { replace: true });
         } else {
-            navigate('/enable-location');
+            navigate('/selfie-verification');
         }
     };
 

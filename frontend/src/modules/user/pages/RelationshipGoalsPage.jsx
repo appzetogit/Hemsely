@@ -95,16 +95,18 @@ const RelationshipGoalsPage = () => {
                                 type="button"
                                 onClick={() => setSelected(option.id)}
                                 aria-pressed={isSelected}
-                                className={`w-full flex items-center px-6 h-[54px] rounded-full transition-all cursor-pointer border-[1.5px] ${
+                                className={`w-full flex items-center px-6 h-[54px] rounded-full transition-all duration-200 cursor-pointer ${
                                     isSelected
-                                        ? 'bg-[#F9F5FF] border-[#6E36E4] shadow-xs'
-                                        : 'bg-white border-[#F0EAFF] hover:border-[#6E36E4]'
+                                        ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-sm shadow-[#6E36E4]/15 scale-[1.01]'
+                                        : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB] hover:bg-[#FAF8FF]'
                                 }`}
                             >
                                 <div className="shrink-0 flex items-center justify-center mr-4">
                                     {option.icon}
                                 </div>
-                                <span className="text-[15px] font-semibold text-gray-900 text-left">
+                                <span className={`text-[15px] text-left transition-colors duration-200 ${
+                                    isSelected ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-700'
+                                }`}>
                                     {option.label}
                                 </span>
                             </button>

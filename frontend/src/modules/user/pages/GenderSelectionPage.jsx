@@ -12,14 +12,20 @@ const GenderButton = ({ label, isSelected, onClick }) => {
             type="button"
             onClick={onClick}
             aria-pressed={isSelected}
-            className={`flex-1 flex items-center px-1.5 h-[50px] rounded-full transition-all cursor-pointer ${
+            className={`flex-1 flex items-center px-1.5 h-[50px] rounded-full transition-all duration-200 cursor-pointer ${
                 isSelected
-                    ? 'bg-[#F3EAFF] border-none shadow-2xs'
-                    : 'bg-[#FBF8FF] border-[1.5px] border-[#C7B5FB] hover:border-[#6E36E4]'
+                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-sm shadow-[#6E36E4]/15 scale-[1.01]'
+                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB] hover:bg-[#FAF8FF]'
             }`}
         >
-            {/* Solid Purple Circle with White Person Icon */}
-            <div className="w-8 h-8 rounded-full bg-[#6E36E4] flex items-center justify-center shrink-0 text-white ml-1">
+            {/* Solid Purple Circle with White Person Icon when selected, soft purple badge when unselected */}
+            <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 transition-all duration-200 ${
+                    isSelected
+                        ? 'bg-[#6E36E4] text-white shadow-xs'
+                        : 'bg-[#F2EDFD] text-[#6E36E4]'
+                }`}
+            >
                 {isMale ? (
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM9.5 8a2 2 0 00-2 2v5a1 1 0 001 1h1v6a1 1 0 001 1h3a1 1 0 001-1v-6h1a1 1 0 001-1v-5a2 2 0 00-2-2h-5z" />
@@ -31,7 +37,13 @@ const GenderButton = ({ label, isSelected, onClick }) => {
                 )}
             </div>
 
-            <span className="flex-1 text-center text-[14px] font-semibold text-gray-900 pr-2">
+            <span
+                className={`flex-1 text-center text-[14px] pr-2 transition-colors duration-200 ${
+                    isSelected
+                        ? 'font-bold text-[#6E36E4]'
+                        : 'font-semibold text-gray-600'
+                }`}
+            >
                 {label}
             </span>
         </button>

@@ -163,15 +163,18 @@ const InterestsPage = () => {
                                     type="button"
                                     onClick={() => toggleInterest(interest.name)}
                                     aria-pressed={isSelected}
-                                    className={`flex items-center space-x-1.5 h-[46px] px-2.5 rounded-full transition-all cursor-pointer border-[1.5px] ${isSelected
-                                            ? 'border-[#6E36E4] bg-[#F9F5FF] text-gray-900 shadow-2xs'
-                                            : 'border-[#F0EAFF] bg-white text-gray-800 hover:border-[#6E36E4]'
-                                        }`}
+                                    className={`flex items-center space-x-2 h-[48px] px-3 rounded-full transition-all duration-200 cursor-pointer ${
+                                        isSelected
+                                            ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-sm shadow-[#6E36E4]/15 scale-[1.01]'
+                                            : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB] hover:bg-[#FAF8FF]'
+                                    }`}
                                 >
-                                    <div className={`shrink-0 flex items-center justify-center ${isSelected ? 'text-[#6E36E4]' : 'text-gray-700'}`}>
+                                    <div className={`shrink-0 flex items-center justify-center transition-colors duration-200 ${isSelected ? 'text-[#6E36E4]' : 'text-gray-400'}`}>
                                         {interest.icon}
                                     </div>
-                                    <span className="text-[12px] font-semibold text-left leading-tight whitespace-nowrap">
+                                    <span className={`text-[13px] text-left leading-tight whitespace-nowrap transition-colors duration-200 ${
+                                        isSelected ? 'font-bold text-[#6E36E4]' : 'font-medium text-gray-700'
+                                    }`}>
                                         {interest.name}
                                     </span>
                                 </button>

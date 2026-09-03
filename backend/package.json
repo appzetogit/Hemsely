@@ -10,6 +10,7 @@
     "seed:admin": "node scripts/seedAdmin.js",
     "reset:admin": "node scripts/resetAdminPassword.js",
     "seed:plans": "node scripts/seedPlans.js",
+    "sync:media": "node scripts/syncMediaWithVPS.js --push",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
   },
   "keywords": [

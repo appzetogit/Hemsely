@@ -24,6 +24,7 @@ import messageRoutes from './routes/messageRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import fcmRoutes from './routes/fcmRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import mediaSyncRoutes from './routes/mediaSyncRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,8 +69,8 @@ app.use('/hemsely', express.static(path.join(__dirname, 'uploads', 'hemsely')));
 app.use(express.static(path.join(__dirname, 'public', 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Smart static file fallback for uploads (guarantees image delivery regardless of Nginx proxy path rewriting)
-app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], (req, res, next) => {
+// Smart static file fallback for uploads (guarantees image delivery regardless of Nginx proxy path rewriting + fetches from VPS if missing locally)
+app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], async (req, res, next) => {
   const cleanPath = req.path
     .replace(/^\/api\/uploads\//, '')
     .replace(/^\/uploads\//, '')
@@ -109,8 +110,64 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], (re
       return res.sendFile(path.resolve(normalized));
     }
   }
-  console.warn(`[Upload Fallback] File not found on disk for URL: ${req.url}`);
-  res.status(404).send('Image file not found on server disk');
+
+  // If file is not found on local disk, attempt fetching from remote VPS if configured
+  const vpsMediaUrl = process.env.VPS_MEDIA_URL || (process.env.NODE_ENV !== 'production' ? 'https://hemsely.com' : null);
+  if (vpsMediaUrl) {
+    try {
+      const cleanVps = vpsMediaUrl.replace(/\/+$/, '');
+      const remoteUrls = [
+        `${cleanVps}/uploads/${cleanPath}`,
+        `${cleanVps}/uploads/hemsely/profiles/${filenameOnly}`,
+        `${cleanVps}/uploads/hemsely/chats/${filenameOnly}`,
+        `${cleanVps}/uploads/hemsely/selfies/${filenameOnly}`,
+        `${cleanVps}/${cleanPath}`,
+      ];
+
+      for (const remoteUrl of remoteUrls) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const remoteRes = await fetch(remoteUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (remoteRes.ok) {
+            const contentType = remoteRes.headers.get('content-type') || 'image/jpeg';
+            // Only accept valid media content types
+            if (contentType.includes('text/html') || contentType.includes('application/json')) {
+              continue;
+            }
+
+            const arrayBuffer = await remoteRes.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+
+            // Auto-cache to local public/uploads directory for future zero-latency access
+            try {
+              const savePath = path.join(publicUploadsRoot, cleanPath);
+              const saveDir = path.dirname(savePath);
+              if (!fs.existsSync(saveDir)) {
+                fs.mkdirSync(saveDir, { recursive: true });
+              }
+              await fs.promises.writeFile(savePath, buffer);
+            } catch (cacheErr) {
+              console.warn('[Upload Fallback Cache Notice]:', cacheErr.message);
+            }
+
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.status(200).send(buffer);
+          }
+        } catch {
+          // try next remote URL
+        }
+      }
+    } catch (proxyErr) {
+      console.warn(`[Upload Fallback Remote Proxy Error]: ${proxyErr.message}`);
+    }
+  }
+
+  console.warn(`[Upload Fallback] File not found on disk or remote VPS for URL: ${req.url}`);
+  res.status(404).send('Image file not found on server disk or remote VPS');
 });
 
 // Maintenance mode: short-circuits all non-admin API traffic while the flag is on,
@@ -153,6 +210,7 @@ app.use(['/api/messages', '/messages'], apiRateLimiter, messageRoutes);
 app.use(['/api/support', '/support'], supportRoutes);
 app.use(['/api/fcm', '/fcm'], fcmRoutes);
 app.use(['/api/notifications', '/notifications'], apiRateLimiter, notificationRoutes);
+app.use(['/api/media', '/media'], mediaSyncRoutes);
 app.get(['/api/pages/:slug', '/pages/:slug'], getPublicWebsitePageBySlug);
 
 // Health check route

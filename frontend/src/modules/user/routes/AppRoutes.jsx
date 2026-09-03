@@ -9,6 +9,7 @@ import VerifyOTPPage from '../pages/VerifyOTPPage';
 import ProfileDetailsPage from '../pages/ProfileDetailsPage';
 import GenderSelectionPage from '../pages/GenderSelectionPage';
 import AddPhotosPage from '../pages/AddPhotosPage';
+import UserSelfieVerificationPage from '../pages/UserSelfieVerificationPage';
 import EnableLocationPage from '../pages/EnableLocationPage';
 import InterestsPage from '../pages/InterestsPage';
 import RelationshipGoalsPage from '../pages/RelationshipGoalsPage';
@@ -71,6 +72,8 @@ const AppRoutes = () => {
             <Route path="/profile-details" element={<PrivateRoute><ProfileDetailsPage /></PrivateRoute>} />
             <Route path="/gender-select" element={<PrivateRoute><GenderSelectionPage /></PrivateRoute>} />
             <Route path="/add-photos" element={<PrivateRoute><AddPhotosPage /></PrivateRoute>} />
+            <Route path="/selfie-verification" element={<PrivateRoute><UserSelfieVerificationPage /></PrivateRoute>} />
+            <Route path="/selfie-verify" element={<PrivateRoute><UserSelfieVerificationPage /></PrivateRoute>} />
             <Route path="/enable-location" element={<PrivateRoute><EnableLocationPage /></PrivateRoute>} />
             <Route path="/interests" element={<PrivateRoute><InterestsPage /></PrivateRoute>} />
             <Route path="/relationship-goals" element={<PrivateRoute><RelationshipGoalsPage /></PrivateRoute>} />

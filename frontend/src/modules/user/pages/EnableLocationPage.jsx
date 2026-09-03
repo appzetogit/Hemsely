@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MapPin, Check, Navigation, Loader2 } from 'lucide-react';
 
 import { syncFullOnboardingData } from '../services/userApi';
@@ -9,6 +9,9 @@ const LOCATION_STORAGE_KEY = 'onboarding_location:v1';
 
 const EnableLocationPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const returnPath = location.state?.from;
+
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
 
@@ -19,7 +22,11 @@ const EnableLocationPage = () => {
         } catch {
             // Ignore background sync errors
         }
-        navigate('/interests');
+        if (returnPath) {
+            navigate(returnPath, { replace: true });
+        } else {
+            navigate('/interests');
+        }
     };
 
     const handleEnableLocation = () => {
@@ -78,7 +85,13 @@ const EnableLocationPage = () => {
                 <button
                     type="button"
                     aria-label="Go back"
-                    onClick={() => navigate('/add-photos')}
+                    onClick={() => {
+                        if (returnPath) {
+                            navigate(returnPath, { replace: true });
+                        } else {
+                            navigate('/selfie-verification');
+                        }
+                    }}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -97,7 +110,6 @@ const EnableLocationPage = () => {
 
                 {/* Subtitle */}
                 <p className="text-[13px] text-gray-400 text-center mb-10 leading-relaxed font-normal max-w-[290px] mx-auto">
-                    Find people nearby for better matches.<br />
                     Find people nearby for better matches.
                 </p>
 

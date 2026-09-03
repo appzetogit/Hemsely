@@ -6,6 +6,7 @@ import apiClient from '../../../shared/services/apiClient';
 import { devError } from '../../../shared/utils/logger';
 import { validateEmailStrict } from '../../../shared/utils/emailValidator';
 import { useAuth } from '../context/AuthContext';
+import AwsSelfieVerificationModal from '../components/AwsSelfieVerificationModal';
 
 const SectionHeader = ({ title }) => (
     <div style={{ padding: '16px 15px 8px', opacity: 0.7 }}>
@@ -55,7 +56,7 @@ const Toggle = ({ active, onToggle, label }) => (
     </button>
 );
 
-const SettingRow = ({ label, value, subtext, showCheck, showArrow, badge, onClick, children }) => {
+const SettingRow = ({ label, value, valueColor, statusBadge, subtext, showCheck, showArrow, badge, onClick, children }) => {
     const Component = onClick ? 'button' : 'div';
     const compProps = onClick ? { type: 'button', onClick, className: 'w-full text-left border-0 bg-transparent p-0 cursor-pointer' } : {};
 
@@ -116,17 +117,29 @@ const SettingRow = ({ label, value, subtext, showCheck, showArrow, badge, onClic
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {value && (
+                    {statusBadge ? (
+                        <div style={{
+                            padding: '3px 9px',
+                            background: statusBadge.bg || '#FEF3C7',
+                            color: statusBadge.color || '#D97706',
+                            borderRadius: '8px',
+                            fontFamily: "'Inter', sans-serif",
+                            fontWeight: 600,
+                            fontSize: '12px',
+                        }}>
+                            {statusBadge.text}
+                        </div>
+                    ) : value ? (
                         <span style={{
                             fontFamily: "'Inter', sans-serif",
                             fontWeight: 500,
                             fontSize: '13.5px',
-                            color: '#000',
-                            opacity: 0.7
+                            color: valueColor || '#000',
+                            opacity: valueColor ? 1 : 0.7
                         }}>
                             {value}
                         </span>
-                    )}
+                    ) : null}
                     {showCheck && <img src={checkMarkIcon} alt="check" style={{ width: '16px', height: '16px' }} />}
                     {showArrow && (
                         <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
@@ -152,6 +165,25 @@ const SettingsPage = () => {
     const [showDeleteOtpModal, setShowDeleteOtpModal] = useState(false);
     const [deleteOtp, setDeleteOtp] = useState('');
     const [deleteOtpError, setDeleteOtpError] = useState('');
+
+    // Selfie Verification state
+    const [isVerified, setIsVerified] = useState(() => {
+        try {
+            const u = JSON.parse(localStorage.getItem('user') || '{}');
+            return Boolean(u.isVerified || u.selfieStatus === 'approved');
+        } catch {
+            return false;
+        }
+    });
+    const [selfieStatus, setSelfieStatus] = useState(() => {
+        try {
+            const u = JSON.parse(localStorage.getItem('user') || '{}');
+            return u.selfieStatus || (u.isVerified ? 'approved' : 'pending');
+        } catch {
+            return 'pending';
+        }
+    });
+    const [showSelfieModal, setShowSelfieModal] = useState(false);
 
     // Email Modal state
     const [showEmailModal, setShowEmailModal] = useState(false);
@@ -245,6 +277,9 @@ const SettingsPage = () => {
                         setIsPaused(!fetchedUser.isActive);
                     }
                     if (typeof fetchedUser.showActiveStatus === 'boolean') setShowActiveStatus(fetchedUser.showActiveStatus);
+                    const verified = Boolean(fetchedUser.isVerified || fetchedUser.selfieStatus === 'approved');
+                    setIsVerified(verified);
+                    setSelfieStatus(fetchedUser.selfieStatus || (verified ? 'approved' : 'pending'));
 
                     const uId = fetchedUser._id || userId;
                     if (uId) {
@@ -434,6 +469,14 @@ const SettingsPage = () => {
                     onClick={() => setShowEmailModal(true)}
                 />
                 <SettingRow
+                    label="Selfie Verification"
+                    value={isVerified || selfieStatus === 'approved' ? 'Verified' : 'Pending'}
+                    valueColor={isVerified || selfieStatus === 'approved' ? '#6E36E4' : '#D97706'}
+                    showCheck={isVerified || selfieStatus === 'approved'}
+                    showArrow={!isVerified && selfieStatus !== 'approved'}
+                    onClick={() => setShowSelfieModal(true)}
+                />
+                <SettingRow
                     label="Blocked Accounts"
                     showArrow
                     onClick={() => navigate('/blocked-accounts')}
@@ -592,6 +635,23 @@ const SettingsPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* AWS Rekognition Selfie Verification Modal */}
+            <AwsSelfieVerificationModal
+                isOpen={showSelfieModal}
+                onClose={() => setShowSelfieModal(false)}
+                onVerificationSuccess={(updatedUser) => {
+                    setIsVerified(true);
+                    setSelfieStatus('approved');
+                    setShowSelfieModal(false);
+                    try {
+                        const localUser = JSON.parse(localStorage.getItem('user') || '{}');
+                        localUser.isVerified = true;
+                        localUser.selfieStatus = 'approved';
+                        localStorage.setItem('user', JSON.stringify(localUser));
+                    } catch { }
+                }}
+            />
         </div>
     );
 };

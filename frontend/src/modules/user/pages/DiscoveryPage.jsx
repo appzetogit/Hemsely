@@ -160,6 +160,22 @@ const DiscoveryPage = () => {
     });
     const [rejectionReason, setRejectionReason] = useState('');
     const [checkingStatus, setCheckingStatus] = useState(false);
+    const [selfieSkipped, setSelfieSkipped] = useState(() => {
+        try {
+            return localStorage.getItem('selfie_skipped') === 'true';
+        } catch {
+            return false;
+        }
+    });
+
+    const handleSkipSelfie = () => {
+        setSelfieSkipped(true);
+        try {
+            localStorage.setItem('selfie_skipped', 'true');
+        } catch {
+            // Ignore
+        }
+    };
 
     const hasActiveFilter = Boolean(
         (filters.interestedIn && filters.interestedIn.toLowerCase() !== 'both') ||
@@ -372,7 +388,7 @@ const DiscoveryPage = () => {
         <div className="h-[100dvh] flex flex-col font-sans overflow-hidden max-w-[414px] mx-auto relative" style={{ background: '#FCFCFC' }}>
 
             <main className="flex-1 overflow-y-auto pt-3 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[15.53px]">
-                {!isUserVerified ? (
+                {!isUserVerified && !selfieSkipped ? (
                     selfieStatus === 'pending' ? (
                         <div className="flex flex-col items-center justify-center min-h-[440px] h-full text-center gap-5 pt-10 px-4">
                             <div className="w-24 h-24 rounded-full bg-amber-50 border-2 border-amber-500/30 flex items-center justify-center shadow-lg animate-pulse">
@@ -388,17 +404,26 @@ const DiscoveryPage = () => {
                                 </span>
                                 <h3 className="text-[22px] font-extrabold text-black tracking-tight mb-2">Profile Under Review</h3>
                                 <p className="text-[14px] text-gray-500 max-w-[300px] leading-relaxed font-normal">
-                                    Your live selfie photo is currently under review by our admin team. Please wait for approval.
+                                    Your live selfie photo is currently under review by our admin team.
                                 </p>
                             </div>
-                            <button
-                                type="button"
-                                disabled={checkingStatus}
-                                onClick={refreshUserVerificationStatus}
-                                className="w-full max-w-[280px] h-[52px] bg-amber-600 text-white font-bold rounded-full text-[15px] shadow-lg hover:bg-amber-700 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
-                            >
-                                {checkingStatus ? 'Checking Status...' : 'Check Verification Status'}
-                            </button>
+                            <div className="flex flex-col w-full max-w-[280px] gap-2.5">
+                                <button
+                                    type="button"
+                                    disabled={checkingStatus}
+                                    onClick={refreshUserVerificationStatus}
+                                    className="w-full h-[50px] bg-amber-600 text-white font-bold rounded-full text-[15px] shadow-lg hover:bg-amber-700 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                                >
+                                    {checkingStatus ? 'Checking Status...' : 'Check Verification Status'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSkipSelfie}
+                                    className="w-full h-[44px] bg-transparent text-gray-600 hover:text-gray-900 font-semibold text-[14px] cursor-pointer"
+                                >
+                                    Skip for now & Explore
+                                </button>
+                            </div>
                         </div>
                     ) : selfieStatus === 'rejected' ? (
                         <div className="flex flex-col items-center justify-center min-h-[440px] h-full text-center gap-5 pt-10 px-4">
@@ -418,13 +443,22 @@ const DiscoveryPage = () => {
                                     {rejectionReason || 'Your selfie photo could not be verified automatically.'}
                                 </p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowSelfieModal(true)}
-                                className="w-full max-w-[280px] h-[52px] bg-[#6E36E4] text-white font-bold rounded-full text-[16px] shadow-lg hover:bg-[#5e2cc5] active:scale-95 transition-all cursor-pointer"
-                            >
-                                Re-take Selfie Now
-                            </button>
+                            <div className="flex flex-col w-full max-w-[280px] gap-2.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSelfieModal(true)}
+                                    className="w-full h-[50px] bg-[#6E36E4] text-white font-bold rounded-full text-[16px] shadow-lg hover:bg-[#5e2cc5] active:scale-95 transition-all cursor-pointer"
+                                >
+                                    Re-take Selfie Now
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSkipSelfie}
+                                    className="w-full h-[44px] bg-transparent text-gray-600 hover:text-gray-900 font-semibold text-[14px] cursor-pointer"
+                                >
+                                    Skip for now
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center min-h-[440px] h-full text-center gap-5 pt-10 px-4">
@@ -435,18 +469,24 @@ const DiscoveryPage = () => {
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-[22px] font-extrabold text-black tracking-tight mb-2">Selfie Verification Required</h3>
-                                <p className="text-[14px] text-gray-500 max-w-[290px] leading-relaxed font-normal">
-                                    For Activate Account selfie verification is Needed
-                                </p>
+                                <h3 className="text-[22px] font-extrabold text-black tracking-tight mb-2">Selfie Verification</h3>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowSelfieModal(true)}
-                                className="w-full max-w-[280px] h-[52px] bg-[#6E36E4] text-white font-bold rounded-full text-[16px] shadow-lg hover:bg-[#5e2cc5] active:scale-95 transition-all cursor-pointer"
-                            >
-                                Verify Selfie Now
-                            </button>
+                            <div className="flex flex-col w-full max-w-[280px] gap-2.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSelfieModal(true)}
+                                    className="w-full h-[52px] bg-[#6E36E4] text-white font-bold rounded-full text-[16px] shadow-lg hover:bg-[#5e2cc5] active:scale-95 transition-all cursor-pointer"
+                                >
+                                    Verify Selfie Now
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSkipSelfie}
+                                    className="w-full h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-full text-[14px] transition-all cursor-pointer"
+                                >
+                                    Skip for now
+                                </button>
+                            </div>
                         </div>
                     )
                 ) : queueInfo ? (
@@ -611,6 +651,13 @@ const DiscoveryPage = () => {
                 onClose={() => setShowSelfieModal(false)}
                 onVerificationSuccess={(updatedUser) => {
                     setIsUserVerified(true);
+                    setSelfieStatus('approved');
+                    setSelfieSkipped(false);
+                    try {
+                        localStorage.removeItem('selfie_skipped');
+                    } catch {
+                        // Ignore
+                    }
                     setShowSelfieModal(false);
                 }}
             />

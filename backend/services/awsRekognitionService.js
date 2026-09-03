@@ -31,6 +31,31 @@ export async function imageToBuffer(imageInput) {
             if (path.isAbsolute(imageInput) && fs.existsSync(imageInput)) {
                 return fs.readFileSync(imageInput);
             }
+
+            // Fallback: If missing on local disk, fetch from remote VPS if configured
+            const vpsMediaUrl = process.env.VPS_MEDIA_URL || (process.env.NODE_ENV !== 'production' ? 'https://hemsely.com' : null);
+            if (vpsMediaUrl) {
+                try {
+                    const cleanVps = vpsMediaUrl.replace(/\/+$/, '');
+                    const cleanRelative = relativePath.replace(/^uploads\//, '');
+                    const remoteUrl = `${cleanVps}/uploads/${cleanRelative}`;
+                    const response = await axios.get(remoteUrl, { responseType: 'arraybuffer', timeout: 10000 });
+                    if (response.status === 200 && response.data) {
+                        const buffer = Buffer.from(response.data);
+                        // Cache locally
+                        try {
+                            const dir = path.dirname(publicPath);
+                            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                            fs.writeFileSync(publicPath, buffer);
+                        } catch {
+                            // ignore caching write error
+                        }
+                        return buffer;
+                    }
+                } catch {
+                    // ignore network/fetch error and fall through
+                }
+            }
         }
 
         // If HTTP URL
