@@ -9,6 +9,22 @@ html, body, #root {
   padding: 0;
   font-family: var(--font-sans);
   background-color: #18181b;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+/* Prevent auto-zooming on focus in iOS Safari */
+input, select, textarea, button {
+  touch-action: manipulation;
+}
+
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,

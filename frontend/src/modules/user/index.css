@@ -34,10 +34,27 @@
   --color-warning-600: #D97706;
 }
 
-body {
+html, body, #root {
   margin: 0;
+  padding: 0;
   font-family: var(--font-sans);
   background-color: #FAFAFA;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+/* Prevent auto-zooming on focus in iOS Safari */
+input, select, textarea, button {
+  touch-action: manipulation;
+}
+
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Fix browser autofill blue/yellow background on inputs */

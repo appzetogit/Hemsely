@@ -2,13 +2,13 @@ import React from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-// Import assets from local folder
-import centerImage from '../assets/853e31e910922fe7f47f66de5c5206f78a610037.jpg';
-import avatarTopRed from '../assets/6ee1ef9d2677e06049fb899a7658f4b9ac9c11dc.jpg';
-import avatarRightBeard from '../assets/a4e07912a9df7e2f14bba65dd13433a5d9fc0f9b.png';
-import avatarBottomRightSmall from '../assets/9bd108315ddebf58571ec9fe25c0a6d5d63096ba.png';
-import avatarBottomDark from '../assets/2d480a64955b32a3f343496aa510b7c06b62c97c.png';
-import avatarLeftDenim from '../assets/cb6000111458728947d5516dee724f449f4d81e2.png';
+// Preloaded Ultra-Fast WebP Assets
+const centerImage = '/assets/login/login_center_couple.webp';
+const avatarTopRed = '/assets/login/login_avatar_top.webp';
+const avatarRightBeard = '/assets/login/login_avatar_right.webp';
+const avatarBottomRightSmall = '/assets/login/login_avatar_bottom_right.webp';
+const avatarBottomDark = '/assets/login/login_avatar_bottom.webp';
+const avatarLeftDenim = '/assets/login/login_avatar_left.webp';
 
 const LoginScreen = () => {
     const navigate = useNavigate();
@@ -43,9 +43,14 @@ const LoginScreen = () => {
                 <div className="absolute w-[70%] h-[70%] bg-[#F4F0FD] border border-purple-100 rounded-full"></div>
 
                 {/* 3. Main Image - Center */}
-                <div className="relative w-[42%] h-[42%] rounded-full overflow-hidden border-[4px] border-white shadow-xl z-20">
+                <div className="relative w-[42%] h-[42%] rounded-full overflow-hidden border-[4px] border-white shadow-xl z-20 bg-purple-50">
                     <img
                         src={centerImage}
+                        width="300"
+                        height="300"
+                        loading="eager"
+                        fetchPriority="high"
+                        decoding="async"
                         className="w-full h-full object-cover"
                         alt="Couple"
                     />
@@ -60,13 +65,31 @@ const LoginScreen = () => {
                     </div>
 
                     {/* Right: Man Beard */}
-                    <div className="absolute top-[67%] left-[97%] -translate-x-1/2 -translate-y-1/2 w-[42px] h-[42px] rounded-full border-2 border-white overflow-hidden shadow-md bg-white">
-                        <img src={avatarRightBeard} className="w-full h-full object-cover" alt="User" />
+                    <div className="absolute top-[67%] left-[97%] -translate-x-1/2 -translate-y-1/2 w-[42px] h-[42px] rounded-full border-2 border-white overflow-hidden shadow-md bg-[#f0ebfb]">
+                        <img 
+                            src={avatarRightBeard} 
+                            width="160"
+                            height="160"
+                            loading="eager"
+                            fetchPriority="high"
+                            decoding="async"
+                            className="w-full h-full object-cover" 
+                            alt="User" 
+                        />
                     </div>
 
                     {/* Bottom Right: Small Woman */}
-                    <div className="absolute top-[91%] left-[78%] -translate-x-1/2 -translate-y-1/2 w-[35px] h-[35px] rounded-full border-2 border-white overflow-hidden shadow-md bg-white">
-                        <img src={avatarBottomRightSmall} className="w-full h-full object-cover" alt="User" />
+                    <div className="absolute top-[91%] left-[78%] -translate-x-1/2 -translate-y-1/2 w-[35px] h-[35px] rounded-full border-2 border-white overflow-hidden shadow-md bg-[#f0ebfb]">
+                        <img 
+                            src={avatarBottomRightSmall} 
+                            width="160"
+                            height="160"
+                            loading="eager"
+                            fetchPriority="high"
+                            decoding="async"
+                            className="w-full h-full object-cover" 
+                            alt="User" 
+                        />
                     </div>
 
                     {/* Bottom Left: Chat Icon */}
@@ -75,21 +98,48 @@ const LoginScreen = () => {
                     </div>
 
                     {/* Left: Man Denim */}
-                    <div className="absolute top-1/2 left-[10px] -translate-x-1/2 -translate-y-1/2 w-[42px] h-[42px] rounded-full border-2 border-white overflow-hidden shadow-md bg-white">
-                        <img src={avatarLeftDenim} className="w-full h-full object-cover" alt="User" />
+                    <div className="absolute top-1/2 left-[10px] -translate-x-1/2 -translate-y-1/2 w-[42px] h-[42px] rounded-full border-2 border-white overflow-hidden shadow-md bg-[#f0ebfb]">
+                        <img 
+                            src={avatarLeftDenim} 
+                            width="160"
+                            height="160"
+                            loading="eager"
+                            fetchPriority="high"
+                            decoding="async"
+                            className="w-full h-full object-cover" 
+                            alt="User" 
+                        />
                     </div>
                 </div>
 
                 {/* 5. Inner Satellites Container */}
                 <div className="absolute w-[70%] h-[70%] inset-0 m-auto z-10 pointer-events-none">
                     {/* Top: Woman Red */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40px] h-[40px] rounded-full border-2 border-white overflow-hidden shadow-md bg-white">
-                        <img src={avatarTopRed} className="w-full h-full object-cover" alt="User" />
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40px] h-[40px] rounded-full border-2 border-white overflow-hidden shadow-md bg-[#f0ebfb]">
+                        <img 
+                            src={avatarTopRed} 
+                            width="160"
+                            height="160"
+                            loading="eager"
+                            fetchPriority="high"
+                            decoding="async"
+                            className="w-full h-full object-cover" 
+                            alt="User" 
+                        />
                     </div>
 
                     {/* Bottom: Woman Dark */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 w-[44px] h-[44px] rounded-full border-2 border-white overflow-hidden shadow-md bg-white">
-                        <img src={avatarBottomDark} className="w-full h-full object-cover" alt="User" />
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 w-[44px] h-[44px] rounded-full border-2 border-white overflow-hidden shadow-md bg-[#f0ebfb]">
+                        <img 
+                            src={avatarBottomDark} 
+                            width="160"
+                            height="160"
+                            loading="eager"
+                            fetchPriority="high"
+                            decoding="async"
+                            className="w-full h-full object-cover" 
+                            alt="User" 
+                        />
                     </div>
                 </div>
 
