@@ -30,12 +30,12 @@ async function getSharp() {
 }
 
 const FOLDER_PROFILES = {
-  'hemsely/profiles': { maxWidth: 600, maxHeight: 600, quality: 80 },
-  'hemsely/chats': { maxWidth: 800, maxHeight: 800, quality: 75 },
-  'profile-images': { maxWidth: 400, maxHeight: 400, quality: 80 },
+  'hemsely/profiles': { maxWidth: 1600, maxHeight: 2000, quality: 85 },
+  'hemsely/chats': { maxWidth: 1200, maxHeight: 1600, quality: 80 },
+  'profile-images': { maxWidth: 1200, maxHeight: 1600, quality: 85 },
   'menu-items': { maxWidth: 800, maxHeight: 800, quality: 75 },
-  'banners': { maxWidth: 1200, maxHeight: 600, quality: 78 },
-  default: { maxWidth: 800, maxHeight: 800, quality: 75 },
+  'banners': { maxWidth: 1600, maxHeight: 800, quality: 80 },
+  default: { maxWidth: 1200, maxHeight: 1600, quality: 80 },
 };
 
 export async function compressImage(inputBuffer, opts = {}) {

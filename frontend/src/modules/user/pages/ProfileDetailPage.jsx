@@ -130,8 +130,8 @@ const ProfileDetailPage = () => {
                 </div>
 
                 {/* Main Photo Section */}
-                <div className="w-full relative rounded-[20px] overflow-hidden mb-5">
-                    <img src={mainPhoto} alt="" className="w-full h-[380px] object-cover" />
+                <div className="w-full relative rounded-[20px] overflow-hidden mb-5 aspect-[3/4] min-h-[380px] max-h-[520px] bg-gray-100">
+                    <img src={mainPhoto} alt="" className="w-full h-full object-cover object-center" />
 
                     {/* Action Buttons Overlay */}
                     <div className="absolute bottom-5 inset-x-0 px-8 flex justify-between items-center z-20">
@@ -245,8 +245,8 @@ const ProfileDetailPage = () => {
                         <section className="space-y-4 mt-3">
                             <h3 className="text-[16px] font-bold text-black">Photos</h3>
                             {gallery.map((url) => (
-                                <div key={url} className="w-full rounded-[20px] overflow-hidden">
-                                    <img src={url} alt="" className="w-full h-[320px] object-cover" />
+                                <div key={url} className="w-full rounded-[20px] overflow-hidden aspect-[3/4] min-h-[340px] max-h-[480px] bg-gray-100">
+                                    <img src={url} alt="" className="w-full h-full object-cover object-center" />
                                 </div>
                             ))}
                         </section>

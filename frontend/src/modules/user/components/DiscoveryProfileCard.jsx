@@ -90,8 +90,8 @@ const DiscoveryProfileCard = ({
             onMouseUp={onEnd}
             onMouseLeave={() => { if (isDragging.current) onEnd(); }}
         >
-            <div className="w-full h-[490px] overflow-hidden select-none rounded-[24px] shadow-sm relative bg-gray-100">
-                <img src={profile.photo} className="w-full h-full object-cover object-top pointer-events-none" alt="" draggable={false} />
+            <div className="w-full aspect-[3/4] min-h-[460px] max-h-[540px] overflow-hidden select-none rounded-[24px] shadow-sm relative bg-gray-100">
+                <img src={profile.photo} className="w-full h-full object-cover object-center pointer-events-none" alt={profile.name || "Profile"} draggable={false} />
 
                 {swipeHint === 'like' && (
                     <div className="absolute top-6 left-6 z-30 px-4 py-2 rounded-xl border-[3px] border-green-500 bg-green-500/10 backdrop-blur-sm" style={{ transform: 'rotate(-15deg)' }}>
@@ -238,8 +238,8 @@ const DiscoveryProfileCard = ({
                             <React.Fragment key={`user-media-${i}`}>
                                 {photoUrl && (
                                     <div className="rounded-[24px] overflow-hidden shadow-xs border border-gray-100 bg-white">
-                                        <div className="w-full h-[480px] overflow-hidden bg-gray-100">
-                                            <img src={photoUrl} alt="" className="w-full h-full object-cover object-top" />
+                                        <div className="w-full aspect-[3/4] min-h-[440px] max-h-[520px] overflow-hidden bg-gray-100">
+                                            <img src={photoUrl} alt="User photo" className="w-full h-full object-cover object-center" />
                                         </div>
                                     </div>
                                 )}
