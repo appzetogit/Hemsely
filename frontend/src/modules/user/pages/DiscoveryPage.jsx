@@ -36,9 +36,12 @@ const toProfileCardShape = (user) => {
         id: user._id,
         name: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User',
         age: user.age || '',
-        verified: !!user.isVerified,
+        verified: user.selfieStatus === 'approved' || (Boolean(user.isVerified) && !user.selfieStatus),
+        isVerified: user.selfieStatus === 'approved' || (Boolean(user.isVerified) && !user.selfieStatus),
+        selfieStatus: user.selfieStatus,
+        isPremium: Boolean(user.isPremium || user.subscriptionName === 'Premium' || user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber),
         isNew: false,
-        job: user.profession || '',
+        job: user.profession && user.company ? `${user.profession} at ${user.company}` : (user.profession || user.company || ''),
         photo: allPhotos[0],
         photos: allPhotos,
         instagram: null,
@@ -63,46 +66,49 @@ const DEFAULT_FILTERS = {
     distanceKm: 100,
     minAge: 18,
     maxAge: 60,
-    relationshipGoal: 'any',
-    religion: 'any',
-    education: 'any',
-    drinkingStatus: 'any',
-    smokingStatus: 'any',
+    locationName: '',
+    lat: null,
+    lng: null,
+    relationshipGoal: '',
+    religion: '',
+    education: '',
+    drinkingStatus: '',
+    smokingStatus: '',
 };
 
 // Builds the /users/discovery querystring with basic and advanced filter parameters
-const buildDiscoveryQuery = (pageToLoad, filters) => {
+const buildDiscoveryQuery = (pageToLoad, filters = {}) => {
     const params = new URLSearchParams({ page: pageToLoad, limit: 20 });
     if (filters.interestedIn && filters.interestedIn.toLowerCase() !== 'both') {
         params.set('interestedIn', filters.interestedIn);
     }
-    if (filters.distanceKm && filters.distanceKm !== 100) {
+    if (filters.distanceKm) {
         params.set('distanceKm', filters.distanceKm);
     }
-    if (filters.minAge && filters.minAge !== 18) {
+    if (filters.minAge) {
         params.set('minAge', filters.minAge);
     }
-    if (filters.maxAge && filters.maxAge !== 60) {
+    if (filters.maxAge) {
         params.set('maxAge', filters.maxAge);
     }
     if (filters.lat && filters.lng) {
         params.set('lat', filters.lat);
         params.set('lng', filters.lng);
     }
-    if (filters.relationshipGoal && filters.relationshipGoal !== 'any') {
-        params.set('relationshipGoal', filters.relationshipGoal);
+    if (filters.relationshipGoal && filters.relationshipGoal.trim() && filters.relationshipGoal.toLowerCase() !== 'any') {
+        params.set('relationshipGoal', filters.relationshipGoal.trim());
     }
-    if (filters.religion && filters.religion !== 'any') {
-        params.set('religion', filters.religion);
+    if (filters.religion && filters.religion.trim() && filters.religion.toLowerCase() !== 'any') {
+        params.set('religion', filters.religion.trim());
     }
-    if (filters.education && filters.education !== 'any') {
-        params.set('education', filters.education);
+    if (filters.education && filters.education.trim() && filters.education !== 'any') {
+        params.set('education', filters.education.trim());
     }
-    if (filters.drinkingStatus && filters.drinkingStatus !== 'any') {
-        params.set('drinkingStatus', filters.drinkingStatus);
+    if (filters.drinkingStatus && filters.drinkingStatus.trim() && filters.drinkingStatus.toLowerCase() !== 'any') {
+        params.set('drinkingStatus', filters.drinkingStatus.trim());
     }
-    if (filters.smokingStatus && filters.smokingStatus !== 'any') {
-        params.set('smokingStatus', filters.smokingStatus);
+    if (filters.smokingStatus && filters.smokingStatus.trim() && filters.smokingStatus.toLowerCase() !== 'any') {
+        params.set('smokingStatus', filters.smokingStatus.trim());
     }
     return params.toString();
 };
@@ -183,11 +189,11 @@ const DiscoveryPage = () => {
         (filters.minAge && filters.minAge !== 18) ||
         (filters.maxAge && filters.maxAge !== 60) ||
         (filters.lat && filters.lng) ||
-        (filters.relationshipGoal && filters.relationshipGoal !== 'any') ||
-        (filters.religion && filters.religion !== 'any') ||
-        (filters.education && filters.education !== 'any') ||
-        (filters.drinkingStatus && filters.drinkingStatus !== 'any') ||
-        (filters.smokingStatus && filters.smokingStatus !== 'any')
+        (filters.relationshipGoal && filters.relationshipGoal.trim() && filters.relationshipGoal.toLowerCase() !== 'any') ||
+        (filters.religion && filters.religion.trim() && filters.religion.toLowerCase() !== 'any') ||
+        (filters.education && filters.education.trim() && filters.education.toLowerCase() !== 'any') ||
+        (filters.drinkingStatus && filters.drinkingStatus.trim() && filters.drinkingStatus.toLowerCase() !== 'any') ||
+        (filters.smokingStatus && filters.smokingStatus.trim() && filters.smokingStatus.toLowerCase() !== 'any')
     );
     const isProfileComplete = getStored('profile_complete', false);
 

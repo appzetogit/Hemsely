@@ -96,7 +96,7 @@ const LoginScreen = () => {
             </div>
 
             {/* Actions Section */}
-            <div className="w-full flex flex-col items-center shrink-0 mb-4">
+            <div className="w-full flex flex-col items-center shrink-0 mb-8">
                 <button
                     type="button"
                     onClick={handlePhoneLoginClick}

@@ -19,8 +19,9 @@ export const setUserPremiumValidator = [
 
 export const reviewSelfieValidator = [
   mongoIdParam('id'),
-  body('approve').isBoolean().withMessage('approve must be a boolean'),
+  body('approve').optional().isBoolean().withMessage('approve must be a boolean'),
   body('rejectionReason').optional().isString().isLength({ max: 500 }),
+  body('resetToPending').optional().isBoolean(),
 ];
 
 export const setUserStatusValidator = [

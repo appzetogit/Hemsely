@@ -171,7 +171,7 @@ const GenderSelectionPage = () => {
             </div>
 
             {/* Continue Button */}
-            <div className="w-full shrink-0 mb-4">
+            <div className="w-full shrink-0 mb-8">
                 <button
                     type="button"
                     disabled={!userGender || interestedIn.length === 0}

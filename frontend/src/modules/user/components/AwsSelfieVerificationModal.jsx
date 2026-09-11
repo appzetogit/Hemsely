@@ -213,11 +213,15 @@ const AwsSelfieVerificationModal = ({ isOpen, onClose, onVerificationSuccess }) 
             if (selectedFile) {
                 formData.append('selfie', selectedFile);
             } else if (capturedImage) {
-                // Convert Data URL to Blob
-                const response = await fetch(capturedImage);
-                const blob = await response.blob();
-                const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
-                formData.append('selfie', file);
+                try {
+                    const response = await fetch(capturedImage);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+                    formData.append('selfie', file);
+                } catch {
+                    formData.append('selfieData', capturedImage);
+                }
+                formData.append('selfieData', capturedImage);
             }
 
             const { data, ok } = await apiClient.post('/users/selfie-verify-aws', formData);
@@ -262,6 +266,8 @@ const AwsSelfieVerificationModal = ({ isOpen, onClose, onVerificationSuccess }) 
                     localUser.isVerified = false;
                     localUser.selfieStatus = 'pending';
                     localStorage.setItem('user', JSON.stringify(localUser));
+                    sessionStorage.setItem('user', JSON.stringify(localUser));
+                    localStorage.setItem('isVerified', 'false');
                 } catch {
                     // Ignore storage errors
                 }

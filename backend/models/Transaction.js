@@ -41,11 +41,18 @@ const transactionSchema = new mongoose.Schema(
     },
     gateway: {
       type: String,
-      default: 'razorpay',
+      default: 'google_play',
     },
     gatewayOrderId: String,
     gatewayPaymentId: String,
     gatewaySignature: String,
+    purchaseToken: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
+    packageName: String,
+    productId: String,
   },
   {
     timestamps: true,
@@ -55,5 +62,6 @@ const transactionSchema = new mongoose.Schema(
 transactionSchema.index({ user: 1, createdAt: -1 });
 transactionSchema.index({ status: 1, createdAt: -1 });
 transactionSchema.index({ transactionId: 1 });
+transactionSchema.index({ purchaseToken: 1 });
 
 export default mongoose.model('Transaction', transactionSchema);

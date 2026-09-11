@@ -3,6 +3,182 @@
 
 <head>
   <meta charset="UTF-8" />
+  <script>
+    (function () {
+      function shouldSuppress(msg, src, stack, err) {
+        try {
+          var errStr = (err ? (err.stack || err.message || String(err)) : '');
+          var str = ((msg || '') + ' ' + (src || '') + ' ' + (stack || '') + ' ' + errStr).toLowerCase();
+          return (
+            str.includes('reportallchanges') ||
+            str.includes('starttime') ||
+            str.includes('web-vitals') ||
+            str.includes('refused to get unsafe header') ||
+            str.includes('permissions policy violation') ||
+            str.includes('x-rtb-fingerprint-id') ||
+            str.includes('request-id') ||
+            str.includes('validate/account') ||
+            (str.includes('cannot read properties of undefined') && (str.includes('starttime') || str.includes('reportallchanges')))
+          );
+        } catch (e) {
+          return false;
+        }
+      }
+
+      // 0. Protect PerformanceObserver callbacks from Web-Vitals extension crashes (startTime undefined)
+      try {
+        if (typeof window !== 'undefined' && window.PerformanceObserver) {
+          var OrigPO = window.PerformanceObserver;
+          window.PerformanceObserver = new Proxy(OrigPO, {
+            construct: function (Target, args) {
+              var callback = args[0];
+              if (typeof callback === 'function') {
+                var safeCb = function (list, observer) {
+                  try {
+                    return callback.apply(this, arguments);
+                  } catch (err) {
+                    var str = String(err && (err.message || err.stack || err)).toLowerCase();
+                    if (
+                      str.includes('starttime') ||
+                      str.includes('reportallchanges') ||
+                      str.includes('web-vitals')
+                    ) {
+                      return;
+                    }
+                    throw err;
+                  }
+                };
+                return Reflect.construct(Target, [safeCb].concat(Array.prototype.slice.call(args, 1)));
+              }
+              return Reflect.construct(Target, args);
+            }
+          });
+        }
+      } catch (e) {}
+
+      // 0.1 Protect EventTarget listeners from Web-Vitals crashes on click/route events
+      try {
+        if (typeof window !== 'undefined' && window.EventTarget && EventTarget.prototype.addEventListener) {
+          var origAddEv = EventTarget.prototype.addEventListener;
+          var origRemEv = EventTarget.prototype.removeEventListener;
+          var fnMap = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+
+          EventTarget.prototype.addEventListener = function (type, listener, options) {
+            if (typeof listener === 'function') {
+              var wrapped = fnMap && fnMap.get(listener);
+              if (!wrapped) {
+                wrapped = function () {
+                  try {
+                    return listener.apply(this, arguments);
+                  } catch (err) {
+                    var str = String(err && (err.message || err.stack || err)).toLowerCase();
+                    if (
+                      str.includes('starttime') ||
+                      str.includes('reportallchanges') ||
+                      str.includes('web-vitals')
+                    ) {
+                      return;
+                    }
+                    throw err;
+                  }
+                };
+                if (fnMap) fnMap.set(listener, wrapped);
+              }
+              return origAddEv.call(this, type, wrapped, options);
+            }
+            return origAddEv.call(this, type, listener, options);
+          };
+
+          EventTarget.prototype.removeEventListener = function (type, listener, options) {
+            var targetListener = (fnMap && typeof listener === 'function' && fnMap.get(listener)) || listener;
+            return origRemEv.call(this, type, targetListener, options);
+          };
+        }
+      } catch (e) {}
+
+      // 1. Global window.onerror interceptor
+      var origOnError = window.onerror;
+      window.onerror = function (message, source, lineno, colno, error) {
+        var msg = typeof message === 'string' ? message : (message && message.message ? message.message : '');
+        var stack = (error && error.stack) ? error.stack : '';
+        if (shouldSuppress(msg, source, stack, error)) {
+          return true; // suppresses Chrome default console error
+        }
+        if (origOnError) return origOnError.apply(this, arguments);
+        return false;
+      };
+
+      // 2. Global capture-phase error listener
+      var handleGlobalError = function (event) {
+        if (!event) return;
+        var msg = event.message || '';
+        var stack = (event.error && event.error.stack) || '';
+        var filename = event.filename || '';
+        if (shouldSuppress(msg, filename, stack, event.error)) {
+          if (typeof event.preventDefault === 'function') event.preventDefault();
+          if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+          return true;
+        }
+      };
+      window.addEventListener('error', handleGlobalError, true);
+
+      // 3. Global unhandled rejection listener
+      var handleUnhandledRejection = function (event) {
+        if (!event) return;
+        var reason = event.reason;
+        var msg = typeof reason === 'string' ? reason : (reason && reason.message ? reason.message : '');
+        var stack = (reason && reason.stack) ? reason.stack : '';
+        if (shouldSuppress(msg, '', stack, reason)) {
+          if (typeof event.preventDefault === 'function') event.preventDefault();
+          if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+          return true;
+        }
+      };
+      window.addEventListener('unhandledrejection', handleUnhandledRejection, true);
+
+      // 4. Console.error & Console.warn filter
+      var origError = console.error;
+      console.error = function () {
+        try {
+          var str = Array.prototype.slice.call(arguments).map(function (a) {
+            return typeof a === 'object' ? (a && (a.stack || a.message)) || JSON.stringify(a) : String(a);
+          }).join(' ').toLowerCase();
+          if (
+            str.includes('reportallchanges') ||
+            str.includes('starttime') ||
+            str.includes('web-vitals') ||
+            str.includes('refused to get unsafe header') ||
+            str.includes('permissions policy violation') ||
+            str.includes('x-rtb-fingerprint-id')
+          ) {
+            return;
+          }
+        } catch (e) {}
+        return origError.apply(console, arguments);
+      };
+
+      var origWarn = console.warn;
+      console.warn = function () {
+        try {
+          var str = Array.prototype.slice.call(arguments).map(function (a) {
+            return typeof a === 'object' ? (a && (a.stack || a.message)) || JSON.stringify(a) : String(a);
+          }).join(' ').toLowerCase();
+          if (
+            str.includes('reportallchanges') ||
+            str.includes('starttime') ||
+            str.includes('web-vitals') ||
+            str.includes('refused to get unsafe header') ||
+            str.includes('permissions policy violation') ||
+            str.includes('x-rtb-fingerprint-id')
+          ) {
+            return;
+          }
+        } catch (e) {}
+        return origWarn.apply(console, arguments);
+      };
+    })();
+  </script>
+
   <title>Hemsely</title>
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
   <link rel="apple-touch-icon" href="/icon.svg" />

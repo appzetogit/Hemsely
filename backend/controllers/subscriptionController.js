@@ -2,38 +2,83 @@ import Plan from '../models/Plan.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import Notification from '../models/Notification.js';
-import razorpayService from '../services/razorpayService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logAdminAction } from '../utils/auditLog.js';
 import { releaseFromQueue } from '../utils/queueService.js';
 import { getOrCreateConfig } from './appConfigController.js';
 
 // @desc List all plans
-// @route GET /api/admin/subscriptions/plans
-// @access Private/Admin
+// @route GET /api/admin/subscriptions/plans or /api/subscriptions/plans
+// @access Private/Admin or Private/User
 export const getPlans = asyncHandler(async (req, res) => {
-  let plans = await Plan.find({}).sort({ price: 1 });
+  let plans = await Plan.find({}).sort({ durationDays: 1, price: 1 });
 
-  if (plans.length === 0) {
-    const defaultPremium = await Plan.create({
-      name: 'Premium',
-      description: 'Get full access to priority discovery, location changes, unlimited likes, and profile boosts!',
-      price: 499,
-      durationDays: 30,
-      isSystemPlan: true,
-      isActive: true,
-      features: [
-        'Unlimited Likes',
-        'Location Changes (Passport Mode)',
-        'View Who Likes You',
-        'Unlimited Rewinds',
-        '1 Profile Boost per week',
-        'Advanced Filters',
-        'Priority Profile Visibility',
-      ],
-    });
-    plans = [defaultPremium];
+  // If plans table has less than the 3 standard tiers, auto-populate them
+  if (plans.length < 3) {
+    const DEFAULT_FEATURES = [
+      'Unlimited Likes',
+      'Location Changes (Passport Mode)',
+      'View Who Likes You',
+      'Unlimited Rewinds',
+      '1 Profile Boost per week',
+      'Advanced Filters',
+      'Priority Profile Visibility',
+    ];
+
+    const standardTiers = [
+      {
+        slug: 'weekly',
+        productId: 'hemsely_premium_weekly',
+        name: '1 Week',
+        description: 'Get 7 days of full VIP access, unlimited likes, and instant discovery!',
+        price: 199,
+        durationDays: 7,
+        badge: '7 DAYS',
+        isSystemPlan: true,
+        isActive: true,
+        features: DEFAULT_FEATURES,
+      },
+      {
+        slug: 'monthly',
+        productId: 'hemsely_premium_monthly',
+        name: '1 Month',
+        description: 'Full monthly access to priority discovery, unlimited likes, and direct chat!',
+        price: 499,
+        durationDays: 30,
+        badge: 'POPULAR',
+        isSystemPlan: true,
+        isActive: true,
+        features: DEFAULT_FEATURES,
+      },
+      {
+        slug: '3months',
+        productId: 'hemsely_premium_3months',
+        name: '3 Months',
+        description: 'Best value VIP pass with 90 days of full discovery and profile boosts!',
+        price: 1199,
+        durationDays: 90,
+        badge: 'BEST VALUE',
+        isSystemPlan: true,
+        isActive: true,
+        features: DEFAULT_FEATURES,
+      },
+    ];
+
+    for (const tier of standardTiers) {
+      const exists = await Plan.findOne({
+        $or: [{ name: tier.name }, { productId: tier.productId }, { slug: tier.slug }],
+      });
+      if (!exists) {
+        await Plan.create(tier);
+      }
+    }
+
+    // Clean up deprecated generic "Premium" plan if present
+    await Plan.deleteMany({ name: 'Premium', isSystemPlan: true });
+
+    plans = await Plan.find({}).sort({ durationDays: 1, price: 1 });
   }
+
   res.status(200).json({ success: true, plans });
 });
 
@@ -108,9 +153,14 @@ export const setUserPremium = asyncHandler(async (req, res) => {
     }
   }
 
+  const updatePayload = { isPremium: !!isPremium, premiumExpiry: expiryDate };
+  if (isPremium) {
+    updatePayload.$inc = { boostCount: 1 };
+  }
+
   let user = await User.findByIdAndUpdate(
     req.params.id,
-    { isPremium: !!isPremium, premiumExpiry: expiryDate },
+    updatePayload,
     { new: true, runValidators: true }
   );
 
@@ -134,180 +184,24 @@ export const setUserPremium = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'User subscription updated', user });
 });
 
-// @desc Create Razorpay Order for Subscription
+// @desc Create Order - Migrated to Google Play Billing
 // @route POST /api/subscriptions/create-order or /api/users/subscribe/create-order
 // @access Private/User
 export const createRazorpayOrder = asyncHandler(async (req, res) => {
-  const userId = req.user?._id || req.user?.id;
-  const { planId } = req.body;
-
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
-
-  let plan;
-  if (planId) {
-    plan = await Plan.findById(planId);
-  }
-  if (!plan) {
-    plan = await Plan.findOne({ isActive: true });
-  }
-  if (!plan) {
-    return res.status(404).json({ success: false, message: 'No active subscription plan found' });
-  }
-
-  const transactionId = razorpayService.generateTransactionId('TXN');
-  const subscriptionId = razorpayService.generateTransactionId('SUB');
-  const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Hemsely User';
-  const userEmail = user.email || `${user.phoneNumber || userId}@hemsely.com`;
-  const userPhone = user.phoneNumber || '';
-
-  let razorpayOrder;
-  const isConfigured = razorpayService.isConfigured();
-
-  if (isConfigured) {
-    try {
-      razorpayOrder = await razorpayService.createOrder({
-        amount: plan.price,
-        receipt: transactionId,
-        notes: {
-          userId: String(user._id),
-          userName,
-          userEmail,
-          userPhone,
-          planId: String(plan._id),
-          planName: plan.name,
-          transactionId,
-          subscriptionId,
-        },
-      });
-    } catch (err) {
-      console.warn('⚠️ Razorpay order creation warning:', err.message);
-    }
-  }
-
-  const orderId = razorpayOrder?.id || `order_${Date.now()}`;
-  const amountInPaise = Math.round(parseFloat(plan.price) * 100);
-
-  // Save pending transaction record with end-to-end user & plan details
-  const transaction = await Transaction.create({
-    transactionId,
-    subscriptionId,
-    user: user._id,
-    userName,
-    userEmail,
-    userPhone,
-    plan: plan._id,
-    planName: plan.name,
-    durationDays: plan.durationDays || 30,
-    amount: plan.price,
-    currency: 'INR',
-    status: 'pending',
-    gateway: 'razorpay',
-    gatewayOrderId: orderId,
-  });
-
-  const key = process.env.RAZORPAY_KEY_ID?.trim() || 'rzp_test_mockkey';
-
   res.status(200).json({
     success: true,
-    orderId,
-    amount: amountInPaise,
-    currency: 'INR',
-    key,
-    transactionId,
-    subscriptionId,
-    userDetails: {
-      name: userName,
-      email: userEmail,
-      phone: userPhone,
-    },
-    plan: {
-      id: plan._id,
-      name: plan.name,
-      price: plan.price,
-      durationDays: plan.durationDays || 30,
-    },
-    transaction,
+    message: 'Billing is now handled via Google Play Billing. Please use /api/google-play/verify-subscription.',
+    provider: 'google_play',
   });
 });
 
-// @desc Verify Razorpay Payment Signature and Activate Premium
+// @desc Verify Payment - Migrated to Google Play Billing
 // @route POST /api/subscriptions/verify-payment or /api/users/subscribe/verify
 // @access Private/User
 export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
-  const userId = req.user?._id || req.user?.id;
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, transactionId } = req.body;
-
-  let transaction = await Transaction.findOne({
-    $or: [
-      { transactionId },
-      { gatewayOrderId: razorpay_order_id },
-    ],
-  });
-
-  if (!transaction) {
-    return res.status(404).json({ success: false, message: 'Transaction record not found' });
-  }
-
-  if (String(transaction.user) !== String(userId)) {
-    return res.status(403).json({ success: false, message: 'This transaction does not belong to you' });
-  }
-
-  const isConfigured = razorpayService.isConfigured();
-  let isValid = false;
-
-  if (isConfigured) {
-    isValid = Boolean(razorpay_order_id && razorpay_payment_id && razorpay_signature) &&
-      razorpayService.verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
-  } else {
-    // Development fallback for testing when live keys aren't set
-    isValid = true;
-  }
-
-  if (!isValid) {
-    transaction.status = 'failed';
-    await transaction.save();
-    return res.status(400).json({ success: false, message: 'Payment signature verification failed' });
-  }
-
-  // Update transaction status to success
-  transaction.status = 'success';
-  transaction.gatewayPaymentId = razorpay_payment_id || `pay_${Date.now()}`;
-  transaction.gatewaySignature = razorpay_signature || '';
-  await transaction.save();
-
-  // Activate Premium subscription for user
-  const durationDays = transaction.durationDays || 30;
-  const expiryDate = new Date();
-  expiryDate.setDate(expiryDate.getDate() + durationDays);
-
-  const updatedUser = await User.findByIdAndUpdate(
-    userId,
-    { isPremium: true, premiumExpiry: expiryDate },
-    { new: true, runValidators: true }
-  );
-
-  if (userId) {
-    await releaseFromQueue(userId);
-  }
-
-  // Create notification for user
-  try {
-    await Notification.create({
-      user: userId,
-      type: 'system',
-      title: 'Premium Subscription Activated! 🎉',
-      message: `Your ${transaction.planName || 'Premium'} subscription (${transaction.subscriptionId}) is active until ${expiryDate.toLocaleDateString()}.`,
-    });
-  } catch (_) {}
-
-  res.status(200).json({
-    success: true,
-    message: 'Payment verified and subscription activated successfully!',
-    user: updatedUser,
-    transaction,
+  res.status(400).json({
+    success: false,
+    message: 'Razorpay is disabled. Please verify your purchase using /api/google-play/verify-subscription.',
   });
 });
 
@@ -319,165 +213,30 @@ export const getBoostPlans = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     plans: [
-      { id: 'left', count: 1, label: 'Boost', price: config.boostPrice1 ?? 199 },
-      { id: 'right', count: 5, label: 'Boosts', price: config.boostPrice5 ?? 399 },
+      { id: 'left', count: 1, label: 'Boost', price: config.boostPrice1 ?? 199, productId: 'hemsely_boost_1' },
+      { id: 'right', count: 5, label: 'Boosts', price: config.boostPrice5 ?? 399, productId: 'hemsely_boost_5' },
     ],
   });
 });
 
-// @desc Create Razorpay Order for Boost Package
+// @desc Create Boost Order - Migrated to Google Play Billing
 // @route POST /api/subscriptions/boost/create-order or /api/users/boost/create-order
 // @access Private/User
 export const createBoostOrder = asyncHandler(async (req, res) => {
-  const userId = req.user?._id || req.user?.id;
-  const { optionId } = req.body;
-
-  const user = await User.findById(userId);
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
-  }
-
-  const config = await getOrCreateConfig();
-  const price1 = config.boostPrice1 ?? 199;
-  const price5 = config.boostPrice5 ?? 399;
-
-  const boostCountNum = optionId === 'left' ? 1 : 5;
-  const boostPriceNum = optionId === 'left' ? price1 : price5;
-
-  const transactionId = razorpayService.generateTransactionId('TXN');
-  const subscriptionId = razorpayService.generateTransactionId('BST');
-  const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Hemsely User';
-  const userEmail = user.email || `${user.phoneNumber || userId}@hemsely.com`;
-  const userPhone = user.phoneNumber || '';
-
-  let razorpayOrder;
-  const isConfigured = razorpayService.isConfigured();
-
-  if (isConfigured) {
-    try {
-      razorpayOrder = await razorpayService.createOrder({
-        amount: boostPriceNum,
-        receipt: transactionId,
-        notes: {
-          userId: String(user._id),
-          userName,
-          userEmail,
-          userPhone,
-          planName: `${boostCountNum} Profile Boost${boostCountNum > 1 ? 's' : ''}`,
-          transactionId,
-          subscriptionId,
-        },
-      });
-    } catch (err) {
-      console.warn('⚠️ Razorpay order creation warning:', err.message);
-    }
-  }
-
-  const orderId = razorpayOrder?.id || `order_boost_${Date.now()}`;
-  const amountInPaise = Math.round(parseFloat(boostPriceNum) * 100);
-
-  const transaction = await Transaction.create({
-    transactionId,
-    subscriptionId,
-    user: user._id,
-    userName,
-    userEmail,
-    userPhone,
-    planName: `${boostCountNum} Profile Boost${boostCountNum > 1 ? 's' : ''}`,
-    amount: boostPriceNum,
-    currency: 'INR',
-    status: 'pending',
-    gateway: 'razorpay',
-    gatewayOrderId: orderId,
-  });
-
-  const key = process.env.RAZORPAY_KEY_ID?.trim() || 'rzp_test_mockkey';
-
   res.status(200).json({
     success: true,
-    orderId,
-    amount: amountInPaise,
-    currency: 'INR',
-    key,
-    transactionId,
-    subscriptionId,
-    boostCount: boostCountNum,
-    price: boostPriceNum,
-    userDetails: {
-      name: userName,
-      email: userEmail,
-      phone: userPhone,
-    },
-    transaction,
+    message: 'Boost billing is handled via Google Play In-App purchases. Use /api/google-play/verify-purchase.',
+    provider: 'google_play',
   });
 });
 
-// @desc Verify Razorpay Payment Signature and Grant Boosts
+// @desc Verify Boost Payment - Migrated to Google Play Billing
 // @route POST /api/subscriptions/boost/verify or /api/users/boost/verify
 // @access Private/User
 export const verifyBoostPayment = asyncHandler(async (req, res) => {
-  const userId = req.user?._id || req.user?.id;
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, transactionId } = req.body;
-
-  let transaction = await Transaction.findOne({
-    $or: [
-      { transactionId },
-      { gatewayOrderId: razorpay_order_id },
-    ],
-  });
-
-  if (!transaction) {
-    return res.status(404).json({ success: false, message: 'Transaction record not found' });
-  }
-
-  if (String(transaction.user) !== String(userId)) {
-    return res.status(403).json({ success: false, message: 'This transaction does not belong to you' });
-  }
-
-  const isConfigured = razorpayService.isConfigured();
-  let isValid = false;
-
-  if (isConfigured) {
-    isValid = Boolean(razorpay_order_id && razorpay_payment_id && razorpay_signature) &&
-      razorpayService.verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
-  } else {
-    isValid = true;
-  }
-
-  if (!isValid) {
-    transaction.status = 'failed';
-    await transaction.save();
-    return res.status(400).json({ success: false, message: 'Payment signature verification failed' });
-  }
-
-  transaction.status = 'success';
-  transaction.gatewayPaymentId = razorpay_payment_id || `pay_${Date.now()}`;
-  transaction.gatewaySignature = razorpay_signature || '';
-  await transaction.save();
-
-  // Derive the credited count from the amount actually paid for, never from client input.
-  const boostInc = parseInt(transaction.planName, 10) || 1;
-
-  const updatedUser = await User.findByIdAndUpdate(
-    userId,
-    { $inc: { boostCount: boostInc } },
-    { new: true, runValidators: true }
-  );
-
-  try {
-    await Notification.create({
-      user: userId,
-      type: 'system',
-      title: 'Boost Package Purchased! 🚀',
-      message: `You successfully added ${boostInc} Profile Boost(s) to your account.`,
-    });
-  } catch (_) {}
-
-  res.status(200).json({
-    success: true,
-    message: 'Boost payment verified and credits added successfully!',
-    user: updatedUser,
-    transaction,
+  res.status(400).json({
+    success: false,
+    message: 'Razorpay is disabled. Please verify consumable boost purchases using /api/google-play/verify-purchase.',
   });
 });
 
@@ -532,29 +291,34 @@ export const getSubscriptionUsers = asyncHandler(async (req, res) => {
     const userId = txn.user._id ? txn.user._id.toString() : String(txn.user);
     if (!userSubMap.has(userId)) {
       const now = new Date();
-      const expiry = txn.user?.premiumExpiry ? new Date(txn.user.premiumExpiry) : null;
-      let remainingDays = 0;
-      let isExpired = false;
+      const startDate = txn.createdAt ? new Date(txn.createdAt) : now;
+      const duration = txn.durationDays || (
+        (txn.planName || '').toLowerCase().includes('week') || (txn.productId || '').toLowerCase().includes('week') ? 7 :
+        (txn.planName || '').toLowerCase().includes('3 month') || (txn.productId || '').toLowerCase().includes('3month') ? 90 :
+        (txn.planName || '').toLowerCase().includes('6 month') || (txn.productId || '').toLowerCase().includes('6month') ? 180 :
+        (txn.planName || '').toLowerCase().includes('year') || (txn.productId || '').toLowerCase().includes('year') ? 365 : 30
+      );
 
-      if (expiry) {
-        const diffMs = expiry - now;
-        remainingDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-        if (remainingDays <= 0) isExpired = true;
-      }
+      const calculatedExpiry = new Date(startDate.getTime() + duration * 24 * 60 * 60 * 1000);
+      const expiry = txn.user?.premiumExpiry ? new Date(txn.user.premiumExpiry) : calculatedExpiry;
+      
+      const diffMs = expiry.getTime() - now.getTime();
+      let remainingDays = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      let isExpired = diffMs <= 0;
 
       userSubMap.set(userId, {
         _id: userId,
         user: typeof txn.user === 'object' ? txn.user : { _id: userId },
         subscriptionId: txn.subscriptionId || `SUB_${String(txn._id).slice(-8).toUpperCase()}`,
         transactionId: txn.transactionId || txn.gatewayPaymentId || String(txn._id),
-        planName: txn.planName || txn.plan?.name || 'Premium',
+        planName: txn.planName || txn.plan?.name || (duration === 7 ? 'Premium (1 Week)' : 'Premium (1 Month)'),
         amount: txn.amount || 0,
         startDate: txn.createdAt,
-        expiryDate: expiry || new Date(new Date(txn.createdAt).getTime() + (txn.durationDays || 30) * 86400000),
+        expiryDate: expiry,
         remainingDays,
         isPremium: Boolean(txn.user?.isPremium) && !isExpired,
         isExpired: !txn.user?.isPremium || isExpired,
-        gateway: txn.gateway || 'Razorpay',
+        gateway: txn.gateway || 'Google Play',
       });
     }
   }

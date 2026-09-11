@@ -10,7 +10,7 @@ const BoostAnimationOverlay = ({ onClose }) => {
 
     return (
         <div
-            className={`fixed inset-0 z-[9999] max-w-[420px] mx-auto bg-gradient-to-b from-[#1E1738] via-[#16102B] to-[#0D091B] transition-opacity duration-500 ${
+            className={`fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-b from-[#1E1738] via-[#16102B] to-[#0D091B] transition-opacity duration-500 ${
                 animateIn ? 'opacity-100' : 'opacity-0'
             }`}
             style={{ fontFamily: "'Inter', sans-serif" }}
@@ -28,7 +28,7 @@ const BoostAnimationOverlay = ({ onClose }) => {
 
             {/* Full-page content */}
             <div
-                className={`w-full h-full flex flex-col items-center justify-center px-7 text-center text-white relative overflow-hidden transition-all duration-500 transform ${
+                className={`w-full max-w-[420px] h-full flex flex-col items-center justify-center px-7 text-center text-white relative overflow-hidden transition-all duration-500 transform ${
                     animateIn ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
                 }`}
             >

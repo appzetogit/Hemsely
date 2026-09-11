@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../shared/services/apiClient';
 import { cropImageToSquare } from '../../../shared/utils/imageCrop';
 import { devError } from '../../../shared/utils/logger';
+import { calculateProfileStrength } from '../../../shared/utils/profileStrength';
 
 const INTEREST_ICONS = {
     'Art & Crafts': '🎨',
@@ -20,7 +21,7 @@ const INTEREST_ICONS = {
 };
 
 const HEIGHT_OPTIONS = [];
-for (let feet = 4; feet <= 10; feet++) {
+for (let feet = 3; feet <= 10; feet++) {
     if (feet === 10) {
         HEIGHT_OPTIONS.push('10.0 Feet');
     } else {
@@ -33,14 +34,17 @@ for (let feet = 4; feet <= 10; feet++) {
 const getInterestIcon = (name) => INTEREST_ICONS[name] || '✨';
 
 const DEFAULT_QUESTIONS = [
-    { id: 1, question: 'My favorite way to do nothing is', answer: 'Nothing' },
-    { id: 2, question: "I'll never forget the time I", answer: '12 PM' },
+    { id: 1, question: 'My favorite way to do nothing is', answer: '' },
+    { id: 2, question: "I'll never forget the time I", answer: '' },
     { id: 3, question: 'The last note i wrote on my phone says', answer: '' },
 ];
 
 const emptyProfile = {
+    gender: '',
+    interestedIn: '',
     bio: '',
     profession: '',
+    company: '',
     interests: [],
     education: '',
     religion: '',
@@ -69,11 +73,38 @@ const EditProfilePage = () => {
     const [error, setError] = useState('');
 
     // Modal state for editing questions / details
-    const [activeModal, setActiveModal] = useState(null); // { type: 'question'|'detail', data: ... }
+    const [activeModal, setActiveModal] = useState(null); // { type: 'question'|'detail'|'work'|'gender', data: ... }
     const [modalInputValue, setModalInputValue] = useState('');
+    const [modalPost, setModalPost] = useState('');
+    const [modalCompany, setModalCompany] = useState('');
+    const [modalGender, setModalGender] = useState('Male');
+    const [modalInterestedIn, setModalInterestedIn] = useState(['Female']);
+
+    const toggleModalInterest = (gender) => {
+        if (modalInterestedIn.includes(gender)) {
+            if (modalInterestedIn.length > 1) {
+                setModalInterestedIn(modalInterestedIn.filter((g) => g !== gender));
+            }
+        } else {
+            setModalInterestedIn([...modalInterestedIn, gender]);
+        }
+    };
 
     const fileInputRef = useRef(null);
-    const selfieInputRef = useRef(null);
+    const heightContainerRef = useRef(null);
+    const selectedHeightRef = useRef(null);
+
+    useEffect(() => {
+        if (activeModal?.key === 'heightValue') {
+            setTimeout(() => {
+                if (selectedHeightRef.current) {
+                    selectedHeightRef.current.scrollIntoView({ block: 'center', behavior: 'instant' });
+                } else if (heightContainerRef.current) {
+                    heightContainerRef.current.scrollTop = 0;
+                }
+            }, 30);
+        }
+    }, [activeModal]);
 
     useEffect(() => {
         (async () => {
@@ -115,9 +146,64 @@ const EditProfilePage = () => {
                 sessionStorage.setItem('user', JSON.stringify(u));
                 localStorage.setItem('user', JSON.stringify(u));
 
+                let initialProfession = u.profession || '';
+                let initialCompany = u.company || '';
+                if (!initialCompany && initialProfession.includes(' at ')) {
+                    const parts = initialProfession.split(' at ');
+                    if (parts.length === 2) {
+                        initialProfession = parts[0].trim();
+                        initialCompany = parts[1].trim();
+                    }
+                }
+
+                let userGender = '';
+                if (u.gender) {
+                    userGender = u.gender.charAt(0).toUpperCase() + u.gender.slice(1).toLowerCase();
+                } else {
+                    try {
+                        const gData = JSON.parse(localStorage.getItem('onboarding_gender:v1') || '{}');
+                        if (gData.userGender) {
+                            userGender = gData.userGender.charAt(0).toUpperCase() + gData.userGender.slice(1).toLowerCase();
+                        }
+                    } catch { }
+                }
+
+                let userInterestedIn = '';
+                if (u.interestedIn) {
+                    if (Array.isArray(u.interestedIn)) {
+                        if (u.interestedIn.includes('both') || (u.interestedIn.includes('male') && u.interestedIn.includes('female'))) {
+                            userInterestedIn = 'Both';
+                        } else if (u.interestedIn.includes('male')) {
+                            userInterestedIn = 'Male';
+                        } else if (u.interestedIn.includes('female')) {
+                            userInterestedIn = 'Female';
+                        }
+                    } else if (typeof u.interestedIn === 'string') {
+                        const lower = u.interestedIn.toLowerCase();
+                        if (lower === 'both') userInterestedIn = 'Both';
+                        else if (lower === 'male') userInterestedIn = 'Male';
+                        else if (lower === 'female') userInterestedIn = 'Female';
+                    }
+                }
+                if (!userInterestedIn) {
+                    try {
+                        const gData = JSON.parse(localStorage.getItem('onboarding_gender:v1') || '{}');
+                        if (Array.isArray(gData.interestedIn)) {
+                            if (gData.interestedIn.length > 1 || gData.interestedIn.includes('Both') || gData.interestedIn.includes('both')) {
+                                userInterestedIn = 'Both';
+                            } else if (gData.interestedIn.length === 1) {
+                                userInterestedIn = gData.interestedIn[0];
+                            }
+                        }
+                    } catch { }
+                }
+
                 setForm({
+                    gender: userGender,
+                    interestedIn: userInterestedIn,
                     bio: u.bio || '',
-                    profession: u.profession || '',
+                    profession: initialProfession,
+                    company: initialCompany,
                     interests: u.interests || [],
                     education: u.education || '',
                     religion: u.religion || '',
@@ -165,6 +251,11 @@ const EditProfilePage = () => {
     };
 
     const [uploadTarget, setUploadTarget] = useState(null);
+
+    const handleSelfieClick = () => {
+        if (form.selfieStatus === 'approved' || form.isVerified) return;
+        navigate('/selfie-verification', { state: { from: '/edit-profile' } });
+    };
 
     const handleProfileClick = () => {
         setUploadTarget('profile');
@@ -214,32 +305,6 @@ const EditProfilePage = () => {
         }
     };
 
-    const handleSelfieClick = () => {
-        if (form.selfieStatus === 'pending' || form.selfieStatus === 'approved') return;
-        selfieInputRef.current?.click();
-    };
-
-    const handleSelfieUpload = async (event) => {
-        const file = event.target.files?.[0];
-        event.target.value = '';
-        if (!file || !userId) return;
-
-        setUploading(true);
-        try {
-            const croppedFile = await cropImageToSquare(file).catch(() => file);
-            const formData = new FormData();
-            formData.append('selfie', croppedFile);
-            const { data, ok } = await apiClient.post(`/users/${userId}/selfie`, formData);
-            if (ok && data.success && data.user) {
-                updateField('selfiePhoto', data.user.selfiePhoto);
-                updateField('selfieStatus', data.user.selfieStatus);
-                updateField('selfieRejectionReason', data.user.selfieRejectionReason || '');
-            }
-        } finally {
-            setUploading(false);
-        }
-    };
-
     const handleRemoveGalleryImage = async (imageId) => {
         if (!userId) return;
         try {
@@ -254,27 +319,43 @@ const EditProfilePage = () => {
         }
     };
 
-    const handleSave = async () => {
-        if (!userId) return;
-        setSaving(true);
-        setError('');
+    const persistProfile = async (newForm, newQuestions) => {
+        if (!userId) return null;
+        const currentForm = newForm || form;
+        const currentQuestions = newQuestions || questions;
+
+        let interestedInPayload = [];
+        if (currentForm.interestedIn && currentForm.interestedIn !== 'Not specified') {
+            if (currentForm.interestedIn === 'Both' || currentForm.interestedIn === 'both') {
+                interestedInPayload = ['male', 'female', 'both'];
+            } else if (currentForm.interestedIn === 'Male' || currentForm.interestedIn === 'male') {
+                interestedInPayload = ['male'];
+            } else if (currentForm.interestedIn === 'Female' || currentForm.interestedIn === 'female') {
+                interestedInPayload = ['female'];
+            } else if (Array.isArray(currentForm.interestedIn)) {
+                interestedInPayload = currentForm.interestedIn.map(i => String(i).toLowerCase());
+            }
+        }
 
         const payload = {
-            bio: form.bio,
-            profession: form.profession === 'Not specified' ? '' : form.profession,
-            interests: form.interests,
-            education: form.education === 'Not specified' ? '' : form.education,
-            religion: form.religion === 'Not specified' ? '' : form.religion,
-            languages: form.languages === 'Not specified' || !form.languages ? [] : [form.languages],
-            relationshipGoal: form.relationshipGoal === 'Not specified' ? '' : form.relationshipGoal,
-            drinkingStatus: form.drinkingStatus === 'Not specified' ? '' : form.drinkingStatus,
-            smokingStatus: form.smokingStatus === 'Not specified' ? '' : form.smokingStatus,
+            gender: currentForm.gender && currentForm.gender !== 'Not specified' ? currentForm.gender.toLowerCase() : '',
+            interestedIn: interestedInPayload,
+            bio: currentForm.bio,
+            profession: currentForm.profession === 'Not specified' ? '' : currentForm.profession,
+            company: currentForm.company === 'Not specified' ? '' : currentForm.company,
+            interests: currentForm.interests,
+            education: currentForm.education === 'Not specified' ? '' : currentForm.education,
+            religion: currentForm.religion === 'Not specified' ? '' : currentForm.religion,
+            languages: currentForm.languages === 'Not specified' || !currentForm.languages ? [] : (Array.isArray(currentForm.languages) ? currentForm.languages : [currentForm.languages]),
+            relationshipGoal: currentForm.relationshipGoal === 'Not specified' ? '' : currentForm.relationshipGoal,
+            drinkingStatus: currentForm.drinkingStatus === 'Not specified' ? '' : currentForm.drinkingStatus,
+            smokingStatus: currentForm.smokingStatus === 'Not specified' ? '' : currentForm.smokingStatus,
             // Strip local-only fields like `id` — Mongoose rejects `id` on subdocuments.
-            prompts: questions.map(({ question, answer }) => ({ question, answer })),
+            prompts: currentQuestions.map(({ question, answer }) => ({ question, answer })),
         };
 
-        if (form.heightValue && form.heightValue !== 'Not specified') {
-            const rawVal = String(form.heightValue).replace(' Feet', '').trim();
+        if (currentForm.heightValue && currentForm.heightValue !== 'Not specified') {
+            const rawVal = String(currentForm.heightValue).replace(' Feet', '').trim();
             const numVal = parseFloat(rawVal);
             if (!isNaN(numVal)) {
                 payload.height = { value: numVal, unit: 'ft' };
@@ -291,18 +372,46 @@ const EditProfilePage = () => {
             if (!res.ok && targetId !== 'me') {
                 res = await apiClient.put('/users/me', payload);
             }
-            setSaving(false);
-            const { data, ok } = res;
+            if (res.ok && res.data?.success && res.data?.user) {
+                sessionStorage.setItem('user', JSON.stringify(res.data.user));
+                localStorage.setItem('user', JSON.stringify(res.data.user));
+            }
+            if ((currentForm.gender && currentForm.gender !== 'Not specified') || currentForm.interestedIn) {
+                try {
+                    const gData = JSON.parse(localStorage.getItem('onboarding_gender:v1') || '{}');
+                    if (currentForm.gender && currentForm.gender !== 'Not specified') {
+                        gData.userGender = currentForm.gender;
+                    }
+                    if (currentForm.interestedIn && currentForm.interestedIn !== 'Not specified') {
+                        if (currentForm.interestedIn === 'Both') {
+                            gData.interestedIn = ['Male', 'Female'];
+                        } else {
+                            gData.interestedIn = [currentForm.interestedIn];
+                        }
+                    }
+                    localStorage.setItem('onboarding_gender:v1', JSON.stringify(gData));
+                } catch { }
+            }
+            return res;
+        } catch (err) {
+            devError('Autosave profile failed:', err);
+            return null;
+        }
+    };
 
-            if (ok && data.success) {
-                // Refresh local user state
-                if (data.user) {
-                    sessionStorage.setItem('user', JSON.stringify(data.user));
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                }
+    const handleSave = async () => {
+        if (!userId) return;
+        setSaving(true);
+        setError('');
+
+        try {
+            const res = await persistProfile(form, questions);
+            setSaving(false);
+
+            if (res && res.ok) {
                 navigate(-1);
             } else {
-                setError(data.message || 'Could not save profile.');
+                setError(res?.data?.message || 'Could not save profile.');
             }
         } catch (err) {
             setSaving(false);
@@ -310,21 +419,22 @@ const EditProfilePage = () => {
         }
     };
 
-    // Calculate dynamic strength %
-    const calculateStrength = () => {
-        let score = 0;
-        const photosCount = (form.profilePicture ? 1 : 0) + (form.galleryImages?.length || 0);
-        if (photosCount >= 1) score += 30;
-        if (photosCount >= 4) score += 10;
-        if (form.interests.length > 0) score += 20;
-        const answeredQs = questions.filter((q) => q.answer && q.answer.trim().length > 0).length;
-        if (answeredQs >= 1) score += 10;
-        if (answeredQs >= 2) score += 10;
-        if (form.bio.trim().length > 0) score += 10;
-        if (form.education && form.religion) score += 10;
+    const answeredQuestionsCount = questions.filter((q) => q.answer && q.answer.trim().length > 0).length;
+    const hasPhotos = (form.profilePicture ? 1 : 0) + (form.galleryImages?.length || 0) >= 1;
+    const hasInterests = form.interests && form.interests.length > 0;
 
-        return Math.min(100, score || 80);
-    };
+    // Calculate dynamic strength %
+    const calculateStrength = () => calculateProfileStrength({
+        profilePicture: form.profilePicture,
+        galleryImages: form.galleryImages,
+        interests: form.interests,
+        prompts: questions,
+        bio: form.bio,
+        education: form.education,
+        religion: form.religion,
+        profession: form.profession,
+        company: form.company,
+    });
 
     const openQuestionModal = (idx) => {
         const q = questions[idx];
@@ -333,32 +443,77 @@ const EditProfilePage = () => {
     };
 
     const openDetailModal = (item) => {
+        if (item.key === 'work' || item.key === 'profession') {
+            setActiveModal({ type: 'work', key: 'work', label: 'Work' });
+            setModalPost(form.profession === 'Not specified' ? '' : (form.profession || ''));
+            setModalCompany(form.company === 'Not specified' ? '' : (form.company || ''));
+            return;
+        }
+        if (item.key === 'gender') {
+            setActiveModal({ type: 'gender', key: 'gender', label: 'Gender' });
+            setModalGender(form.gender || 'Male');
+            setModalInterestedIn(
+                form.interestedIn === 'Both'
+                    ? ['Male', 'Female']
+                    : (form.interestedIn ? [form.interestedIn] : ['Female'])
+            );
+            return;
+        }
         setActiveModal({ type: 'detail', key: item.key, label: item.label, options: item.options || [], placeholder: item.placeholder });
         setModalInputValue(item.value === 'Not specified' ? '' : (item.value || ''));
     };
 
-    const saveModalData = () => {
+    const saveModalData = async () => {
         if (!activeModal) return;
 
-        if (activeModal.type === 'question') {
-            setQuestions((prev) => {
-                const next = [...prev];
-                next[activeModal.idx] = { ...next[activeModal.idx], answer: modalInputValue };
-                return next;
-            });
+        let nextForm = { ...form };
+        let nextQuestions = [...questions];
+
+        if (activeModal.type === 'gender' || activeModal.key === 'gender') {
+            const finalInterestedIn = modalInterestedIn.length > 1 ? 'Both' : (modalInterestedIn[0] || 'Both');
+            nextForm = {
+                ...nextForm,
+                gender: modalGender,
+                interestedIn: finalInterestedIn,
+            };
+            setForm(nextForm);
+        } else if (activeModal.type === 'work' || activeModal.key === 'work') {
+            nextForm = {
+                ...nextForm,
+                profession: modalPost.trim(),
+                company: modalCompany.trim(),
+            };
+            setForm(nextForm);
+        } else if (activeModal.type === 'question') {
+            nextQuestions = questions.map((q, i) =>
+                i === activeModal.idx ? { ...q, answer: modalInputValue } : q
+            );
+            setQuestions(nextQuestions);
         } else if (activeModal.type === 'detail') {
             const valToSave = modalInputValue === 'Not specified' ? '' : modalInputValue;
             if (activeModal.key === 'heightValue') {
                 const val = valToSave.replace(' Feet', '').trim();
-                updateField('heightValue', val);
-                updateField('heightUnit', 'Feet');
+                nextForm = {
+                    ...nextForm,
+                    heightValue: val,
+                    heightUnit: 'Feet',
+                };
             } else {
-                updateField(activeModal.key, valToSave);
+                nextForm = {
+                    ...nextForm,
+                    [activeModal.key]: valToSave,
+                };
             }
+            setForm(nextForm);
         }
 
         setActiveModal(null);
         setModalInputValue('');
+        setModalPost('');
+        setModalCompany('');
+
+        // End-to-end autosave to database immediately
+        persistProfile(nextForm, nextQuestions);
     };
 
     if (loading) {
@@ -398,12 +553,10 @@ const EditProfilePage = () => {
         gallerySlots.push(validGalleryImages[i] || null);
     }
 
-    const answeredQuestionsCount = questions.filter((q) => q.answer && q.answer.trim().length > 0).length;
 
     return (
         <div className="h-[100dvh] flex flex-col font-sans overflow-hidden max-w-[414px] mx-auto" style={{ background: '#FCFCFC' }}>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
-            <input ref={selfieInputRef} type="file" accept="image/*" capture="user" onChange={handleSelfieUpload} className="hidden" />
 
             {/* Header */}
             <header className="h-[52px] bg-[#FCFCFC] border-b border-gray-100 flex items-center justify-center px-4 relative shrink-0 shadow-2xs">
@@ -540,12 +693,12 @@ const EditProfilePage = () => {
                 {/* Verified Your Photos */}
                 <section
                     onClick={handleSelfieClick}
-                    className={`bg-white rounded-[20px] p-3.5 px-4 shadow-2xs border border-gray-100/70 mt-3.5 flex items-center justify-between transition-colors ${form.selfieStatus === 'pending' || form.selfieStatus === 'approved' ? '' : 'cursor-pointer hover:border-purple-200'}`}
+                    className={`bg-white rounded-[20px] p-3.5 px-4 shadow-2xs border border-gray-100/70 mt-3.5 flex items-center justify-between transition-colors ${(form.selfieStatus === 'approved' || form.isVerified) ? '' : 'cursor-pointer hover:border-purple-200 active:scale-[0.99]'}`}
                 >
                     <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2">
                             <span className="font-bold text-[14.5px] text-gray-900 tracking-tight">Verify Your Photos</span>
-                            {form.selfieStatus === 'approved' && (
+                            {(form.selfieStatus === 'approved' || form.isVerified) && (
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#22C55E" className="shrink-0">
                                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                                     <path d="M9 12l2 2 4-4" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -553,17 +706,18 @@ const EditProfilePage = () => {
                             )}
                         </div>
                         <span className="text-[11.5px] font-medium text-gray-400">
-                            {form.selfieStatus === 'approved' && 'Verified'}
-                            {form.selfieStatus === 'pending' && 'Submitted — under review'}
-                            {form.selfieStatus === 'rejected' && (form.selfieRejectionReason || 'Rejected — tap to resubmit')}
-                            {(!form.selfieStatus || form.selfieStatus === 'not_submitted') && 'Not verified yet'}
+                            {(form.selfieStatus === 'approved' || form.isVerified) && 'Verified'}
+                            {form.selfieStatus === 'pending' && !form.isVerified && 'Submitted — under review'}
+                            {form.selfieStatus === 'rejected' && !form.isVerified && (form.selfieRejectionReason || 'Rejected — tap to resubmit')}
+                            {(!form.selfieStatus || form.selfieStatus === 'not_submitted') && !form.isVerified && 'Not verified yet'}
                         </span>
                     </div>
 
-                    {form.selfieStatus !== 'pending' && form.selfieStatus !== 'approved' && (
+                    {form.selfieStatus !== 'approved' && !form.isVerified && (
                         <div className="w-7 h-7 rounded-full bg-purple-50 text-[#733FE0] flex items-center justify-center shrink-0">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="9 18 15 12 9 6" />
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
                         </div>
                     )}
@@ -588,15 +742,15 @@ const EditProfilePage = () => {
                     {/* Checklist */}
                     <div className="flex items-center gap-4 mt-3 text-[12.5px] font-semibold flex-wrap">
                         <div className="flex items-center gap-1.5 text-gray-900">
-                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                            <span className={`w-4 h-4 rounded-full text-white flex items-center justify-center text-[10px] font-bold ${hasPhotos ? 'bg-emerald-500' : 'bg-gray-300'}`}>✓</span>
                             Photos added
                         </div>
                         <div className="flex items-center gap-1.5 text-gray-900">
                             <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${answeredQuestionsCount >= 2 ? 'bg-emerald-500' : 'bg-gray-300'}`}>✓</span>
-                            {answeredQuestionsCount} Questions answered
+                            2 Questions answered
                         </div>
                         <div className="flex items-center gap-1.5 text-gray-900">
-                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">✓</span>
+                            <span className={`w-4 h-4 rounded-full text-white flex items-center justify-center text-[10px] font-bold ${hasInterests ? 'bg-emerald-500' : 'bg-gray-300'}`}>✓</span>
                             Add interests
                         </div>
                     </div>
@@ -695,12 +849,19 @@ const EditProfilePage = () => {
                     <h3 className="font-bold text-[15px] text-gray-900 mb-2.5 px-0.5">Details</h3>
                     <div className="flex flex-col gap-2.5">
                         {[
-                            { key: 'profession', label: 'Work / Post', value: form.profession || 'Not specified', placeholder: 'e.g. Interior Designer at Company' },
-                            { key: 'education', label: 'Education', value: form.education || 'Not specified', options: ['Not specified', 'Graduate', 'Post Graduate', 'Undergraduate', 'High School'] },
-                            { key: 'religion', label: 'Religious beliefs', value: form.religion || 'Not specified', options: ['Not specified', 'Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Atheist', 'Other'] },
-                            { key: 'heightValue', label: 'Height', value: form.heightValue ? (form.heightValue.includes('Feet') ? form.heightValue : `${form.heightValue} Feet`) : 'Not specified', options: ['Not specified', ...HEIGHT_OPTIONS] },
-                            { key: 'languages', label: 'My Languages', value: form.languages || 'Not specified', options: ['Not specified', 'English', 'Hindi', 'Bengali', 'Punjabi', 'Gujarati', 'Marathi', 'Tamil', 'Telugu'] },
-                            { key: 'relationshipGoal', label: 'Dating intentions', value: form.relationshipGoal || 'Not specified', options: ['Not specified', 'Long-term', 'Short-term', 'New friends', 'Casual'] },
+                            { key: 'gender', label: 'Gender', value: form.gender || 'Not specified' },
+                            {
+                                key: 'work',
+                                label: 'Work',
+                                value: form.profession && form.company
+                                    ? `${form.profession} at ${form.company}`
+                                    : form.profession || form.company || 'Not specified',
+                            },
+                            { key: 'education', label: 'Education', value: form.education || 'Not specified', options: ['High School', 'Undergraduate', 'Graduate', 'Post Graduate'] },
+                            { key: 'religion', label: 'Religious beliefs', value: form.religion || 'Not specified', options: ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Atheist'] },
+                            { key: 'heightValue', label: 'Height', value: form.heightValue ? (form.heightValue.includes('Feet') ? form.heightValue : `${form.heightValue} Feet`) : 'Not specified', options: HEIGHT_OPTIONS },
+                            { key: 'languages', label: 'My Languages', value: form.languages || 'Not specified', options: ['English', 'Hindi', 'Bengali', 'Punjabi', 'Gujarati', 'Marathi', 'Tamil', 'Telugu'] },
+                            { key: 'relationshipGoal', label: 'Dating intentions', value: form.relationshipGoal || 'Not specified', options: ['Long Term', 'Casual'] },
                         ].map((item) => (
                             <div
                                 key={item.key}
@@ -726,8 +887,8 @@ const EditProfilePage = () => {
                     <h3 className="font-bold text-[15px] text-gray-900 mb-2.5 px-0.5">Habits</h3>
                     <div className="flex flex-col gap-2.5">
                         {[
-                            { key: 'drinkingStatus', label: 'Drinking', value: form.drinkingStatus || 'Not specified', options: ['Not specified', 'No', 'Yes', 'Occasionally', 'Socially'] },
-                            { key: 'smokingStatus', label: 'Smoking', value: form.smokingStatus || 'Not specified', options: ['Not specified', 'No', 'Yes', 'Occasionally', 'Socially'] },
+                            { key: 'drinkingStatus', label: 'Drinking', value: form.drinkingStatus || 'Not specified', options: ['No', 'Yes', 'Occasionally', 'Socially'] },
+                            { key: 'smokingStatus', label: 'Smoking', value: form.smokingStatus || 'Not specified', options: ['No', 'Yes', 'Occasionally', 'Socially'] },
                         ].map((item) => (
                             <div
                                 key={item.key}
@@ -763,33 +924,151 @@ const EditProfilePage = () => {
             {activeModal && (
                 <div className="fixed inset-0 z-50 bg-[#FAFAFD] flex flex-col justify-between max-w-[414px] mx-auto animate-in slide-in-from-bottom duration-200 select-none">
                     {/* Header Bar */}
-                    <div className="w-full bg-white rounded-b-[24px] px-4 py-3.5 shadow-2xs flex items-center justify-between relative shrink-0">
-                        <h3 className="font-bold text-[18px] text-gray-900 mx-auto text-center pl-8">
+                    <div className="w-full bg-white rounded-b-[24px] px-4 py-4 shadow-2xs flex items-center justify-center relative shrink-0">
+                        <h3 className="font-bold text-[18px] text-gray-900 text-center">
                             {activeModal.type === 'question'
                                 ? 'Fill the promts'
                                 : activeModal.label}
                         </h3>
-                        <button
-                            type="button"
-                            aria-label="Close modal"
-                            onClick={() => setActiveModal(null)}
-                            className="w-9 h-9 rounded-full bg-[#F3EAFF] hover:bg-[#EADBFF] text-[#703DE2] flex items-center justify-center transition-colors cursor-pointer border-0 shrink-0"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                        </button>
                     </div>
 
                     {/* Modal Body Content */}
                     <div className="flex-1 p-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex flex-col justify-start">
-                        {activeModal.type === 'question' ? (
+                        {activeModal.type === 'gender' || activeModal.key === 'gender' ? (
+                            <div className="flex flex-col gap-6 my-2 w-full">
+                                {/* Section 1: Your Gender */}
+                                <div>
+                                    <h4 className="text-[14px] font-bold text-gray-900 mb-0.5">Your Gender</h4>
+                                    <p className="text-[11px] text-gray-400 font-normal mb-3">Select the option that describes you</p>
+                                    <div className="flex space-x-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalGender('Male')}
+                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${
+                                                modalGender === 'Male'
+                                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
+                                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
+                                            }`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${
+                                                modalGender === 'Male' ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
+                                            }`}>
+                                                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM9.5 8a2 2 0 00-2 2v5a1 1 0 001 1h1v6a1 1 0 001 1h3a1 1 0 001-1v-6h1a1 1 0 001-1v-5a2 2 0 00-2-2h-5z" />
+                                                </svg>
+                                            </div>
+                                            <span className={`flex-1 text-center text-[14px] pr-2 ${
+                                                modalGender === 'Male' ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
+                                            }`}>
+                                                Male
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalGender('Female')}
+                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${
+                                                modalGender === 'Female'
+                                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
+                                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
+                                            }`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${
+                                                modalGender === 'Female' ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
+                                            }`}>
+                                                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM8.5 8a2 2 0 00-2 2v4a1 1 0 001 1h1v7a1 1 0 001 1h7a1 1 0 001-1v-7h1a1 1 0 001-1v-4a2 2 0 00-2-2h-7z" />
+                                                </svg>
+                                            </div>
+                                            <span className={`flex-1 text-center text-[14px] pr-2 ${
+                                                modalGender === 'Female' ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
+                                            }`}>
+                                                Female
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Section 2: Who are you interested in */}
+                                <div>
+                                    <h4 className="text-[14px] font-bold text-gray-900 mb-0.5">Who are you interested in?</h4>
+                                    <p className="text-[11px] text-gray-400 font-normal mb-3">Select one or more</p>
+                                    <div className="flex space-x-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleModalInterest('Male')}
+                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${
+                                                modalInterestedIn.includes('Male')
+                                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
+                                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
+                                            }`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${
+                                                modalInterestedIn.includes('Male') ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
+                                            }`}>
+                                                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM9.5 8a2 2 0 00-2 2v5a1 1 0 001 1h1v6a1 1 0 001 1h3a1 1 0 001-1v-6h1a1 1 0 001-1v-5a2 2 0 00-2-2h-5z" />
+                                                </svg>
+                                            </div>
+                                            <span className={`flex-1 text-center text-[14px] pr-2 ${
+                                                modalInterestedIn.includes('Male') ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
+                                            }`}>
+                                                Male
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleModalInterest('Female')}
+                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${
+                                                modalInterestedIn.includes('Female')
+                                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
+                                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
+                                            }`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${
+                                                modalInterestedIn.includes('Female') ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
+                                            }`}>
+                                                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM8.5 8a2 2 0 00-2 2v4a1 1 0 001 1h1v7a1 1 0 001 1h7a1 1 0 001-1v-7h1a1 1 0 001-1v-4a2 2 0 00-2-2h-7z" />
+                                                </svg>
+                                            </div>
+                                            <span className={`flex-1 text-center text-[14px] pr-2 ${
+                                                modalInterestedIn.includes('Female') ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
+                                            }`}>
+                                                Female
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : activeModal.type === 'work' || activeModal.key === 'work' ? (
+                            <div className="flex flex-col gap-3.5 my-2 w-full">
+                                <div className="w-full bg-white rounded-[20px] p-4 border-[1.5px] border-[#D1C2F7] focus-within:border-[#703DE2] shadow-2xs transition-all">
+                                    <input
+                                        type="text"
+                                        value={modalPost}
+                                        onChange={(e) => setModalPost(e.target.value)}
+                                        placeholder="Post"
+                                        className="w-full bg-transparent border-0 outline-none font-medium text-[14px] text-gray-900 placeholder:text-gray-400"
+                                    />
+                                </div>
+                                <div className="w-full bg-white rounded-[20px] p-4 border-[1.5px] border-[#D1C2F7] focus-within:border-[#703DE2] shadow-2xs transition-all">
+                                    <input
+                                        type="text"
+                                        value={modalCompany}
+                                        onChange={(e) => setModalCompany(e.target.value)}
+                                        placeholder="Company name"
+                                        className="w-full bg-transparent border-0 outline-none font-medium text-[14px] text-gray-900 placeholder:text-gray-400"
+                                    />
+                                </div>
+                            </div>
+                        ) : activeModal.type === 'question' ? (
                             <>
                                 <div className="w-full bg-white rounded-[20px] p-4 border border-gray-100/90 shadow-2xs flex items-center justify-between mb-3 mt-1">
                                     <span className="font-bold text-[14px] text-gray-900 pr-2">{activeModal.question}</span>
                                 </div>
-                                <div className="w-full bg-[#F4F4F7] rounded-[20px] p-4 border border-gray-200/50 mb-4 min-h-[140px] flex flex-col">
+                                <div className="w-full bg-white rounded-[20px] p-4 border-[1.5px] border-[#D1C2F7] focus-within:border-[#703DE2] shadow-2xs mb-4 min-h-[140px] flex flex-col transition-all">
                                     <textarea
                                         rows={5}
                                         value={modalInputValue}
@@ -800,7 +1079,10 @@ const EditProfilePage = () => {
                                 </div>
                             </>
                         ) : activeModal.key === 'heightValue' ? (
-                            <div className="flex flex-col items-center justify-center gap-3 my-auto py-8 max-h-[360px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
+                            <div
+                                ref={heightContainerRef}
+                                className="flex flex-col items-center justify-start gap-2.5 mt-16 pt-2 pb-16 w-full flex-1 max-h-[340px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                            >
                                 {activeModal.options.map((opt) => {
                                     const cleanOpt = opt.replace(' Feet', '').trim();
                                     const cleanVal = modalInputValue.replace(' Feet', '').trim();
@@ -808,12 +1090,13 @@ const EditProfilePage = () => {
                                     return (
                                         <button
                                             key={opt}
+                                            ref={isSel ? selectedHeightRef : null}
                                             type="button"
                                             onClick={() => setModalInputValue(opt)}
-                                            className={`w-[85%] text-center transition-all cursor-pointer rounded-full ${
+                                            className={`w-[85%] text-center transition-all cursor-pointer rounded-full shrink-0 ${
                                                 isSel
-                                                    ? 'bg-[#F3EAFF] border border-[#D9C4FF] text-[#703DE2] font-extrabold text-[18px] py-2.5 shadow-2xs'
-                                                    : 'text-gray-400 hover:text-gray-600 font-medium text-[15px] py-1.5 bg-transparent border-0'
+                                                    ? 'bg-[#F3EAFF] border-[1.5px] border-[#703DE2] text-[#703DE2] font-extrabold text-[18px] py-2.5 shadow-2xs'
+                                                    : 'text-gray-500 hover:text-gray-900 font-medium text-[15px] py-2 bg-transparent hover:bg-purple-50/50 border-0'
                                             }`}
                                         >
                                             {opt.includes('Feet') ? opt : `${opt} Feet`}
@@ -830,7 +1113,11 @@ const EditProfilePage = () => {
                                             key={opt}
                                             type="button"
                                             onClick={() => setModalInputValue(opt)}
-                                            className="w-full bg-white rounded-full py-4 px-6 border border-gray-100 shadow-2xs flex items-center justify-between cursor-pointer transition-all hover:border-purple-200 active:scale-[0.99] border-0"
+                                            className={`w-full bg-white rounded-full py-4 px-6 shadow-2xs flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${
+                                                isSel
+                                                    ? 'border-[1.5px] border-[#703DE2] bg-[#FAF8FF]'
+                                                    : 'border-[1.5px] border-[#D1C2F7] hover:border-[#703DE2]'
+                                            }`}
                                         >
                                             <span className="font-bold text-[14px] text-gray-900">{opt}</span>
                                             {isSel ? (
@@ -845,7 +1132,7 @@ const EditProfilePage = () => {
                                 })}
                             </div>
                         ) : (
-                            <div className="w-full bg-[#F4F4F7] rounded-[20px] p-4 border border-gray-200/50 my-2">
+                            <div className="w-full bg-white rounded-[20px] p-4 border-[1.5px] border-[#D1C2F7] focus-within:border-[#703DE2] shadow-2xs my-2 transition-all">
                                 <input
                                     type="text"
                                     value={modalInputValue}
@@ -858,11 +1145,11 @@ const EditProfilePage = () => {
                     </div>
 
                     {/* Modal Bottom Footer Bar */}
-                    <div className="w-full p-4 flex items-center justify-end shrink-0 bg-transparent">
+                    <div className="w-full px-6 pt-2 pb-16 mb-4 flex items-center justify-end shrink-0 bg-transparent">
                         <button
                             type="button"
                             onClick={saveModalData}
-                            className="w-12 h-12 rounded-full bg-[#703DE2] hover:bg-[#602ec3] text-white flex items-center justify-center shadow-lg shadow-purple-300/80 active:scale-95 transition-all border-0 cursor-pointer ml-auto shrink-0"
+                            className="w-13 h-13 rounded-full bg-[#703DE2] hover:bg-[#602ec3] text-white flex items-center justify-center shadow-lg shadow-purple-300/80 active:scale-95 transition-all border-0 cursor-pointer ml-auto shrink-0"
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="9 18 15 12 9 6" />

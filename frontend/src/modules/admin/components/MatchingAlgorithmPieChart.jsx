@@ -15,7 +15,7 @@ const DEFAULT_ALGORITHMS = [
     { name: 'Profile Boost (1.5x)', value: 10, percentage: 10, color: '#f59e0b', description: 'Active 30-minute top spotlight boost' },
     { name: 'Premium & VIP Tier', value: 10, percentage: 10, color: '#a855f7', description: 'Premium & Super User discovery priority' },
     { name: 'Verified Profile Badges', value: 8, percentage: 8, color: '#06b6d4', description: 'AWS Selfie Verified trust & ranking boost' },
-    { name: 'Relationship Goals', value: 6, percentage: 6, color: '#f43f5e', description: 'Compatible relationship intent (Long-term, Marriage, etc.)' },
+    { name: 'Relationship Goals', value: 6, percentage: 6, color: '#f43f5e', description: 'Compatible relationship intent (Long Term, Marriage, etc.)' },
     { name: 'Age Compatibility', value: 5, percentage: 5, color: '#eab308', description: 'Optimal age preference & gap range' },
     { name: 'Real-time Online', value: 5, percentage: 5, color: '#10b981', description: 'Live presence & active socket matching' },
 ];
@@ -153,9 +153,8 @@ const MatchingAlgorithmPieChart = ({ data, loading }) => {
                             key={idx}
                             onMouseEnter={() => setActiveIndex(idx)}
                             onMouseLeave={() => setActiveIndex(null)}
-                            className={`flex items-center justify-between text-xs px-1.5 py-0.5 rounded-lg transition-all duration-200 cursor-pointer ${
-                                isActive ? 'bg-zinc-100/90 scale-[1.01] shadow-2xs' : 'hover:bg-zinc-50/80'
-                            }`}
+                            className={`flex items-center justify-between text-xs px-1.5 py-0.5 rounded-lg transition-all duration-200 cursor-pointer ${isActive ? 'bg-zinc-100/90 scale-[1.01] shadow-2xs' : 'hover:bg-zinc-50/80'
+                                }`}
                         >
                             <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
                                 <span
@@ -166,9 +165,8 @@ const MatchingAlgorithmPieChart = ({ data, loading }) => {
                                     }}
                                 />
                                 <span
-                                    className={`text-[11px] truncate transition-colors ${
-                                        isActive ? 'font-bold text-zinc-900' : 'font-medium text-zinc-700'
-                                    }`}
+                                    className={`text-[11px] truncate transition-colors ${isActive ? 'font-bold text-zinc-900' : 'font-medium text-zinc-700'
+                                        }`}
                                     title={item.description || item.name}
                                 >
                                     {item.name}
@@ -182,9 +180,8 @@ const MatchingAlgorithmPieChart = ({ data, loading }) => {
                                     />
                                 </div>
                                 <span
-                                    className={`text-[11px] w-7 text-right transition-colors ${
-                                        isActive ? 'font-extrabold text-zinc-900' : 'font-bold text-zinc-800'
-                                    }`}
+                                    className={`text-[11px] w-7 text-right transition-colors ${isActive ? 'font-extrabold text-zinc-900' : 'font-bold text-zinc-800'
+                                        }`}
                                 >
                                     {pct}%
                                 </span>

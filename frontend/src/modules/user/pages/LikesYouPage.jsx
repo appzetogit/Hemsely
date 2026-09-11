@@ -153,7 +153,8 @@ const LikesYouPage = () => {
     });
 
     return (
-        <div className="h-[100dvh] flex flex-col max-w-[414px] mx-auto overflow-hidden relative" style={{ background: isPremium ? '#FCFCFC' : '#121212' }}>
+        <div className="w-full min-h-[100dvh] flex flex-col items-center justify-start overflow-hidden" style={{ background: isPremium ? '#FCFCFC' : '#121212' }}>
+            <div className="w-full max-w-[430px] h-[100dvh] flex flex-col overflow-hidden relative" style={{ background: isPremium ? '#FCFCFC' : '#121212' }}>
 
             {/* Header - Only rendered when Premium */}
             {isPremium && (
@@ -176,25 +177,8 @@ const LikesYouPage = () => {
                         Likes
                     </h1>
 
-                    {/* Filter Icon at Right */}
-                    <button
-                        type="button"
-                        aria-label="Filter likes"
-                        onClick={() => setShowFilter(true)}
-                        className="w-[40px] h-[40px] flex items-center justify-end bg-transparent border-0 cursor-pointer text-[#733FE0]"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="4" y1="21" x2="4" y2="14" />
-                            <line x1="4" y1="10" x2="4" y2="3" />
-                            <line x1="12" y1="21" x2="12" y2="12" />
-                            <line x1="12" y1="8" x2="12" y2="3" />
-                            <line x1="20" y1="21" x2="20" y2="16" />
-                            <line x1="20" y1="12" x2="20" y2="3" />
-                            <line x1="1" y1="14" x2="7" y2="14" />
-                            <line x1="9" y1="8" x2="15" y2="8" />
-                            <line x1="17" y1="16" x2="23" y2="16" />
-                        </svg>
-                    </button>
+                    {/* Right spacer to keep title centered */}
+                    <div className="w-[40px] h-[40px]" />
                 </header>
             )}
 
@@ -337,7 +321,7 @@ const LikesYouPage = () => {
             </main>
 
             <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 100 }}>
-                <div style={{ width: '100%', maxWidth: '414px', pointerEvents: 'auto' }}>
+                <div style={{ width: '100%', maxWidth: '430px', pointerEvents: 'auto' }}>
                     <BottomNavigation activeTab="likes" />
                 </div>
             </div>
@@ -352,6 +336,7 @@ const LikesYouPage = () => {
                     isPremium={isPremium}
                 />
             )}
+            </div>
         </div>
     );
 };

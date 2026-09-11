@@ -33,7 +33,7 @@ const ReviewProfilePage = () => {
             const profile = JSON.parse(localStorage.getItem('onboarding_profile:v1') || '{}');
             const genderData = JSON.parse(localStorage.getItem('onboarding_gender:v1') || '{}');
             const interestsData = JSON.parse(localStorage.getItem('onboarding_interests:v1') || '[]');
-            const goalsData = localStorage.getItem('onboarding_goals:v1') || 'Long-term Partner';
+            const goalsData = localStorage.getItem('onboarding_goals:v1') || 'Long Term Partner';
 
             const savedPhotos = JSON.parse(localStorage.getItem('onboarding_photos:v1') || '{}');
             const photoList = savedPhotos.photos || [];
@@ -61,7 +61,7 @@ const ReviewProfilePage = () => {
                 photoCount: 0,
                 interestsStr: 'Photography, Cooking, Video Games',
                 userGender: 'Male',
-                goals: 'Long-term Partner',
+                goals: 'Long Term Partner',
             };
         }
     }, []);
@@ -88,7 +88,7 @@ const ReviewProfilePage = () => {
             if (userId) {
                 const formData = new FormData();
                 formData.append('profilePicture', file);
-                await apiClient.post(`/users/${userId}/profile-picture`, formData).catch(() => {});
+                await apiClient.post(`/users/${userId}/profile-picture`, formData).catch(() => { });
             }
         } catch (err) {
             devError('Error uploading cover photo:', err);
@@ -110,12 +110,12 @@ const ReviewProfilePage = () => {
     return (
         <div className="h-[100dvh] bg-white flex flex-col justify-between py-4 px-5 font-sans max-w-[420px] mx-auto overflow-y-auto select-none scrollbar-none">
             {/* Hidden File Input for Independent Cover Photo Upload */}
-            <input 
-                type="file" 
-                ref={coverFileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleCoverFileChange} 
+            <input
+                type="file"
+                ref={coverFileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleCoverFileChange}
             />
 
             {/* Header Section */}
@@ -248,7 +248,7 @@ const ReviewProfilePage = () => {
             </div>
 
             {/* Footer Activate Button */}
-            <div className="w-full shrink-0 pt-2 flex flex-col items-center">
+            <div className="w-full shrink-0 mb-8 flex flex-col items-center">
                 <button
                     type="button"
                     onClick={handleActivateProfile}

@@ -17,7 +17,7 @@ export const PROFILES = [
         photos: [demoPhoto, demoPhoto2, demoPhoto3],
         instagram: '@anrocks10',
         about: "Looking for someone to appreciate my puns and share pizza with. If you can't handle my cheesy jokes, you're not the one for me.",
-        lookingFor: 'A long-term relationship',
+        lookingFor: 'A Long Term relationship',
         basics: { height: "5'8\"", religion: 'Hindu', drinks: 'Yes', smokes: 'No', education: 'Graduate' },
         interests: ['Photography', 'Travelling', 'Art & Crafts'],
         prompts: [
@@ -58,7 +58,7 @@ export const PROFILES = [
         photos: [demoPhoto5, demoPhoto],
         instagram: '@meera.builds',
         about: "I design buildings by day and binge Netflix by night. Let's build something beautiful together 🏗️",
-        lookingFor: 'A long-term relationship',
+        lookingFor: 'A Long Term relationship',
         basics: { height: "5'6\"", religion: 'Hindu', drinks: 'Yes', smokes: 'No', education: 'Graduate' },
         interests: ['Architecture', 'Travel', 'Yoga'],
         prompts: [
@@ -98,7 +98,7 @@ export const PROFILES = [
         photos: [demoPhoto3, demoPhoto4],
         instagram: '@ananya.styles',
         about: 'Creating outfits that make heads turn 👗 Love music festivals and brunch dates.',
-        lookingFor: 'A long-term relationship',
+        lookingFor: 'A Long Term relationship',
         basics: { height: "5'7\"", religion: 'Hindu', drinks: 'Occasionally', smokes: 'No', education: 'Graduate' },
         interests: ['Fashion', 'Music', 'Brunches'],
         prompts: [

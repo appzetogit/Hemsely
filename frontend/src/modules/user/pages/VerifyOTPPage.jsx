@@ -15,11 +15,25 @@ const VerifyOTPPage = () => {
     const [showBannedModal, setShowBannedModal] = useState(false);
     const inputRefs = useRef([]);
 
-    const savedPhone = JSON.parse(
-        localStorage.getItem('onboarding_phone:v1') ||
-        localStorage.getItem('onboarding_phone') ||
-        '{}'
-    );
+    const savedPhone = (() => {
+        try {
+            return JSON.parse(
+                localStorage.getItem('onboarding_phone:v1') ||
+                localStorage.getItem('onboarding_phone') ||
+                '{}'
+            );
+        } catch {
+            return {};
+        }
+    })();
+
+    useEffect(() => {
+        const raw = savedPhone.phone || savedPhone.fullPhone || '';
+        const cleanDigits = String(raw).replace(/\D/g, '');
+        if (cleanDigits.length < 10) {
+            navigate('/phone-input', { replace: true });
+        }
+    }, [navigate, savedPhone]);
 
     useEffect(() => {
         if (resendTimer > 0) {
@@ -30,13 +44,24 @@ const VerifyOTPPage = () => {
 
     const handleResend = async () => {
         if (resendTimer > 0) return;
+        const raw = savedPhone.phone || savedPhone.fullPhone || '';
+        const cleanDigits = String(raw).replace(/\D/g, '').slice(-10);
+        if (cleanDigits.length < 10) {
+            navigate('/phone-input', { replace: true });
+            return;
+        }
+
         setResendTimer(30);
         setError('');
-        const targetPhone = savedPhone.fullPhone || `${savedPhone.countryCode || '+91'}${savedPhone.phone || ''}`;
-        if (!targetPhone) return;
+        const countryCode = savedPhone.countryCode || '+91';
+        const targetPhone = `${countryCode}${cleanDigits}`;
 
         try {
-            await apiClient.post('auth/send-otp', { phoneNumber: targetPhone });
+            await apiClient.post('auth/send-otp', {
+                phoneNumber: targetPhone,
+                phone: cleanDigits,
+                fullPhone: targetPhone,
+            });
         } catch {
             // Suppress resend errors
         }
@@ -237,7 +262,7 @@ const VerifyOTPPage = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="w-full shrink-0 mb-2">
+            <div className="w-full shrink-0 mb-8">
                 <button
                     type="button"
                     disabled={loading || otp.join('').length < 6}

@@ -27,13 +27,30 @@ const PlanCard = ({ plan, onSavePlan }) => {
     };
 
     return (
-        <article className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col">
+        <article className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
             <div className="p-5 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-base font-bold text-zinc-900">{plan.name}</h3>
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-zinc-900">{plan.name}</h3>
+                        {plan.badge && (
+                            <span className={`px-2 py-0.5 rounded-full text-[9.5px] font-extrabold uppercase tracking-wider ${
+                                plan.badge === 'POPULAR'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : plan.badge === 'BEST VALUE'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-blue-100 text-blue-700'
+                            }`}>
+                                {plan.badge}
+                            </span>
+                        )}
+                    </div>
                     <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 text-zinc-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                         <Lock className="w-3 h-3" /> Static
                     </span>
+                </div>
+
+                <div className="text-[11px] text-zinc-400 font-mono mb-2">
+                    ID: {plan.productId || `hemsely_premium_${plan.durationDays}d`}
                 </div>
 
                 {editing ? (
@@ -64,11 +81,11 @@ const PlanCard = ({ plan, onSavePlan }) => {
 
                         <div className="pt-2 border-t border-zinc-100 flex-1 flex flex-col">
                             <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                                <span>Included Features (Fixed)</span>
+                                <span>Included Features ({plan.features?.length || 7})</span>
                                 <Lock className="w-3 h-3 text-zinc-400" />
                             </label>
                             <div className="space-y-2">
-                                {plan.features.map((feature, idx) => (
+                                {plan.features?.map((feature, idx) => (
                                     <div key={idx} className="flex items-start gap-2 text-xs font-medium text-zinc-500">
                                         <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                                         <span>{feature}</span>
@@ -78,7 +95,7 @@ const PlanCard = ({ plan, onSavePlan }) => {
                         </div>
 
                         <div className="flex items-center gap-2 pt-3 border-t border-zinc-100 mt-auto">
-                            <Button size="sm" disabled={saving} onClick={handleSave} className="flex-1">
+                            <Button size="sm" disabled={saving} onClick={handleSave} className="flex-1 bg-purple-600 hover:bg-purple-700">
                                 <Save className="w-3.5 h-3.5" /> Save Plan
                             </Button>
                             <Button size="sm" variant="outline" onClick={handleCancel}>
@@ -92,14 +109,14 @@ const PlanCard = ({ plan, onSavePlan }) => {
 
                         <div className="flex items-center gap-3 mb-4">
                             <span className="text-3xl font-extrabold text-zinc-900">₹{plan.price}</span>
-                            <span className="text-sm text-zinc-500">/ {plan.durationDays} days</span>
+                            <span className="text-sm text-zinc-500 font-medium">/ {plan.durationDays} days</span>
                             <Button size="sm" variant="outline" className="ml-auto" onClick={() => setEditing(true)}>
                                 <Pencil className="w-3.5 h-3.5" /> Edit Price
                             </Button>
                         </div>
 
                         <div className="space-y-2 pt-4 border-t border-zinc-100 flex-1">
-                            {plan.features.map((feature, idx) => (
+                            {plan.features?.map((feature, idx) => (
                                 <div key={`${idx}-${feature.slice(0, 20)}`} className="flex items-start gap-2 text-xs font-medium text-zinc-600">
                                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                                     <span>{feature}</span>

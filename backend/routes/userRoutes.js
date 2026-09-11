@@ -25,18 +25,12 @@ import { validate } from '../middleware/validate.js';
 import { mongoIdParam, updateProfileValidator, discoveryFeedQueryValidator } from '../validators/userValidators.js';
 import { selfieVerificationRateLimiter } from '../middleware/rateLimiter.js';
 
-import { getPlans, createRazorpayOrder, verifyRazorpayPayment, createBoostOrder, verifyBoostPayment, getBoostPlans } from '../controllers/subscriptionController.js';
+import { getPlans, getBoostPlans } from '../controllers/subscriptionController.js';
 
 const router = express.Router();
 
 router.get('/plans', protect, getPlans);
 router.get('/boost-plans', protect, getBoostPlans);
-router.post('/subscribe/create-order', protect, createRazorpayOrder);
-router.post('/subscribe/verify', protect, verifyRazorpayPayment);
-router.post('/create-order', protect, createRazorpayOrder);
-router.post('/verify-payment', protect, verifyRazorpayPayment);
-router.post('/boost/create-order', protect, createBoostOrder);
-router.post('/boost/verify', protect, verifyBoostPayment);
 router.post('/boost/activate', protect, activateBoost);
 router.get('/discovery', protect, discoveryFeedQueryValidator, validate, getDiscoveryFeed);
 router.get('/queue-status', protect, getQueueStatus);
@@ -55,16 +49,9 @@ router.post('/:id/block/:blockedUserId', protect, mongoIdParam('id'), mongoIdPar
 router.post('/:id/unblock/:blockedUserId', protect, mongoIdParam('id'), mongoIdParam('blockedUserId'), validate, unblockUser);
 router.post('/:id/report/:reportedUserId', protect, mongoIdParam('id'), mongoIdParam('reportedUserId'), validate, reportUser);
 
-// Subscription/boost-only routes, mounted separately at /api/subscriptions so that
-// mount doesn't also expose the full user-management API (profile CRUD, uploads,
-// block/report, account deletion) under an unrelated path.
+// Subscription routes mounted separately at /api/subscriptions
 export const subscriptionRouter = express.Router();
+subscriptionRouter.get('/plans', protect, getPlans);
 subscriptionRouter.get('/boost-plans', protect, getBoostPlans);
-subscriptionRouter.post('/subscribe/create-order', protect, createRazorpayOrder);
-subscriptionRouter.post('/subscribe/verify', protect, verifyRazorpayPayment);
-subscriptionRouter.post('/create-order', protect, createRazorpayOrder);
-subscriptionRouter.post('/verify-payment', protect, verifyRazorpayPayment);
-subscriptionRouter.post('/boost/create-order', protect, createBoostOrder);
-subscriptionRouter.post('/boost/verify', protect, verifyBoostPayment);
 
 export default router;

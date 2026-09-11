@@ -31,9 +31,10 @@ const DiscoveryProfileCard = ({
                     <h2 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: '26px', lineHeight: '32px', letterSpacing: '-0.01em', color: '#000' }}>
                         {profile.name}, {profile.age}
                     </h2>
-                    {(profile.isPremium || profile.subscriptionName === 'Premium') && (
-                        <VerifiedBadge size={22} />
-                    )}
+                    {Boolean(profile.isPremium || profile.subscriptionName === 'Premium' || profile.isSuperPremium || profile.isSuperUser || profile.isSuperSubscriber) &&
+                        (profile.selfieStatus === 'approved' || (Boolean(profile.isVerified || profile.verified) && !profile.selfieStatus)) && (
+                            <VerifiedBadge size={22} />
+                        )}
                     {profile.isNew && (
                         <span className="shrink-0 bg-[#FF7C67] text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full ml-1">
                             New

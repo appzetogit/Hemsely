@@ -111,7 +111,7 @@ const InterestsPage = () => {
 
     return (
         <div className="h-[100dvh] bg-white flex flex-col justify-between pt-3 pb-4 px-6 font-sans max-w-[420px] mx-auto overflow-hidden relative select-none">
-            {/* Top Bar with Back Button and Skip Link */}
+            {/* Top Bar with Back Button */}
             <div className="flex items-center justify-between w-full pt-1 mb-2">
                 <button
                     type="button"
@@ -129,14 +129,6 @@ const InterestsPage = () => {
                         <line x1="19" y1="12" x2="5" y2="12" />
                         <polyline points="12 19 5 12 12 5" />
                     </svg>
-                </button>
-
-                <button
-                    type="button"
-                    onClick={handleSkip}
-                    className="text-[15px] font-bold text-gray-900 hover:text-[#6E36E4] transition-colors cursor-pointer bg-transparent border-0"
-                >
-                    Skip
                 </button>
             </div>
 
@@ -198,7 +190,7 @@ const InterestsPage = () => {
             </div>
 
             {/* Footer */}
-            <div className="w-full shrink-0 pt-2">
+            <div className="w-full shrink-0 mb-8">
                 <button
                     type="button"
                     onClick={handleContinue}

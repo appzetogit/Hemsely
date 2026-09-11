@@ -157,7 +157,6 @@ const SettingsPage = () => {
     const navigate = useNavigate();
     const { logout } = useAuth();
     const [isPaused, setIsPaused] = useState(false);
-    const [showActiveStatus, setShowActiveStatus] = useState(true);
     const [phoneNumber, setPhoneNumber] = useState('');
     const [email, setEmail] = useState('Not added');
     const [isDeleting, setIsDeleting] = useState(false);
@@ -276,7 +275,6 @@ const SettingsPage = () => {
                     } else if (typeof fetchedUser.isActive === 'boolean') {
                         setIsPaused(!fetchedUser.isActive);
                     }
-                    if (typeof fetchedUser.showActiveStatus === 'boolean') setShowActiveStatus(fetchedUser.showActiveStatus);
                     const verified = Boolean(fetchedUser.isVerified || fetchedUser.selfieStatus === 'approved');
                     setIsVerified(verified);
                     setSelfieStatus(fetchedUser.selfieStatus || (verified ? 'approved' : 'pending'));
@@ -356,17 +354,6 @@ const SettingsPage = () => {
         }
     };
 
-    const handleToggleActiveStatus = async () => {
-        const next = !showActiveStatus;
-        setShowActiveStatus(next);
-        try {
-            await updateUserProfile('me', { showActiveStatus: next });
-        } catch (err) {
-            devError('Failed to update active status visibility:', err);
-            setShowActiveStatus(!next);
-        }
-    };
-
     const handleLogout = async () => {
         if (window.confirm("Are you sure you want to log out?")) {
             try {
@@ -443,8 +430,14 @@ const SettingsPage = () => {
                 </h1>
                 <button
                     type="button"
-                    onClick={() => navigate(-1)}
-                    className="w-[45px] text-[16px] font-semibold text-[#733FE0] bg-transparent border-0 cursor-pointer text-right"
+                    onClick={() => {
+                        if (window.history.length > 1) {
+                            navigate(-1);
+                        } else {
+                            navigate('/profile');
+                        }
+                    }}
+                    className="w-[45px] text-[16px] font-semibold text-black bg-transparent border-0 cursor-pointer text-right"
                 >
                     Done
                 </button>
@@ -454,10 +447,6 @@ const SettingsPage = () => {
                 <SectionHeader title="Profile" />
                 <SettingRow label="Pause">
                     <Toggle active={isPaused} label="Pause profile" onToggle={handleTogglePause} />
-                </SettingRow>
-
-                <SettingRow label="Show Last Active Status">
-                    <Toggle active={showActiveStatus} label="Show last active status" onToggle={handleToggleActiveStatus} />
                 </SettingRow>
 
                 <SectionHeader title="Phone & Email" />
@@ -474,7 +463,7 @@ const SettingsPage = () => {
                     valueColor={isVerified || selfieStatus === 'approved' ? '#6E36E4' : '#D97706'}
                     showCheck={isVerified || selfieStatus === 'approved'}
                     showArrow={!isVerified && selfieStatus !== 'approved'}
-                    onClick={() => setShowSelfieModal(true)}
+                    onClick={isVerified || selfieStatus === 'approved' ? undefined : () => setShowSelfieModal(true)}
                 />
                 <SettingRow
                     label="Blocked Accounts"

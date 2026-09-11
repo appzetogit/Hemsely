@@ -11,121 +11,123 @@ import premiumBg from '../../../assets/premiumbackground.png';
 import BottomNavigation from '../components/BottomNavigation';
 import VerifiedBadge from '../components/VerifiedBadge';
 import BoostAnimationOverlay from '../components/BoostAnimationOverlay';
-import { loadRazorpayScript } from '../../../shared/utils/razorpayLoader';
+import { launchGooglePlayPurchase, queryGooglePlayProductDetails, isGooglePlayBridgeAvailable } from '../../../shared/utils/googlePlayBillingBridge';
+import GooglePlayBillingModal from '../components/GooglePlayBillingModal';
 import { devError } from '../../../shared/utils/logger';
+import { calculateProfileStrength } from '../../../shared/utils/profileStrength';
 
-/* ─── Premium Purchase Popup ─── */
+/* ─── Premium Purchase Popup (Google Play Billing for In-App Boosts) ─── */
 const PremiumPopup = ({ type, onClose, onSuccess }) => {
     const isComments = type === 'comments';
     const [selectedPlan, setSelectedPlan] = useState('right');
     const [loading, setLoading] = useState(false);
+    const [showPlayModal, setShowPlayModal] = useState(false);
     const [plans, setPlans] = useState(() => (
         isComments
             ? [
-                { id: 'left', count: 1, label: 'Comment', price: 199 },
-                { id: 'right', count: 5, label: 'Comments', price: 399 },
+                { id: 'left', count: 1, label: 'Comment', price: 199, priceDisplay: '₹199', productId: 'hemsely_boost_1' },
+                { id: 'right', count: 5, label: 'Comments', price: 399, priceDisplay: '₹399', productId: 'hemsely_boost_5' },
             ]
             : [
-                { id: 'left', count: 1, label: 'Boost', price: 199 },
-                { id: 'right', count: 5, label: 'Boosts', price: 399 },
+                { id: 'left', count: 1, label: 'Boost', price: 199, priceDisplay: '₹199', productId: 'hemsely_boost_1' },
+                { id: 'right', count: 5, label: 'Boosts', price: 399, priceDisplay: '₹399', productId: 'hemsely_boost_5' },
             ]
     ));
 
     useEffect(() => {
         if (!isComments) {
+            // Fetch backend plan config
             apiClient.get('/subscriptions/boost-plans')
                 .then(({ data, ok }) => {
                     if (ok && data?.success && Array.isArray(data.plans) && data.plans.length > 0) {
-                        setPlans(data.plans);
+                        setPlans(data.plans.map(p => ({
+                            ...p,
+                            priceDisplay: `₹${p.price}`,
+                            productId: p.productId || (p.count === 5 ? 'hemsely_boost_5' : 'hemsely_boost_1'),
+                        })));
                     }
                 })
                 .catch(() => {});
+
+            // Query dynamic Google Play Store localized prices
+            queryGooglePlayProductDetails(['hemsely_boost_1', 'hemsely_boost_5']).then((details) => {
+                if (Array.isArray(details) && details.length > 0) {
+                    setPlans(prev => prev.map(p => {
+                        const playItem = details.find(d => d.productId === p.productId || (p.count === 5 && d.productId.includes('5')) || (p.count === 1 && d.productId.includes('1')));
+                        if (playItem) {
+                            return { ...p, priceDisplay: playItem.formattedPrice || playItem.price || p.priceDisplay };
+                        }
+                        return p;
+                    }));
+                }
+            }).catch(() => {});
         }
     }, [isComments]);
 
     const selectedPlanObj = plans.find(p => p.id === selectedPlan) || plans[1] || plans[0];
 
-    const handleBuyNow = async () => {
+    const handleBuyNow = () => {
+        if (isGooglePlayBridgeAvailable()) {
+            executeNativeBoostPurchase();
+        } else {
+            setShowPlayModal(true);
+        }
+    };
+
+    const executeNativeBoostPurchase = async () => {
         setLoading(true);
+        const targetProductId = selectedPlanObj.productId || (selectedPlanObj.count === 5 ? 'hemsely_boost_5' : 'hemsely_boost_1');
+
         try {
-            const { data, ok } = await apiClient.post('/subscriptions/boost/create-order', {
-                optionId: selectedPlan,
-                count: selectedPlanObj.count,
-                price: selectedPlanObj.price,
+            const purchaseResult = await launchGooglePlayPurchase({
+                productId: targetProductId,
+                isSubscription: false,
             });
 
-            if (!ok || !data || !data.success) {
-                alert(data?.message || 'Could not initiate Razorpay payment');
-                setLoading(false);
-                return;
-            }
-
-            const isLoaded = await loadRazorpayScript();
-            if (!isLoaded) {
-                alert('Razorpay SDK failed to load. Please check your internet connection.');
-                setLoading(false);
-                return;
-            }
-
-            const options = {
-                key: data.key,
-                amount: data.amount,
-                currency: data.currency || 'INR',
-                name: 'Hemsely',
-                description: `${selectedPlanObj.count} Profile ${selectedPlanObj.count === 1 ? 'Boost' : 'Boosts'}`,
-                order_id: data.orderId,
-                prefill: {
-                    name: data.userDetails?.name || '',
-                    email: data.userDetails?.email || '',
-                    contact: data.userDetails?.phone || '',
-                },
-                handler: async function (response) {
-                    try {
-                        const verifyRes = await apiClient.post('/subscriptions/boost/verify', {
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature,
-                            transactionId: data.transactionId,
-                            count: selectedPlanObj.count,
-                        });
-
-                        if (verifyRes.ok && verifyRes.data?.success) {
-                            const updatedUser = verifyRes.data.user;
-                            if (updatedUser) {
-                                localStorage.setItem('user', JSON.stringify(updatedUser));
-                                sessionStorage.setItem('user', JSON.stringify(updatedUser));
-                                if (onSuccess) onSuccess(updatedUser);
-                            }
-                            alert(`🎉 ${selectedPlanObj.count} Boost(s) added successfully!`);
-                            onClose();
-                        } else {
-                            alert(verifyRes.data?.message || 'Payment verification failed');
-                        }
-                    } catch (err) {
-                        alert('Error verifying payment with server');
-                    } finally {
-                        setLoading(false);
-                    }
-                },
-                modal: {
-                    ondismiss: function () {
-                        setLoading(false);
-                    },
-                },
-                theme: {
-                    color: '#703DE2',
-                },
-            };
-
-            const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', function (response) {
-                alert(`Payment failed: ${response.error?.description || 'Transaction declined'}`);
-                setLoading(false);
-            });
-            rzp.open();
+            await verifyBoostPurchase(purchaseResult);
         } catch (err) {
-            alert('Payment failed to initiate');
+            console.warn('⚠️ Google Play Boost purchase error:', err.message);
+            if (!err.message?.toLowerCase().includes('cancel')) {
+                alert(err.message || 'Payment failed to initiate');
+            }
+        } finally {
             setLoading(false);
+        }
+    };
+
+    const handleModalConfirmPurchase = async () => {
+        const targetProductId = selectedPlanObj.productId || (selectedPlanObj.count === 5 ? 'hemsely_boost_5' : 'hemsely_boost_1');
+        const mockToken = `gp_token_inapp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const orderId = `GPA.${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+        await verifyBoostPurchase({
+            purchaseToken: mockToken,
+            productId: targetProductId,
+            orderId,
+            packageName: 'com.hemsely.app',
+        });
+        setShowPlayModal(false);
+    };
+
+    const verifyBoostPurchase = async ({ purchaseToken, productId, orderId, packageName }) => {
+        const verifyRes = await apiClient.post('/google-play/verify-purchase', {
+            purchaseToken,
+            productId,
+            orderId,
+            packageName: packageName || 'com.hemsely.app',
+        });
+
+        if (verifyRes.ok && verifyRes.data?.success) {
+            const updatedUser = verifyRes.data.user;
+            if (updatedUser) {
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                sessionStorage.setItem('user', JSON.stringify(updatedUser));
+                if (onSuccess) onSuccess(updatedUser);
+            }
+            alert(`🎉 ${selectedPlanObj.count} Boost(s) added successfully!`);
+            onClose();
+        } else {
+            throw new Error(verifyRes.data?.message || 'Google Play purchase verification failed');
         }
     };
 
@@ -199,7 +201,7 @@ const PremiumPopup = ({ type, onClose, onSuccess }) => {
                                         {plan.label}
                                     </span>
                                     <span className={`text-[12.5px] font-bold mt-1.5 ${isSelected ? 'text-white' : 'text-black'}`}>
-                                        ₹ {plan.price}.00
+                                        {plan.priceDisplay || `₹${plan.price}`}
                                     </span>
                                 </button>
                             );
@@ -217,6 +219,20 @@ const PremiumPopup = ({ type, onClose, onSuccess }) => {
                     </button>
                 </div>
             </div>
+
+            {/* Google Play In-App Purchase Modal */}
+            <GooglePlayBillingModal
+                isOpen={showPlayModal}
+                product={{
+                    name: `${selectedPlanObj.count} Profile Boost${selectedPlanObj.count > 1 ? 's' : ''}`,
+                    priceDisplay: selectedPlanObj.priceDisplay || `₹${selectedPlanObj.price}.00`,
+                    durationText: 'Consumable In-App Product',
+                    productId: selectedPlanObj.productId || (selectedPlanObj.count === 5 ? 'hemsely_boost_5' : 'hemsely_boost_1'),
+                    isSubscription: false,
+                }}
+                onClose={() => setShowPlayModal(false)}
+                onConfirmPurchase={handleModalConfirmPurchase}
+            />
         </div>
     );
 };
@@ -292,12 +308,12 @@ const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerifi
             </span>
         </div>
 
-        {/* User Name & Blue Verified Badge (Exclusive for Premium users) */}
+        {/* User Name & Blue Verified Badge (Exclusive for users with BOTH Premium access AND Selfie Verification) */}
         <div className="mt-3 flex items-center gap-1.5 justify-center">
             <h2 className="text-[18px] font-extrabold text-gray-900 tracking-tight leading-none">
                 {name}
             </h2>
-            {isPremium && <VerifiedBadge size={20} />}
+            {isPremium && isVerified && <VerifiedBadge size={20} />}
         </div>
 
         {/* Premium Banner */}
@@ -323,7 +339,9 @@ const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerifi
 );
 
 const QuickActionCards = ({ isPremium, boostCount, onOpenPopup, onUseBoost, boosting }) => {
-    const totalBoosts = isPremium ? (boostCount !== undefined && boostCount !== null ? boostCount : 1) : (boostCount || 0);
+    const totalBoosts = isPremium
+        ? (typeof boostCount === 'number' && boostCount > 0 ? boostCount : 1)
+        : (typeof boostCount === 'number' ? boostCount : 0);
     const hasBoosts = totalBoosts > 0;
 
     return (
@@ -345,13 +363,13 @@ const QuickActionCards = ({ isPremium, boostCount, onOpenPopup, onUseBoost, boos
                                 ? `${totalBoosts} ${totalBoosts === 1 ? 'Boost you have' : 'Boosts you have'}`
                                 : hasBoosts
                                     ? `${totalBoosts} ${totalBoosts === 1 ? 'Boost' : 'Boosts'} available`
-                                    : 'Get now'}
+                                    : '0 Boosts available • Tap to Get'}
                         </p>
                     </div>
                 </div>
 
                 <div className="shrink-0">
-                    <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-[#703DE2] text-white text-[11px] font-extrabold shadow-2xs active:scale-95 transition-all">
+                    <span className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-full bg-[#703DE2] hover:bg-[#5f2ed3] text-white text-[11.5px] font-extrabold shadow-2xs active:scale-95 transition-all">
                         {boosting ? 'Boosting...' : hasBoosts ? 'Use Boost' : 'Get Now'}
                     </span>
                 </div>
@@ -360,31 +378,91 @@ const QuickActionCards = ({ isPremium, boostCount, onOpenPopup, onUseBoost, boos
     );
 };
 
-const PremiumOfferCard = ({ onUpgradeClick }) => (
+const PremiumOfferCard = ({ isPremium, onUpgradeClick }) => (
     <section className="w-full shrink-0">
-        <h3 className="text-[15px] font-extrabold text-gray-900 mb-2 px-0.5">
-            Our Premium offer
-        </h3>
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
+            <h3 className="text-[15px] font-extrabold text-gray-900 tracking-tight">
+                Our Premium offer
+            </h3>
+            <button
+                type="button"
+                onClick={onUpgradeClick}
+                className="text-[12px] font-bold text-[#733FE0] hover:text-[#5e2cd6] transition-colors cursor-pointer bg-transparent border-0"
+            >
+                {isPremium ? 'View Perks' : 'View all plans →'}
+            </button>
+        </div>
 
         <div
-            className="relative overflow-hidden rounded-[24px] bg-cover bg-center p-5 text-white shadow-md"
-            style={{ backgroundImage: `url(${premiumBg})` }}
+            className="relative overflow-hidden rounded-[24px] p-4.5 text-white shadow-xl shadow-purple-900/10 transition-all border border-purple-400/20"
+            style={{
+                background: 'linear-gradient(135deg, #5B21B6 0%, #7C3AED 45%, #9333EA 75%, #C026D3 100%)',
+            }}
         >
-            <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="px-3.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-white font-extrabold text-[11px] uppercase tracking-wider mb-3">
-                    PREMIUM
+            {/* Background Decorative Ambient Circles */}
+            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-pink-500/20 blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-indigo-400/20 blur-xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col">
+                {/* Header row with Badge & Icon */}
+                <div className="flex items-center justify-between">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 shadow-xs">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="#FBBF24" className="shrink-0">
+                            <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6.4-4.8-6.4 4.8 2.4-7.2-6-4.8h7.6z" />
+                        </svg>
+                        <span className="text-white font-extrabold text-[10.5px] uppercase tracking-wider">
+                            {isPremium ? 'Active Member' : 'VIP Membership'}
+                        </span>
+                    </div>
+
+                    <span className="text-[11px] font-semibold text-white/90 bg-black/20 px-2.5 py-0.5 rounded-full backdrop-blur-xs">
+                        {isPremium ? 'VIP Active' : 'From ₹199'}
+                    </span>
                 </div>
 
-                <p className="text-[13px] font-medium text-white/90 mb-4 leading-snug tracking-tight">
-                    see the list of what included
-                </p>
+                {/* Main Heading & Subtitle */}
+                <div className="mt-3 text-left">
+                    <h4 className="text-[16.5px] font-extrabold text-white tracking-tight leading-snug">
+                        {isPremium ? 'Enjoying Premium Perks' : 'Supercharge Your Dating Life'}
+                    </h4>
+                    <p className="text-[12px] font-medium text-purple-100/90 mt-0.5 leading-relaxed">
+                        {isPremium
+                            ? 'You have full access to all exclusive VIP features and boost perks.'
+                            : 'Get 5x more matches, see who likes you & unlock unlimited connections.'}
+                    </p>
+                </div>
 
+                {/* Feature Tags / Highlights */}
+                <div className="grid grid-cols-2 gap-1.5 my-3.5">
+                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-xs px-2.5 py-1.5 rounded-[12px] border border-white/10">
+                        <span className="text-[13px]">💖</span>
+                        <span className="text-[11px] font-semibold text-white truncate">Unlimited Likes</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-xs px-2.5 py-1.5 rounded-[12px] border border-white/10">
+                        <span className="text-[13px]">👀</span>
+                        <span className="text-[11px] font-semibold text-white truncate">See Who Likes You</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-xs px-2.5 py-1.5 rounded-[12px] border border-white/10">
+                        <span className="text-[13px]">⚡</span>
+                        <span className="text-[11px] font-semibold text-white truncate">1 Free Boost</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-xs px-2.5 py-1.5 rounded-[12px] border border-white/10">
+                        <span className="text-[13px]">🛡️</span>
+                        <span className="text-[11px] font-semibold text-white truncate">Verified Blue Badge</span>
+                    </div>
+                </div>
+
+                {/* Upgrade Button */}
                 <button
                     type="button"
                     onClick={onUpgradeClick}
-                    className="w-full h-[46px] rounded-full bg-white text-[#733FE0] font-extrabold text-[14.5px] shadow-xs hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer border-0"
+                    className="w-full h-[44px] rounded-full bg-white text-[#703DE2] hover:bg-purple-50 active:scale-[0.98] transition-all font-extrabold text-[13.5px] shadow-md shadow-purple-950/20 cursor-pointer border-0 flex items-center justify-center gap-1.5 tracking-wide"
                 >
-                    Upgrade
+                    <span>{isPremium ? 'Manage Membership' : 'Upgrade to Premium'}</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
+                    </svg>
                 </button>
             </div>
         </div>
@@ -486,24 +564,46 @@ const ProfilePreviewPage = () => {
             }
         }
 
-        // Dynamic Completion Percentage based on completed profile fields
-        let completedScore = 0;
-        if (name && name !== 'User') completedScore += 20;
-        if (age) completedScore += 20;
-        if (userProfile.gender || localStorage.getItem('onboarding_gender:v1')) completedScore += 15;
-        if (photo) completedScore += 25;
-        if (userProfile.interests?.length > 0 || localStorage.getItem('onboarding_interests:v1')) completedScore += 10;
-        if (userProfile.relationshipGoal || localStorage.getItem('onboarding_goals:v1')) completedScore += 10;
+        // Dynamic Completion Percentage based on full profile strength formula
+        const interests = (userProfile.interests && userProfile.interests.length > 0)
+            ? userProfile.interests
+            : (() => {
+                try {
+                    return JSON.parse(localStorage.getItem('onboarding_interests:v1') || '[]');
+                } catch {
+                    return [];
+                }
+            })();
 
-        const completionPercentage = Math.min(100, Math.max(10, completedScore));
+        const completionPercentage = calculateProfileStrength({
+            profilePicture: photo,
+            galleryImages: userProfile.galleryImages || [],
+            interests,
+            prompts: userProfile.prompts || [],
+            bio: userProfile.bio || '',
+            education: userProfile.education || '',
+            religion: userProfile.religion || '',
+            profession: userProfile.profession || '',
+            company: userProfile.company || '',
+        });
+
+        const isSelfieVerified = userProfile.selfieStatus === 'approved' || (Boolean(userProfile.isVerified) && !userProfile.selfieStatus);
+
+        const isUserPremium = Boolean(
+            userProfile.isPremium ||
+            userProfile.subscriptionName === 'Premium' ||
+            userProfile.isSuperPremium ||
+            userProfile.isSuperUser ||
+            userProfile.isSuperSubscriber
+        );
 
         return {
             name,
             age,
             photo,
             completionPercentage,
-            isVerified: !!userProfile.isVerified,
-            isPremium: !!userProfile.isPremium || userProfile.subscriptionName === 'Premium',
+            isVerified: isSelfieVerified,
+            isPremium: isUserPremium,
         };
     }, [userProfile]);
 
@@ -532,7 +632,10 @@ const ProfilePreviewPage = () => {
                     onUseBoost={handleUseBoost}
                     boosting={boosting}
                 />
-                <PremiumOfferCard onUpgradeClick={() => navigate('/premium')} />
+                <PremiumOfferCard
+                    isPremium={profileState.isPremium}
+                    onUpgradeClick={() => navigate('/premium')}
+                />
             </main>
 
             <BottomNavigation activeTab="profile" />

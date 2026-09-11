@@ -75,7 +75,7 @@ const MatchSuccessPage = ({
             </div>
 
             {/* Content & Action Buttons */}
-            <div className="w-full flex flex-col items-center shrink-0 mb-4 px-2">
+            <div className="w-full flex flex-col items-center shrink-0 mb-8 px-2">
                 {/* Titles */}
                 <h2 className="text-[21px] font-extrabold text-[#6E36E4] text-center mb-1.5 tracking-tight whitespace-nowrap">
                     It’s a match, {storedName.split(' ')[0]}!

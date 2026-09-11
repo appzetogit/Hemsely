@@ -32,7 +32,7 @@ export const getModerationUsers = asyncHandler(async (req, res) => {
   const [users, totalUsers] = await Promise.all([
     User.find(query)
       .select(
-        'firstName lastName email phoneNumber profilePicture galleryImages isPremium premiumExpiry isVerified isActive isBanned banReason bannedAt createdAt age gender bio interests relationshipGoal education profession smokingStatus drinkingStatus location.address location.city location.state isSuperPremium wasPremiumBeforeSuper isSuperUser isSuperSubscriber selfiePhoto selfieStatus accessStatus queuedAt boostCount'
+        'firstName lastName email phoneNumber profilePicture galleryImages isPremium premiumExpiry isVerified isActive isBanned banReason bannedAt createdAt age gender bio interests relationshipGoal education profession company smokingStatus drinkingStatus location.address location.city location.state isSuperPremium wasPremiumBeforeSuper isSuperUser isSuperSubscriber selfiePhoto selfieStatus accessStatus queuedAt boostCount'
       )
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -149,7 +149,7 @@ export const unbanUser = asyncHandler(async (req, res) => {
 // @route PUT /api/admin/users/:id
 // @access Private/Admin
 export const updateUserByAdmin = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, phoneNumber, gender, age, profession, isPremium, isBanned, bio, city, state, boostCount } = req.body;
+  const { firstName, lastName, email, phoneNumber, gender, age, profession, company, isPremium, isBanned, bio, city, state, boostCount } = req.body;
 
   const user = await User.findById(req.params.id);
 
@@ -176,6 +176,7 @@ export const updateUserByAdmin = asyncHandler(async (req, res) => {
     user.age = numericAge;
   }
   if (profession !== undefined) user.profession = profession.trim();
+  if (company !== undefined) user.company = company.trim();
   if (bio !== undefined) user.bio = stripAllHtml(bio.trim());
 
   if (city !== undefined || state !== undefined) {
@@ -299,41 +300,60 @@ export const getSelfieVerifications = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc Approve or reject a user's selfie verification submission
+// @desc Approve, reject, or revoke a user's selfie verification submission
 // @route PATCH /api/admin/selfie-verifications/:id
 // @access Private/Admin
 export const reviewSelfieVerification = asyncHandler(async (req, res) => {
-  const { approve, rejectionReason } = req.body;
+  const { approve, rejectionReason, resetToPending } = req.body;
 
   const user = await User.findById(req.params.id);
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
-  if (user.selfieStatus !== 'pending') {
-    return res.status(400).json({ success: false, message: 'This selfie has already been reviewed' });
+  if (resetToPending) {
+    user.selfieStatus = 'pending';
+    user.isVerified = false;
+    user.selfieRejectionReason = '';
+    user.selfieReviewedBy = req.admin.id;
+    user.selfieReviewedAt = new Date();
+    await user.save({ validateModifiedOnly: true });
+
+    await logAdminAction({
+      adminId: req.admin.id,
+      action: 'reset_selfie_pending',
+      targetType: 'User',
+      targetId: user._id,
+      ip: req.ip,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Selfie verification reset to pending',
+      user,
+    });
   }
 
-  user.selfieStatus = approve ? 'approved' : 'rejected';
+  const isApproval = Boolean(approve);
+  user.selfieStatus = isApproval ? 'approved' : 'rejected';
   user.selfieReviewedBy = req.admin.id;
   user.selfieReviewedAt = new Date();
-  user.selfieRejectionReason = approve ? '' : (rejectionReason || 'Did not pass manual review');
-  if (approve) {
-    user.isVerified = true;
-  }
-  await user.save();
+  user.selfieRejectionReason = isApproval ? '' : (rejectionReason || 'Verification cancelled/rejected by admin');
+  user.isVerified = isApproval;
+  await user.save({ validateModifiedOnly: true });
 
   await logAdminAction({
     adminId: req.admin.id,
-    action: approve ? 'approve_selfie' : 'reject_selfie',
+    action: isApproval ? 'approve_selfie' : 'reject_selfie',
     targetType: 'User',
     targetId: user._id,
+    details: { previousStatus: user.selfieStatus, rejectionReason: user.selfieRejectionReason },
     ip: req.ip,
   });
 
   res.status(200).json({
     success: true,
-    message: approve ? 'Selfie approved — user is now verified' : 'Selfie rejected',
+    message: isApproval ? 'Selfie approved — user is now verified' : 'Selfie verification cancelled / rejected',
     user,
   });
 });

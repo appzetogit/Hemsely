@@ -66,11 +66,19 @@ export const activateBoost = asyncHandler(async (req, res, next) => {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
-  if (!user.boostCount || user.boostCount < 1) {
-    return res.status(400).json({ success: false, message: 'No boost credits available' });
+  const isPremiumUser = Boolean(user.isPremium || user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber);
+  const availableBoosts = Number(user.boostCount) || 0;
+
+  if (availableBoosts < 1 && !isPremiumUser) {
+    return res.status(400).json({ success: false, message: 'No boost credits available. Please purchase a boost or upgrade to Premium.' });
   }
 
-  user.boostCount -= 1;
+  if (availableBoosts > 0) {
+    user.boostCount = availableBoosts - 1;
+  } else if (isPremiumUser) {
+    user.boostCount = 0;
+  }
+
   user.boostUntil = new Date(Date.now() + 30 * 60 * 1000);
   user.isBoosted = true;
   await user.save();
@@ -157,6 +165,7 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
     'religion',
     'education',
     'profession',
+    'company',
     'smokingStatus',
     'drinkingStatus',
     'languages',
@@ -274,7 +283,7 @@ export const submitSelfie = asyncHandler(async (req, res, next) => {
     {
       selfiePhoto: req.file.path,
       selfieStatus,
-      isVerified: isVerified || Boolean(req.user.isVerified),
+      isVerified: isVerified,
       selfieReviewedBy: isVerified ? req.user._id : null,
       selfieReviewedAt: isVerified ? new Date() : null,
       selfieRejectionReason: '',
@@ -308,20 +317,29 @@ export const verifySelfieAWS = asyncHandler(async (req, res, next) => {
   let selfiePhotoPath = user.selfiePhoto || null;
 
   if (req.file) {
-    // Prefer the compressed on-disk copy (req.file.path) over the raw upload buffer:
-    // uploadSelfieMiddleware compresses to max 800x800/q75 before saving, but leaves
-    // req.file.buffer as the original, uncompressed bytes — a modern phone-camera photo
-    // easily exceeds AWS Rekognition's 5MB image-bytes limit and fails the API call.
-    selfieInput = req.file.path || req.file.buffer;
-    selfiePhotoPath = req.file.path || req.file.filename;
-  } else if (req.body?.selfieData) {
-    selfieInput = req.body.selfieData;
+    selfieInput = req.file.buffer || req.file.path;
+    selfiePhotoPath = req.file.path || req.file.secure_url || req.file.url || req.file.filename;
+  } else if (req.body?.selfieData || req.body?.selfie || req.body?.image) {
+    const rawSelfie = req.body.selfieData || req.body.selfie || req.body.image;
+    selfieInput = rawSelfie;
+    // If base64 data URL, convert and store locally
+    if (typeof rawSelfie === 'string' && rawSelfie.startsWith('data:image')) {
+      try {
+        const base64Data = rawSelfie.split(',')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        const uploadRes = await uploadToLocal(buffer, { folder: 'hemsely/selfies' });
+        selfiePhotoPath = uploadRes.path || uploadRes.url;
+        selfieInput = buffer;
+      } catch (saveErr) {
+        console.warn('[Selfie Save Notice]:', saveErr.message);
+      }
+    }
   }
 
   if (!selfieInput) {
     return res.status(400).json({
       success: false,
-      message: 'No selfie photo provided for AWS Rekognition verification',
+      message: 'No selfie photo provided for verification',
     });
   }
 
@@ -569,8 +587,13 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
 
   // Filter candidates who are interested in current user's gender (or haven't set restrictive preference)
   if (currentUser.gender) {
+    const userGenderLower = currentUser.gender.toLowerCase();
+    const userGenderCapital = userGenderLower.charAt(0).toUpperCase() + userGenderLower.slice(1);
     query.$or = [
-      { interestedIn: currentUser.gender },
+      { interestedIn: userGenderLower },
+      { interestedIn: userGenderCapital },
+      { interestedIn: 'both' },
+      { interestedIn: 'Both' },
       { interestedIn: { $size: 0 } },
       { interestedIn: { $exists: false } },
       { interestedIn: null },
@@ -578,14 +601,19 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
   }
 
   // If client specified explicit gender preference in query, use it; otherwise fallback to profile setting
-  const targetInterest = (req.query.interestedIn && req.query.interestedIn !== 'both')
+  const targetInterest = (req.query.interestedIn && req.query.interestedIn.toLowerCase() !== 'both')
     ? req.query.interestedIn.toLowerCase()
     : null;
 
   if (targetInterest) {
-    query.gender = targetInterest;
-  } else if (Array.isArray(currentUser.interestedIn) && currentUser.interestedIn.length > 0 && !currentUser.interestedIn.includes('both')) {
-    query.gender = { $in: currentUser.interestedIn };
+    const targetCapital = targetInterest.charAt(0).toUpperCase() + targetInterest.slice(1);
+    query.gender = { $in: [targetInterest, targetCapital] };
+  } else if (Array.isArray(currentUser.interestedIn) && currentUser.interestedIn.length > 0 && !currentUser.interestedIn.some(g => String(g).toLowerCase() === 'both')) {
+    const desired = currentUser.interestedIn.flatMap(g => {
+      const lower = String(g).toLowerCase();
+      return [lower, lower.charAt(0).toUpperCase() + lower.slice(1)];
+    });
+    query.gender = { $in: desired };
   }
 
   // Age Filter: apply client requested age range or fallback to maxAgeGapYears
@@ -618,17 +646,18 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
 
   if (activeAgeFilter) {
     if (query.$or) {
-      query.$and = [{ $or: query.$or }, activeAgeFilter];
+      const genderOr = query.$or;
       delete query.$or;
+      query.$and = [{ $or: genderOr }, activeAgeFilter];
     } else if (query.$and) {
       query.$and.push(activeAgeFilter);
     } else {
-      query.$or = activeAgeFilter.$or;
+      query.$and = [activeAgeFilter];
     }
   }
 
   let [myLng, myLat] = currentUser.location?.coordinates?.coordinates || [0, 0];
-  if (req.query.lng && req.query.lat) {
+  if (req.query.lng !== undefined && req.query.lat !== undefined) {
     const qLng = parseFloat(req.query.lng);
     const qLat = parseFloat(req.query.lat);
     if (!isNaN(qLng) && !isNaN(qLat) && (qLng !== 0 || qLat !== 0)) {
@@ -647,22 +676,28 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
   }
 
   // Premium Advanced Matching Criteria Filters (Only enforced if current user is Premium / Super Premium)
-  const isPremiumUser = Boolean(currentUser.isSuperPremium || currentUser.isPremium || currentUser.isSuperUser || currentUser.isSuperSubscriber);
+  const isPremiumUser = Boolean(
+    currentUser.isSuperPremium ||
+    currentUser.isSuperUser ||
+    currentUser.isSuperSubscriber ||
+    currentUser.isPremium ||
+    (currentUser.premiumExpiry && new Date(currentUser.premiumExpiry) > new Date())
+  );
   if (isPremiumUser) {
-    if (req.query.relationshipGoal && req.query.relationshipGoal.toLowerCase() !== 'any') {
+    if (req.query.relationshipGoal && req.query.relationshipGoal.trim() && req.query.relationshipGoal.toLowerCase() !== 'any') {
       query.relationshipGoal = { $regex: new RegExp(escapeRegex(req.query.relationshipGoal.trim()), 'i') };
     }
-    if (req.query.religion && req.query.religion.toLowerCase() !== 'any') {
-      query.religion = { $regex: new RegExp(escapeRegex(req.query.religion.trim()), 'i') };
+    if (req.query.religion && req.query.religion.trim() && req.query.religion.toLowerCase() !== 'any') {
+      query.religion = { $regex: new RegExp(`^${escapeRegex(req.query.religion.trim())}$`, 'i') };
     }
-    if (req.query.education && req.query.education.toLowerCase() !== 'any') {
-      query.education = { $regex: new RegExp(escapeRegex(req.query.education.trim()), 'i') };
+    if (req.query.education && req.query.education.trim() && req.query.education.toLowerCase() !== 'any') {
+      query.education = { $regex: new RegExp(`^${escapeRegex(req.query.education.trim())}$`, 'i') };
     }
-    if (req.query.drinkingStatus && req.query.drinkingStatus.toLowerCase() !== 'any') {
-      query.drinkingStatus = { $regex: new RegExp(escapeRegex(req.query.drinkingStatus.trim()), 'i') };
+    if (req.query.drinkingStatus && req.query.drinkingStatus.trim() && req.query.drinkingStatus.toLowerCase() !== 'any') {
+      query.drinkingStatus = { $regex: new RegExp(`^${escapeRegex(req.query.drinkingStatus.trim())}$`, 'i') };
     }
-    if (req.query.smokingStatus && req.query.smokingStatus.toLowerCase() !== 'any') {
-      query.smokingStatus = { $regex: new RegExp(escapeRegex(req.query.smokingStatus.trim()), 'i') };
+    if (req.query.smokingStatus && req.query.smokingStatus.trim() && req.query.smokingStatus.toLowerCase() !== 'any') {
+      query.smokingStatus = { $regex: new RegExp(`^${escapeRegex(req.query.smokingStatus.trim())}$`, 'i') };
     }
   }
 

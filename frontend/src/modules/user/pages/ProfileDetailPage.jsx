@@ -109,17 +109,22 @@ const ProfileDetailPage = () => {
                 <div className="flex flex-col mb-4 px-2">
                     <div className="flex items-center space-x-2 mb-1 flex-wrap gap-y-1">
                         <h2 className="text-[22px] font-bold text-black tracking-tight">{name}{profile.age ? `, ${profile.age}` : ''}</h2>
-                        {(profile.isPremium || profile.subscriptionName === 'Premium') && (
-                            <VerifiedBadge size={20} />
-                        )}
+                        {Boolean(profile.isPremium || profile.subscriptionName === 'Premium' || profile.isSuperPremium || profile.isSuperUser || profile.isSuperSubscriber) &&
+                            (profile.selfieStatus === 'approved' || (Boolean(profile.isVerified) && !profile.selfieStatus)) && (
+                                <VerifiedBadge size={20} />
+                            )}
                     </div>
 
-                    {profile.profession && (
+                    {(profile.profession || profile.company) && (
                         <div className="flex items-center text-black/80 text-[13px] font-medium space-x-2">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="black" stroke="none">
-                                <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
+                                <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11 0 2 .89 2 2v8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
                             </svg>
-                            <span>{profile.profession}</span>
+                            <span>
+                                {profile.profession && profile.company
+                                    ? `${profile.profession} at ${profile.company}`
+                                    : profile.profession || profile.company}
+                            </span>
                         </div>
                     )}
                 </div>
@@ -182,6 +187,7 @@ const ProfileDetailPage = () => {
                             const str = String(val).trim().toLowerCase();
                             return str !== '' && str !== 'n/a' && str !== 'not specified' && str !== 'not_specified' && str !== 'undefined' && str !== 'null' && str !== 'none';
                         };
+                        const validGender = isValValid(profile.gender) ? (profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1).toLowerCase()) : null;
                         const heightStr = profile.height?.value ? `${profile.height.value} ${profile.height.unit || ''}`.trim() : null;
                         const validHeight = isValValid(heightStr) ? heightStr : null;
                         const validReligion = isValValid(profile.religion) ? profile.religion : null;
@@ -191,13 +197,20 @@ const ProfileDetailPage = () => {
                         const langStr = Array.isArray(profile.languages) ? profile.languages.join(', ') : profile.languages;
                         const validLanguages = isValValid(langStr) ? langStr : null;
 
-                        const hasAnyBasic = validHeight || validReligion || validDrinks || validSmokes || validEducation || validLanguages;
+                        const hasAnyBasic = validGender || validHeight || validReligion || validDrinks || validSmokes || validEducation || validLanguages;
                         if (!hasAnyBasic) return null;
 
                         return (
                             <section>
                                 <h3 className="text-[16px] font-bold text-black mb-2">Basics</h3>
                                 <div className="flex flex-wrap gap-2.5">
+                                    {validGender && (
+                                        <Chip iconSvg={
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6F3BCE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 shrink-0">
+                                                <path d="M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5zm0 14c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z" />
+                                            </svg>
+                                        } label={validGender} />
+                                    )}
                                     {validHeight && <Chip icon={heightIcon} label={validHeight} />}
                                     {validReligion && <Chip icon={religionIcon} label={validReligion} />}
                                     {validDrinks && <Chip icon={drinkIcon} label={validDrinks} />}

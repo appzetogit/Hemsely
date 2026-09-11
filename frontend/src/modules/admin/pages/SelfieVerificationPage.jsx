@@ -7,7 +7,7 @@ import { Button } from '../../../shared/components/ui/Button';
 import { Textarea, Label } from '../../../shared/components/ui/Input';
 import { Table, TableHead, TableRow, TableHeader, TableCell } from '../components/Table';
 
-const STATUS_FILTERS = ['all', 'approved', 'rejected'];
+const STATUS_FILTERS = ['all', 'pending', 'approved', 'rejected'];
 
 const STATUS_BADGE = {
     pending: { cls: 'bg-amber-100 text-amber-700 border border-amber-200', icon: Clock, label: 'Pending' },
@@ -18,6 +18,7 @@ const STATUS_BADGE = {
 const RejectModal = ({ user, onClose, onConfirm, submitting }) => {
     const [reason, setReason] = useState('');
     if (!user) return null;
+    const isApproved = user.selfieStatus === 'approved';
     return ReactDOM.createPortal(
         <div
             className="fixed top-16 md:left-72 left-0 right-0 bottom-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/35"
@@ -28,20 +29,28 @@ const RejectModal = ({ user, onClose, onConfirm, submitting }) => {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between pb-3 mb-2">
-                    <h3 className="text-base font-bold text-zinc-900">Reject Selfie Verification</h3>
-                    <button type="button" onClick={onClose} className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors">
+                    <h3 className="text-base font-bold text-zinc-900">
+                        {isApproved ? 'Cancel / Revoke Selfie Verification' : 'Reject Selfie Verification'}
+                    </h3>
+                    <button type="button" onClick={onClose} className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
                 <p className="text-xs text-zinc-500 mb-4">
-                    Rejecting verification for <span className="font-bold text-zinc-800">{user.firstName} {user.lastName}</span> ({user.phoneNumber}).
+                    {isApproved ? (
+                        <>Revoking verification badge for <span className="font-bold text-zinc-800">{user.firstName} {user.lastName}</span> ({user.phoneNumber}). This user will no longer have verified status.</>
+                    ) : (
+                        <>Rejecting verification for <span className="font-bold text-zinc-800">{user.firstName} {user.lastName}</span> ({user.phoneNumber}).</>
+                    )}
                 </p>
-                <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">Reason for Rejection</label>
+                <label className="block text-[11px] font-bold text-zinc-700 uppercase mb-1.5">
+                    {isApproved ? 'Reason for Cancellation / Revoke' : 'Reason for Rejection'}
+                </label>
                 <textarea
                     rows={3}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="e.g. Selfie photo does not match profile picture"
+                    placeholder={isApproved ? "e.g. Photo does not meet guidelines / Revoked by admin" : "e.g. Selfie photo does not match profile picture"}
                     className="w-full px-3.5 py-2.5 text-xs bg-zinc-50/70 border border-zinc-200 hover:border-zinc-300 focus:border-zinc-800 focus:bg-white rounded-xl outline-none focus:ring-2 focus:ring-zinc-900/10 text-zinc-900 font-medium resize-none transition-all shadow-2xs"
                 />
                 <div className="flex gap-2.5 mt-5">
@@ -54,7 +63,7 @@ const RejectModal = ({ user, onClose, onConfirm, submitting }) => {
                         disabled={submitting}
                         onClick={() => onConfirm(reason)}
                     >
-                        {submitting ? 'Rejecting...' : 'Confirm Reject'}
+                        {submitting ? (isApproved ? 'Revoking...' : 'Rejecting...') : (isApproved ? 'Confirm Cancel' : 'Confirm Reject')}
                     </button>
                 </div>
             </div>
@@ -201,26 +210,48 @@ const UserDetailModal = ({ user, onClose, onApprove, onReject, submitting }) => 
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 text-xs font-semibold transition-colors cursor-pointer">
                         Close
                     </button>
-                    {user.selfieStatus === 'pending' && (
-                        <div className="flex gap-2">
+                    <div className="flex gap-2">
+                        {user.selfieStatus === 'approved' && (
                             <button
                                 type="button"
                                 disabled={submitting}
                                 onClick={() => { onClose(); onReject(user); }}
                                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold transition-colors cursor-pointer"
                             >
-                                <X className="w-3.5 h-3.5" /> Reject
+                                <X className="w-3.5 h-3.5" /> Cancel / Revoke Approval
                             </button>
+                        )}
+                        {user.selfieStatus === 'rejected' && (
                             <button
                                 type="button"
                                 disabled={submitting}
                                 onClick={() => { onClose(); onApprove(user); }}
                                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                             >
-                                <ShieldCheck className="w-3.5 h-3.5" /> Approve
+                                <ShieldCheck className="w-3.5 h-3.5" /> Approve Verification
                             </button>
-                        </div>
-                    )}
+                        )}
+                        {user.selfieStatus === 'pending' && (
+                            <>
+                                <button
+                                    type="button"
+                                    disabled={submitting}
+                                    onClick={() => { onClose(); onReject(user); }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold transition-colors cursor-pointer"
+                                >
+                                    <X className="w-3.5 h-3.5" /> Reject
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={submitting}
+                                    onClick={() => { onClose(); onApprove(user); }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                                >
+                                    <ShieldCheck className="w-3.5 h-3.5" /> Approve
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>,
@@ -269,8 +300,15 @@ const SelfieVerificationPage = () => {
         try {
             const { data, ok } = await adminApi.patch(`/admin/selfie-verifications/${user._id}`, { approve: true });
             if (ok && data.success) {
-                setUsers((prev) => prev.filter((u) => u._id !== user._id));
-                setPagination((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+                if (status === 'all') {
+                    setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, selfieStatus: 'approved', isVerified: true, selfieRejectionReason: '' } : u)));
+                } else {
+                    setUsers((prev) => prev.filter((u) => u._id !== user._id));
+                    setPagination((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+                }
+                if (selectedUserDetail?._id === user._id) {
+                    setSelectedUserDetail((prev) => (prev ? { ...prev, selfieStatus: 'approved', isVerified: true, selfieRejectionReason: '' } : null));
+                }
             } else {
                 setActionError(data?.message || 'Could not approve this selfie.');
             }
@@ -287,14 +325,21 @@ const SelfieVerificationPage = () => {
         try {
             const { data, ok } = await adminApi.patch(`/admin/selfie-verifications/${rejectingUser._id}`, { approve: false, rejectionReason: reason });
             if (ok && data.success) {
-                setUsers((prev) => prev.filter((u) => u._id !== rejectingUser._id));
-                setPagination((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+                if (status === 'all') {
+                    setUsers((prev) => prev.map((u) => (u._id === rejectingUser._id ? { ...u, selfieStatus: 'rejected', isVerified: false, selfieRejectionReason: reason || 'Verification cancelled/rejected by admin' } : u)));
+                } else {
+                    setUsers((prev) => prev.filter((u) => u._id !== rejectingUser._id));
+                    setPagination((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+                }
+                if (selectedUserDetail?._id === rejectingUser._id) {
+                    setSelectedUserDetail((prev) => (prev ? { ...prev, selfieStatus: 'rejected', isVerified: false, selfieRejectionReason: reason || 'Verification cancelled/rejected by admin' } : null));
+                }
                 setRejectingUser(null);
             } else {
-                setActionError(data?.message || 'Could not reject this selfie.');
+                setActionError(data?.message || 'Could not cancel/reject this selfie.');
             }
         } catch {
-            setActionError('Could not reject this selfie. Please try again.');
+            setActionError('Could not cancel/reject this selfie. Please try again.');
         }
         setSubmitting(false);
     };
@@ -492,11 +537,35 @@ const SelfieVerificationPage = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() => setSelectedUserDetail(user)}
-                                                    className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 transition-colors"
+                                                    className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer"
                                                     title="View Full Profile Details"
                                                 >
                                                     <Eye className="w-4 h-4" />
                                                 </button>
+
+                                                {user.selfieStatus === 'approved' && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={submitting}
+                                                        onClick={() => setRejectingUser(user)}
+                                                        className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 cursor-pointer"
+                                                        title="Cancel / Revoke Approval"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
+
+                                                {user.selfieStatus === 'rejected' && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={submitting}
+                                                        onClick={() => handleApprove(user)}
+                                                        className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50 cursor-pointer"
+                                                        title="Approve Verification"
+                                                    >
+                                                        <ShieldCheck className="w-4 h-4" />
+                                                    </button>
+                                                )}
 
                                                 {user.selfieStatus === 'pending' && (
                                                     <>
@@ -504,7 +573,7 @@ const SelfieVerificationPage = () => {
                                                             type="button"
                                                             disabled={submitting}
                                                             onClick={() => handleApprove(user)}
-                                                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50 cursor-pointer"
                                                             title="Approve Selfie"
                                                         >
                                                             <ShieldCheck className="w-4 h-4" />
@@ -513,7 +582,7 @@ const SelfieVerificationPage = () => {
                                                             type="button"
                                                             disabled={submitting}
                                                             onClick={() => setRejectingUser(user)}
-                                                            className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                                            className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 cursor-pointer"
                                                             title="Reject Selfie"
                                                         >
                                                             <X className="w-4 h-4" />

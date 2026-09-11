@@ -34,6 +34,19 @@ const planSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    slug: {
+      type: String,
+      trim: true,
+    },
+    productId: {
+      type: String,
+      trim: true,
+    },
+    badge: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     // System (seeded) plans are static — admins may only edit their price,
     // and they cannot be deleted. Only a non-system plan is fully editable.
     isSystemPlan: {

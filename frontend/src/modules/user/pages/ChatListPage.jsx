@@ -145,10 +145,10 @@ const ChatItem = ({ chat, onClick, onHold }) => {
 };
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Both'];
-const RELATIONSHIP_GOAL_OPTIONS = ['Any', 'Long-term', 'Short-term', 'New friends', 'Casual'];
-const RELIGION_OPTIONS = ['Any', 'Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Atheist', 'Other'];
-const EDUCATION_OPTIONS = ['Any', 'Graduate', 'Post Graduate', 'Undergraduate', 'High School'];
-const HABIT_OPTIONS = ['Any', 'No', 'Yes', 'Occasionally', 'Socially'];
+const RELATIONSHIP_GOAL_OPTIONS = ['Long Term', 'Casual'];
+const RELIGION_OPTIONS = ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Atheist'];
+const EDUCATION_OPTIONS = ['High School', 'Undergraduate', 'Graduate', 'Post Graduate'];
+const HABIT_OPTIONS = ['No', 'Yes', 'Occasionally', 'Socially'];
 
 // Height is stored/filtered in cm; this only formats cm for display.
 const cmToFeetInches = (cm) => {
@@ -188,16 +188,15 @@ const FilterModal = ({ appliedFilters, defaultFilters, onApply, onClose, isPremi
         setDraft((prev) => ({ ...prev, [key]: val }));
     };
 
-    const pillSelector = (options, field, valueMap = (x) => (x === 'Any' ? '' : x)) => (
+    const pillSelector = (options, field) => (
         <div className="flex flex-wrap gap-1.5">
             {options.map((opt) => {
-                const val = valueMap(opt);
-                const selected = draft[field] === val;
+                const selected = draft[field] === opt;
                 return (
                     <button
                         key={opt}
                         type="button"
-                        onClick={() => updateDraft(field, val)}
+                        onClick={() => updateDraft(field, selected ? '' : opt)}
                         className={`py-1.5 px-3 rounded-full font-semibold text-[12px] border cursor-pointer transition-all text-center ${
                             selected
                                 ? 'bg-[#703DE2] text-white border-[#703DE2] shadow-2xs'
@@ -213,11 +212,11 @@ const FilterModal = ({ appliedFilters, defaultFilters, onApply, onClose, isPremi
 
     return (
         <div
-            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 select-none max-w-[414px] mx-auto overflow-hidden"
+            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 select-none"
             onClick={onClose}
         >
             <div
-                className="w-full bg-white rounded-t-[32px] px-5 pt-5 pb-6 shadow-2xl flex flex-col max-h-[85vh] border-t border-gray-100 animate-in slide-in-from-bottom duration-250 overflow-hidden relative"
+                className="w-full max-w-[430px] bg-white rounded-t-[32px] px-5 pt-5 pb-6 shadow-2xl flex flex-col max-h-[85vh] border-t border-gray-100 animate-in slide-in-from-bottom duration-250 overflow-hidden relative"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Top Switcher Pill Tabs */}
@@ -574,26 +573,10 @@ const ChatListPage = () => {
                 <h1 className="font-bold text-[18px] text-gray-900 tracking-tight text-center">
                     Chat
                 </h1>
-                <button
-                    type="button"
-                    aria-label="Filter chats"
-                    onClick={() => setShowFilter(true)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 text-[#703DE2] hover:opacity-80 transition-opacity cursor-pointer border-0 bg-transparent flex items-center justify-center"
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="4" y1="6" x2="20" y2="6" />
-                        <circle cx="9" cy="6" r="2.5" fill="#703DE2" stroke="white" strokeWidth="1.8" />
-                        <line x1="4" y1="18" x2="20" y2="18" />
-                        <circle cx="15" cy="18" r="2.5" fill="#703DE2" stroke="white" strokeWidth="1.8" />
-                    </svg>
-                    {hasActiveFilter && (
-                        <span className="absolute top-1 right-1.5 w-2 h-2 rounded-full bg-[#703DE2] border border-white" />
-                    )}
-                </button>
             </header>
 
             {/* Scrollable content */}
-            <main className="flex-1 overflow-y-auto pb-20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <main className="flex-1 overflow-y-auto pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
                 {/* Your Matches Section */}
                 <div className="px-5 pt-3 pb-1.5">

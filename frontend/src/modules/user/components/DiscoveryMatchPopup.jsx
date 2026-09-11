@@ -51,7 +51,7 @@ const DiscoveryMatchPopup = ({ profile, myPhoto, onClose, onSayHello }) => {
             </div>
 
             {/* Action Buttons */}
-            <div className="w-full space-y-3 pb-4 shrink-0">
+            <div className="w-full space-y-3 pb-8 shrink-0">
                 <button
                     type="button"
                     onClick={onSayHello || onClose}

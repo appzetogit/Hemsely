@@ -132,8 +132,8 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
       // 3. Profile Boost (30-min 1.5x Multiplier)
       const hasBoost = (u1.boostUntil && new Date(u1.boostUntil) > new Date()) ||
-                       (u2.boostUntil && new Date(u2.boostUntil) > new Date()) ||
-                       u1.isBoosted || u2.isBoosted;
+        (u2.boostUntil && new Date(u2.boostUntil) > new Date()) ||
+        u1.isBoosted || u2.isBoosted;
       if (hasBoost) boostScore += 2;
       else boostScore += 0.5;
 
@@ -183,7 +183,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     { name: 'Profile Boost (1.5x)', key: 'boost', value: boostScore || 10, color: '#f59e0b', description: 'Active 30-minute top spotlight boost' },
     { name: 'Premium & VIP Tier', key: 'premium', value: premiumScore || 10, color: '#a855f7', description: 'Premium & Super User discovery priority' },
     { name: 'Verified Profile Badges', key: 'verified', value: verifiedScore || 8, color: '#06b6d4', description: 'AWS Selfie Verified trust & ranking boost' },
-    { name: 'Relationship Goals', key: 'goals', value: goalsScore || 6, color: '#f43f5e', description: 'Compatible relationship intent (Long-term, Marriage, etc.)' },
+    { name: 'Relationship Goals', key: 'goals', value: goalsScore || 6, color: '#f43f5e', description: 'Compatible relationship intent (Long Term, Marriage, etc.)' },
     { name: 'Age Compatibility', key: 'age', value: ageScore || 5, color: '#eab308', description: 'Optimal age preference & gap range' },
     { name: 'Real-time Online', key: 'online', value: onlineScore || 5, color: '#10b981', description: 'Live presence & active socket matching' },
   ];
@@ -212,8 +212,8 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
   const existingYears = Array.isArray(yearListAgg)
     ? yearListAgg
-        .map((y) => y._id)
-        .filter((y) => typeof y === 'number' && !isNaN(y) && y >= 2000 && y <= currentYear + 10)
+      .map((y) => y._id)
+      .filter((y) => typeof y === 'number' && !isNaN(y) && y >= 2000 && y <= currentYear + 10)
     : [];
 
   const minYear = existingYears.length ? Math.min(currentYear, ...existingYears) : currentYear;

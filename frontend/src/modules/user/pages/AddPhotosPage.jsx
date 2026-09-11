@@ -121,7 +121,7 @@ const AddPhotosPage = () => {
         if (returnPath) {
             navigate(returnPath, { replace: true });
         } else {
-            navigate('/selfie-verification');
+            navigate('/enable-location');
         }
     };
 
@@ -202,7 +202,7 @@ const AddPhotosPage = () => {
             </div>
 
             {/* Footer with Continue Button & Min Photo Hint */}
-            <div className="w-full shrink-0 mb-1 flex flex-col items-center">
+            <div className="w-full shrink-0 mb-8 flex flex-col items-center">
                 <button
                     type="button"
                     onClick={handleContinue}

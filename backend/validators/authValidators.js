@@ -2,20 +2,29 @@ import { body, param } from 'express-validator';
 import { validateEmailStrict } from '../utils/validators.js';
 
 export const sendOtpValidator = [
-  body('phoneNumber')
-    .optional()
-    .isString(),
-  body('phone').optional().isString(),
-  body('mobile').optional().isString(),
-  body('fullPhone').optional().isString(),
+  body('phoneNumber').optional(),
+  body('phone').optional(),
+  body('mobile').optional(),
+  body('fullPhone').optional(),
+  body('mobileNumber').optional(),
+  body('number').optional(),
 ];
 
 export const verifyOtpValidator = [
+  body('phoneNumber').optional(),
+  body('phone').optional(),
+  body('mobile').optional(),
+  body('fullPhone').optional(),
+  body('mobileNumber').optional(),
+  body('number').optional(),
   body('otp')
     .optional()
-    .isString()
-    .isLength({ min: 4, max: 6 })
-    .withMessage('OTP must be 4-6 digits'),
+    .customSanitizer(v => (v !== undefined && v !== null ? String(v).trim() : ''))
+    .custom(v => {
+      if (!v) return true;
+      if (v.length < 4 || v.length > 6) throw new Error('OTP must be 4-6 digits');
+      return true;
+    }),
 ];
 
 export const registerValidator = [

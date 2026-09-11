@@ -73,11 +73,14 @@ const userSchema = new mongoose.Schema(
       },
     },
     height: {
-      value: Number,
+      value: {
+        type: Number,
+        default: null,
+      },
       unit: {
         type: String,
-        enum: ['cm', 'ft', 'Feet'],
         default: 'ft',
+        set: (v) => (!v ? 'ft' : v),
       },
     },
     languages: [String],
@@ -91,6 +94,7 @@ const userSchema = new mongoose.Schema(
     religion: String,
     education: String,
     profession: String,
+    company: String,
     smokingStatus: String,
     drinkingStatus: String,
     galleryImages: [

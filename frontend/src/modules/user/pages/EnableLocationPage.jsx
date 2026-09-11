@@ -89,7 +89,7 @@ const EnableLocationPage = () => {
                         if (returnPath) {
                             navigate(returnPath, { replace: true });
                         } else {
-                            navigate('/selfie-verification');
+                            navigate('/add-photos');
                         }
                     }}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -145,7 +145,7 @@ const EnableLocationPage = () => {
             </div>
 
             {/* Footer Button */}
-            <div className="w-full shrink-0 mb-4 flex flex-col items-center">
+            <div className="w-full shrink-0 mb-8 flex flex-col items-center">
                 <button
                     type="button"
                     onClick={handleEnableLocation}

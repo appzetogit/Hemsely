@@ -206,10 +206,15 @@ const UserSelfieVerificationPage = () => {
             if (selectedFile) {
                 formData.append('selfie', selectedFile);
             } else if (capturedImage) {
-                const response = await fetch(capturedImage);
-                const blob = await response.blob();
-                const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
-                formData.append('selfie', file);
+                try {
+                    const response = await fetch(capturedImage);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+                    formData.append('selfie', file);
+                } catch {
+                    formData.append('selfieData', capturedImage);
+                }
+                formData.append('selfieData', capturedImage);
             }
 
             const { data, ok } = await apiClient.post('/users/selfie-verify-aws', formData);
@@ -248,6 +253,8 @@ const UserSelfieVerificationPage = () => {
                     localUser.isVerified = false;
                     localUser.selfieStatus = 'pending';
                     localStorage.setItem('user', JSON.stringify(localUser));
+                    sessionStorage.setItem('user', JSON.stringify(localUser));
+                    localStorage.setItem('isVerified', 'false');
                 } catch {
                     // Ignore
                 }
@@ -287,7 +294,7 @@ const UserSelfieVerificationPage = () => {
         if (returnPath) {
             navigate(returnPath, { replace: true });
         } else {
-            navigate('/enable-location');
+            navigate(-1);
         }
     };
 
@@ -296,7 +303,7 @@ const UserSelfieVerificationPage = () => {
         if (returnPath) {
             navigate(returnPath, { replace: true });
         } else {
-            navigate('/enable-location');
+            navigate(-1);
         }
     };
 
@@ -318,7 +325,7 @@ const UserSelfieVerificationPage = () => {
                 onChange={handleFileSelect}
             />
 
-            {/* Top Bar with Back Button & Skip */}
+            {/* Top Bar with Back Button */}
             <div className="flex items-center justify-between w-full pt-1 shrink-0">
                 <button
                     type="button"
@@ -328,20 +335,12 @@ const UserSelfieVerificationPage = () => {
                         if (returnPath) {
                             navigate(returnPath, { replace: true });
                         } else {
-                            navigate('/add-photos');
+                            navigate(-1);
                         }
                     }}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                     <ArrowLeft size={20} strokeWidth={2.5} />
-                </button>
-
-                <button
-                    type="button"
-                    onClick={handleSkip}
-                    className="text-[15px] font-bold text-gray-800 hover:text-[#6E36E4] transition-colors cursor-pointer bg-transparent border-0"
-                >
-                    Skip
                 </button>
             </div>
 
@@ -543,14 +542,14 @@ const UserSelfieVerificationPage = () => {
             </div>
 
             {/* Bottom Continue Action */}
-            <div className="w-full shrink-0 mb-3">
+            <div className="w-full shrink-0 mb-8">
                 {result && (result.verified || result.pending) ? (
                     <button
                         type="button"
                         onClick={handleNext}
                         className="w-full bg-[#6E36E4] text-white font-bold h-[52px] rounded-full text-[16px] shadow-md hover:bg-[#5e2cd6] active:scale-[0.98] transition-all cursor-pointer"
                     >
-                        Continue to Location
+                        Continue
                     </button>
                 ) : (
                     <button

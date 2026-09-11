@@ -7,8 +7,8 @@ const GOALS_STORAGE_KEY = 'onboarding_goals:v1';
 
 const GOAL_OPTIONS = [
     {
-        id: 'Long-term Partner',
-        label: 'Long-term Partner',
+        id: 'Long Term Partner',
+        label: 'Long Term Partner',
         icon: (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="#FF3B5C" stroke="none">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
@@ -24,7 +24,7 @@ const GOAL_OPTIONS = [
 
 const RelationshipGoalsPage = () => {
     const navigate = useNavigate();
-    const savedGoal = React.useMemo(() => localStorage.getItem(GOALS_STORAGE_KEY) || 'Long-term Partner', []);
+    const savedGoal = React.useMemo(() => localStorage.getItem(GOALS_STORAGE_KEY) || 'Long Term Partner', []);
     const [selected, setSelected] = useState(savedGoal);
     const [loading, setLoading] = useState(false);
     const canContinue = Boolean(selected);
@@ -50,7 +50,7 @@ const RelationshipGoalsPage = () => {
 
     return (
         <div className="h-[100dvh] bg-white flex flex-col justify-between py-6 px-6 font-sans max-w-[420px] mx-auto overflow-hidden relative select-none">
-            {/* Top Bar with Back Button and Skip Link */}
+            {/* Top Bar with Back Button */}
             <div className="flex items-center justify-between w-full pt-2">
                 <button
                     type="button"
@@ -62,14 +62,6 @@ const RelationshipGoalsPage = () => {
                         <line x1="19" y1="12" x2="5" y2="12" />
                         <polyline points="12 19 5 12 12 5" />
                     </svg>
-                </button>
-
-                <button
-                    type="button"
-                    onClick={handleSkip}
-                    className="text-[15px] font-bold text-gray-900 hover:text-[#6E36E4] transition-colors cursor-pointer bg-transparent border-0"
-                >
-                    Skip
                 </button>
             </div>
 
@@ -95,18 +87,16 @@ const RelationshipGoalsPage = () => {
                                 type="button"
                                 onClick={() => setSelected(option.id)}
                                 aria-pressed={isSelected}
-                                className={`w-full flex items-center px-6 h-[54px] rounded-full transition-all duration-200 cursor-pointer ${
-                                    isSelected
-                                        ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-sm shadow-[#6E36E4]/15 scale-[1.01]'
-                                        : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB] hover:bg-[#FAF8FF]'
-                                }`}
+                                className={`w-full flex items-center px-6 h-[54px] rounded-full transition-all duration-200 cursor-pointer ${isSelected
+                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-sm shadow-[#6E36E4]/15 scale-[1.01]'
+                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB] hover:bg-[#FAF8FF]'
+                                    }`}
                             >
                                 <div className="shrink-0 flex items-center justify-center mr-4">
                                     {option.icon}
                                 </div>
-                                <span className={`text-[15px] text-left transition-colors duration-200 ${
-                                    isSelected ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-700'
-                                }`}>
+                                <span className={`text-[15px] text-left transition-colors duration-200 ${isSelected ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-700'
+                                    }`}>
                                     {option.label}
                                 </span>
                             </button>
@@ -116,7 +106,7 @@ const RelationshipGoalsPage = () => {
             </div>
 
             {/* Next Button */}
-            <div className="w-full shrink-0 mb-4">
+            <div className="w-full shrink-0 mb-8">
                 <button
                     type="button"
                     onClick={handleNext}

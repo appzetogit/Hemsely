@@ -5,15 +5,16 @@ import { generateToken, generateRefreshToken, setCookie, clearCookie } from '../
 import { validateEmail, validatePhoneNumber, validatePassword } from '../utils/validators.js';
 import smsIndiaHubService from '../utils/smsService.js';
 import { getOrCreateConfig } from './appConfigController.js';
-import { generateOtpCode, getOtpExpiry, isOtpValid } from '../utils/otpService.js';
+import { generateOtpCode, getOtpExpiry, isOtpValid, isDefaultOtpPhone } from '../utils/otpService.js';
 
 // @desc Send OTP to phone number
 // @route POST /api/auth/send-otp
 // @access Public
 export const sendOTP = asyncHandler(async (req, res, next) => {
-  const { phoneNumber, phone, mobile, fullPhone } = req.body || {};
-  const rawInput = phoneNumber || phone || mobile || fullPhone || req.body;
-  const digitsOnly = rawInput ? String(rawInput).replace(/\D/g, '') : '';
+  const body = req.body || {};
+  const { phoneNumber, phone, mobile, fullPhone, mobileNumber, number, phone_number } = typeof body === 'object' ? body : {};
+  const rawInput = phoneNumber || phone || mobile || fullPhone || mobileNumber || number || phone_number || (typeof body === 'string' ? body : '') || '';
+  const digitsOnly = String(rawInput || '').replace(/\D/g, '');
 
   if (digitsOnly.length < 10) {
     return res.status(400).json({
@@ -62,7 +63,7 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
     user.phoneNumber = normalizedPhone;
     user.otpCode = otpCode;
     user.otpExpires = otpExpires;
-    await user.save();
+    await user.save({ validateModifiedOnly: true });
   } else {
     try {
       user = await User.create({
@@ -84,7 +85,7 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
           user.phoneNumber = normalizedPhone;
           user.otpCode = otpCode;
           user.otpExpires = otpExpires;
-          await user.save();
+          await user.save({ validateModifiedOnly: true });
         } else {
           throw createErr;
         }
@@ -97,10 +98,21 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
   const isNewUser = !user.firstName;
   const purpose = isNewUser ? 'register' : 'login';
 
-  // Send real OTP via SMS service
+  // Send real OTP via SMS service (or bypass error for hardcoded/default test numbers)
   try {
-    await smsIndiaHubService.sendOTP(normalizedPhone, otpCode, purpose);
-    console.log(`📱 [REAL OTP SENT] Phone: ${normalizedPhone} | Purpose: ${purpose}`);
+    if (isDefaultOtpPhone(last10Digits)) {
+      console.log(`📱 [DEFAULT TEST NUMBER OTP] Phone: ${normalizedPhone} | OTP: ${otpCode} | Purpose: ${purpose}`);
+      if (smsIndiaHubService.isConfigured()) {
+        try {
+          await smsIndiaHubService.sendOTP(normalizedPhone, otpCode, purpose);
+        } catch (smsErr) {
+          console.warn(`⚠️ [DEFAULT OTP SMS FAILED BUT BYPASSED] Phone: ${normalizedPhone}:`, smsErr.message);
+        }
+      }
+    } else {
+      await smsIndiaHubService.sendOTP(normalizedPhone, otpCode, purpose);
+      console.log(`📱 [REAL OTP SENT] Phone: ${normalizedPhone} | Purpose: ${purpose}`);
+    }
   } catch (smsError) {
     console.error(`❌ [SMS SEND FAILED] Phone: ${normalizedPhone}:`, smsError.message);
     return res.status(500).json({
@@ -123,10 +135,11 @@ export const sendOTP = asyncHandler(async (req, res, next) => {
 // @route POST /api/auth/verify-otp
 // @access Public
 export const verifyOTP = asyncHandler(async (req, res, next) => {
-  const { phoneNumber, phone, mobile, fullPhone, otp } = req.body || {};
-  const rawInput = phoneNumber || phone || mobile || fullPhone || req.body;
-  const digitsOnly = rawInput ? String(rawInput).replace(/\D/g, '') : '';
-  const enteredOtp = otp ? String(otp).trim() : '';
+  const body = req.body || {};
+  const { phoneNumber, phone, mobile, fullPhone, mobileNumber, number, phone_number, otp, code } = typeof body === 'object' ? body : {};
+  const rawInput = phoneNumber || phone || mobile || fullPhone || mobileNumber || number || phone_number || (typeof body === 'string' ? body : '') || '';
+  const digitsOnly = String(rawInput || '').replace(/\D/g, '');
+  const enteredOtp = String(otp || code || '').trim();
 
   if (digitsOnly.length < 10 || !enteredOtp) {
     return res.status(400).json({
@@ -176,7 +189,7 @@ export const verifyOTP = asyncHandler(async (req, res, next) => {
 
   const isProfileComplete = Boolean(user.isProfileComplete && user.firstName);
   user.isProfileComplete = isProfileComplete;
-  await user.save();
+  await user.save({ validateModifiedOnly: true });
 
   const token = generateToken(user._id, 'user');
   const refreshToken = generateRefreshToken(user._id);

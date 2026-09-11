@@ -8,11 +8,53 @@ import Plan from '../models/Plan.js';
 // admins may only edit price via the admin panel, never create/delete these.
 const STATIC_PLANS = [
   {
-    slug: 'premium',
-    name: 'Premium',
-    description: 'Get full access to priority discovery, unlimited likes, read receipts, and direct chat!',
+    slug: 'weekly',
+    productId: 'hemsely_premium_weekly',
+    name: '1 Week',
+    description: 'Get 7 days of full VIP access, unlimited likes, and instant discovery!',
+    price: 199,
+    durationDays: 7,
+    badge: '7 DAYS',
+    isSystemPlan: true,
+    isActive: true,
+    features: [
+      'Unlimited Likes',
+      'Location Changes (Passport Mode)',
+      'View Who Likes You',
+      'Unlimited Rewinds',
+      '1 Profile Boost per week',
+      'Advanced Filters',
+      'Priority Profile Visibility',
+    ],
+  },
+  {
+    slug: 'monthly',
+    productId: 'hemsely_premium_monthly',
+    name: '1 Month',
+    description: 'Full monthly access to priority discovery, unlimited likes, and direct chat!',
     price: 499,
     durationDays: 30,
+    badge: 'POPULAR',
+    isSystemPlan: true,
+    isActive: true,
+    features: [
+      'Unlimited Likes',
+      'Location Changes (Passport Mode)',
+      'View Who Likes You',
+      'Unlimited Rewinds',
+      '1 Profile Boost per week',
+      'Advanced Filters',
+      'Priority Profile Visibility',
+    ],
+  },
+  {
+    slug: '3months',
+    productId: 'hemsely_premium_3months',
+    name: '3 Months',
+    description: 'Best value VIP pass with 90 days of full discovery and profile boosts!',
+    price: 1199,
+    durationDays: 90,
+    badge: 'BEST VALUE',
     isSystemPlan: true,
     isActive: true,
     features: [
@@ -29,22 +71,30 @@ const STATIC_PLANS = [
 
 const run = async () => {
   await connectDB();
-  await Plan.deleteMany({ name: { $in: ['Weekly Lite', 'Monthly', '3 Months VIP'] } });
+  // Clean up any old single plan named "Premium" if transitioning to duration-based names
+  await Plan.deleteMany({ name: { $in: ['Premium', 'Weekly Lite', 'Monthly', '3 Months VIP'] } });
 
   for (const planData of STATIC_PLANS) {
-    const { slug, ...fields } = planData;
-    const existing = await Plan.findOne({ name: fields.name, isSystemPlan: true });
+    const existing = await Plan.findOne({ 
+      $or: [{ name: planData.name }, { productId: planData.productId }, { slug: planData.slug }],
+      isSystemPlan: true 
+    });
     if (existing) {
-      existing.description = fields.description;
-      existing.durationDays = fields.durationDays;
-      existing.features = fields.features;
-      existing.isActive = fields.isActive;
-      // Intentionally leave price untouched on re-run so an admin's price edit isn't clobbered.
+      existing.name = planData.name;
+      existing.slug = planData.slug;
+      existing.productId = planData.productId;
+      existing.badge = planData.badge;
+      existing.description = planData.description;
+      existing.durationDays = planData.durationDays;
+      existing.features = planData.features;
+      existing.isActive = planData.isActive;
+      // Intentionally preserve price if admin previously configured it, or set default if missing
+      if (!existing.price) existing.price = planData.price;
       await existing.save();
-      console.log(`Updated static plan: ${fields.name}`);
+      console.log(`Updated static plan: ${planData.name}`);
     } else {
-      await Plan.create(fields);
-      console.log(`Created static plan: ${fields.name}`);
+      await Plan.create(planData);
+      console.log(`Created static plan: ${planData.name}`);
     }
   }
 

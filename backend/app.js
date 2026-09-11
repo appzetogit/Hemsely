@@ -25,6 +25,7 @@ import supportRoutes from './routes/supportRoutes.js';
 import fcmRoutes from './routes/fcmRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import mediaSyncRoutes from './routes/mediaSyncRoutes.js';
+import googlePlayRoutes from './routes/googlePlayRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -223,6 +224,7 @@ app.use(['/api/admin', '/admin'], (req, res, next) => {
 }, adminRoutes);
 app.use(['/api/users', '/users'], apiRateLimiter, userRoutes);
 app.use(['/api/subscriptions', '/subscriptions'], apiRateLimiter, subscriptionRouter);
+app.use(['/api/google-play', '/google-play'], googlePlayRoutes);
 app.use(['/api/matches', '/matches'], apiRateLimiter, matchRoutes);
 app.use(['/api/messages', '/messages'], apiRateLimiter, messageRoutes);
 app.use(['/api/support', '/support'], supportRoutes);

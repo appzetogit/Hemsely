@@ -16,7 +16,7 @@ export const getConversationsQueryValidator = [
   query('ageMax').optional().isInt({ min: 18, max: 100 }).toInt(),
   query('heightMinCm').optional().isInt({ min: 100, max: 250 }).toInt(),
   query('heightMaxCm').optional().isInt({ min: 100, max: 250 }).toInt(),
-  query('relationshipGoal').optional().isIn(['Long-term', 'Short-term', 'New friends', 'Casual']),
+  query('relationshipGoal').optional().isIn(['Long Term', 'Short-term', 'New friends', 'Casual']),
   query('religion').optional().isIn(['Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Atheist', 'Other']),
   query('education').optional().isIn(['Graduate', 'Post Graduate', 'Undergraduate', 'High School']),
   query('drinkingStatus').optional().isIn(['No', 'Yes', 'Occasionally', 'Socially']),

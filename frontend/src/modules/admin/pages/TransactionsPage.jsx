@@ -118,7 +118,7 @@ const triggerPrintFallback = (transactions, pageRevenue, successCount, pendingCo
           </td>
           <td><strong>${t.plan?.name || t.planName || '—'}</strong></td>
           <td><strong>₹${t.amount.toLocaleString('en-IN')}</strong></td>
-          <td style="text-transform: capitalize">${t.gateway || 'Razorpay'}</td>
+          <td style="text-transform: capitalize">${t.gateway || 'Google Play'}</td>
           <td>${new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
           <td><span class="badge badge-${t.status}">${t.status}</span></td>
         </tr>
@@ -220,7 +220,7 @@ const handleExportPdf = async (transactions, pageRevenue, successCount, pendingC
                   </td>
                   <td style="padding: 9px 10px;"><strong>${t.plan?.name || t.planName || '—'}</strong></td>
                   <td style="padding: 9px 10px;"><strong>₹${t.amount.toLocaleString('en-IN')}</strong></td>
-                  <td style="padding: 9px 10px; text-transform: capitalize;">${t.gateway || 'Razorpay'}</td>
+                  <td style="padding: 9px 10px; text-transform: capitalize;">${t.gateway || 'Google Play'}</td>
                   <td style="padding: 9px 10px;">${new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                   <td style="padding: 9px 10px;">
                     <span style="font-weight: 800; padding: 2px 7px; border-radius: 999px; font-size: 9px; text-transform: uppercase; ${

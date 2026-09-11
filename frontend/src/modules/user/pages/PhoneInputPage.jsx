@@ -96,6 +96,12 @@ const PhoneInputPage = () => {
                             setError('');
                             if (val.length <= 10) setPhone(val);
                         }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && phone.length === 10 && !loading) {
+                                e.preventDefault();
+                                handleContinue();
+                            }
+                        }}
                         className="flex-1 bg-transparent border-none outline-none text-[17px] font-semibold text-gray-900 tracking-wider w-full placeholder:text-gray-300 placeholder:font-normal text-center"
                         placeholder="Enter phone number"
                     />
@@ -109,7 +115,7 @@ const PhoneInputPage = () => {
             </div>
 
             {/* Continue Button */}
-            <div className="w-full shrink-0 mb-4">
+            <div className="w-full shrink-0 mb-8">
                 <button
                     type="button"
                     disabled={loading || phone.length < 10}

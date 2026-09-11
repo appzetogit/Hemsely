@@ -20,7 +20,7 @@ const SubscriptionSuccessModal = ({ details, onClose }) => {
 
     return (
         <div
-            className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-all duration-500 max-w-[420px] mx-auto ${
+            className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-all duration-500 ${
                 animateIn ? 'opacity-100 backdrop-blur-md bg-black/80' : 'opacity-0 bg-black/0'
             }`}
             style={{ fontFamily: "'Inter', sans-serif" }}
@@ -63,7 +63,7 @@ const SubscriptionSuccessModal = ({ details, onClose }) => {
 
             {/* Main Modal Card */}
             <div
-                className={`w-full bg-gradient-to-b from-[#1E1738] via-[#16102B] to-[#0D091B] border border-purple-500/30 rounded-[32px] p-7 text-center text-white shadow-2xl relative overflow-hidden transition-all duration-500 transform ${
+                className={`w-full max-w-[400px] bg-gradient-to-b from-[#1E1738] via-[#16102B] to-[#0D091B] border border-purple-500/30 rounded-[32px] p-7 text-center text-white shadow-2xl relative overflow-hidden transition-all duration-500 transform ${
                     animateIn ? 'scale-100 translate-y-0' : 'scale-90 translate-y-8'
                 }`}
             >
