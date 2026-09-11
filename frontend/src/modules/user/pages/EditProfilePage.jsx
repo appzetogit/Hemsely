@@ -106,6 +106,23 @@ const EditProfilePage = () => {
         }
     }, [activeModal]);
 
+    // Intercept hardware/browser back button while modal is open so it stays on /edit-profile
+    useEffect(() => {
+        const handlePopState = () => {
+            if (activeModal) {
+                setActiveModal(null);
+                setModalInputValue('');
+                setModalPost('');
+                setModalCompany('');
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [activeModal]);
+
     useEffect(() => {
         (async () => {
             try {
@@ -438,11 +455,13 @@ const EditProfilePage = () => {
 
     const openQuestionModal = (idx) => {
         const q = questions[idx];
+        window.history.pushState({ modalOpen: true }, '');
         setActiveModal({ type: 'question', idx, question: q.question, answer: q.answer || '' });
         setModalInputValue(q.answer || '');
     };
 
     const openDetailModal = (item) => {
+        window.history.pushState({ modalOpen: true }, '');
         if (item.key === 'work' || item.key === 'profession') {
             setActiveModal({ type: 'work', key: 'work', label: 'Work' });
             setModalPost(form.profession === 'Not specified' ? '' : (form.profession || ''));
@@ -461,6 +480,17 @@ const EditProfilePage = () => {
         }
         setActiveModal({ type: 'detail', key: item.key, label: item.label, options: item.options || [], placeholder: item.placeholder });
         setModalInputValue(item.value === 'Not specified' ? '' : (item.value || ''));
+    };
+
+    const closeModal = () => {
+        if (window.history.state?.modalOpen) {
+            window.history.back();
+        } else {
+            setActiveModal(null);
+            setModalInputValue('');
+            setModalPost('');
+            setModalCompany('');
+        }
     };
 
     const saveModalData = async () => {
@@ -507,6 +537,9 @@ const EditProfilePage = () => {
             setForm(nextForm);
         }
 
+        if (window.history.state?.modalOpen) {
+            window.history.back();
+        }
         setActiveModal(null);
         setModalInputValue('');
         setModalPost('');
@@ -924,10 +957,20 @@ const EditProfilePage = () => {
             {activeModal && (
                 <div className="fixed inset-0 z-50 bg-[#FAFAFD] flex flex-col justify-between max-w-[414px] mx-auto animate-in slide-in-from-bottom duration-200 select-none">
                     {/* Header Bar */}
-                    <div className="w-full bg-white rounded-b-[24px] px-4 py-4 shadow-2xs flex items-center justify-center relative shrink-0">
-                        <h3 className="font-bold text-[18px] text-gray-900 text-center">
+                    <div className="w-full bg-white rounded-b-[24px] px-4 py-4 shadow-2xs flex items-center justify-between relative shrink-0">
+                        <button
+                            type="button"
+                            onClick={closeModal}
+                            aria-label="Back to Edit Profile"
+                            className="w-9 h-9 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer absolute left-4 z-10 shadow-2xs"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6" />
+                            </svg>
+                        </button>
+                        <h3 className="font-bold text-[18px] text-gray-900 text-center w-full px-12">
                             {activeModal.type === 'question'
-                                ? 'Fill the promts'
+                                ? 'Fill the prompts'
                                 : activeModal.label}
                         </h3>
                     </div>

@@ -413,12 +413,12 @@ const PremiumPage = () => {
             </div>
 
             {/* Bottom Subscribe Button */}
-            <div className="w-full pt-1">
+            <div className="w-full shrink-0 mb-8 pt-2">
                 <button
                     type="button"
                     disabled={subscribing}
                     onClick={handleSubscribeClick}
-                    className="w-full h-[45px] rounded-full bg-[#703DE2] hover:bg-[#602ec3] text-white font-extrabold text-[13px] uppercase tracking-wider shadow-md shadow-purple-200/80 cursor-pointer active:scale-[0.98] transition-all border-0 flex items-center justify-center disabled:opacity-50"
+                    className="w-full h-[52px] rounded-full bg-[#703DE2] hover:bg-[#602ec3] text-white font-extrabold text-[14px] uppercase tracking-wider shadow-lg shadow-purple-200/80 cursor-pointer active:scale-[0.98] transition-all border-0 flex items-center justify-center disabled:opacity-50"
                 >
                     {subscribing ? (
                         <div className="flex items-center gap-2">
