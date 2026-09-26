@@ -1421,7 +1421,7 @@ const ChatScreenPage = () => {
                 </footer>
             ) : isRecording ? (
                 <footer style={{
-                    width: '100%', padding: '10px 14px calc(38px + env(safe-area-inset-bottom, 0px))',
+                    width: '100%', padding: '10px 14px calc(30px + env(safe-area-inset-bottom, 0px))',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     gap: '12px', flexShrink: 0, background: '#FFFFFF',
                     borderTop: '1px solid rgba(0,0,0,0.03)',
@@ -1466,7 +1466,7 @@ const ChatScreenPage = () => {
                 </footer>
             ) : (
                 <footer style={{
-                    width: '100%', padding: '8px 12px calc(38px + env(safe-area-inset-bottom, 0px))',
+                    width: '100%', padding: '8px 12px calc(30px + env(safe-area-inset-bottom, 0px))',
                     display: 'flex', flexDirection: 'column', gap: '6px',
                     flexShrink: 0, background: '#FFFFFF',
                     borderTop: '1px solid rgba(0,0,0,0.04)',
