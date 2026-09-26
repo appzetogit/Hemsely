@@ -2,7 +2,9 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Like from '../models/Like.js';
 import Match from '../models/Match.js';
+import Message from '../models/Message.js';
 import Notification from '../models/Notification.js';
+import Pass from '../models/Pass.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { emitToUser } from '../socket/index.js';
 import { sendToUser } from '../services/fcmService.js';
@@ -300,27 +302,66 @@ export const unlikeUser = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc Get all matches
+// @desc Get matches (excludes matches where chat has already started by default)
 // @route GET /api/matches
 // @access Private
 export const getMatches = asyncHandler(async (req, res, next) => {
-  const userId = req.user.id;
+  const userIdStr = String(req.user._id || req.user.id);
+  const userObjId = mongoose.Types.ObjectId.isValid(userIdStr) ? new mongoose.Types.ObjectId(userIdStr) : userIdStr;
 
-  const userDoc = await User.findById(userId).select('blockedUsers');
+  const userDoc = await User.findById(userObjId).select('blockedUsers');
   const blockedIds = (userDoc?.blockedUsers || []).map((id) => String(id));
 
   let matches = await Match.find({
-    $or: [{ user1: userId }, { user2: userId }],
+    $or: [
+      { user1: userObjId },
+      { user2: userObjId },
+      { user1: userIdStr },
+      { user2: userIdStr },
+    ],
     status: 'accepted',
+    deletedBy: { $ne: userObjId },
   })
     .populate('user1', 'firstName lastName profilePicture')
     .populate('user2', 'firstName lastName profilePicture')
-    .sort({ lastMessageAt: -1 });
+    .sort({ createdAt: -1 });
 
   matches = matches.filter((m) => {
-    const otherId = String(m.user1?._id) === String(userId) ? String(m.user2?._id) : String(m.user1?._id);
+    const otherId = String(m.user1?._id) === userIdStr ? String(m.user2?._id) : String(m.user1?._id);
     return !blockedIds.includes(otherId);
   });
+
+  const withoutChat = req.query.withoutChat !== 'false';
+  if (withoutChat) {
+    const messagesWithUser = await Message.find({
+      $or: [
+        { sender: userObjId },
+        { receiver: userObjId },
+        { sender: userIdStr },
+        { receiver: userIdStr },
+      ],
+      deletedFor: { $ne: userObjId },
+    }).select('conversationId sender receiver');
+
+    const chattedPartnerIds = new Set();
+    const activeConvoSet = new Set();
+
+    messagesWithUser.forEach((msg) => {
+      if (msg.conversationId) activeConvoSet.add(msg.conversationId);
+      const s = String(msg.sender?._id || msg.sender);
+      const r = String(msg.receiver?._id || msg.receiver);
+      if (s === userIdStr) chattedPartnerIds.add(r);
+      else if (r === userIdStr) chattedPartnerIds.add(s);
+    });
+
+    matches = matches.filter((m) => {
+      const u1 = String(m.user1?._id || m.user1);
+      const u2 = String(m.user2?._id || m.user2);
+      const partnerId = u1 === userIdStr ? u2 : u1;
+      const cKey = [u1, u2].sort().join('_');
+      return !activeConvoSet.has(cKey) && !chattedPartnerIds.has(partnerId);
+    });
+  }
 
   res.status(200).json({
     success: true,
@@ -345,9 +386,41 @@ export const getLikesReceived = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const likes = await Like.find({ likedUser: userId })
+  const userObjId = mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId;
+  const userIdStr = String(userId);
+
+  // Find all active matches and blocked users for current user to exclude them from received likes
+  const [matches, userDoc] = await Promise.all([
+    Match.find({
+      $or: [
+        { user1: userObjId },
+        { user2: userObjId },
+        { user1: userIdStr },
+        { user2: userIdStr },
+      ],
+      status: 'accepted',
+    }).select('user1 user2'),
+    User.findById(userObjId).select('blockedUsers'),
+  ]);
+
+  const excludeIds = new Set((userDoc?.blockedUsers || []).map((id) => String(id)));
+  matches.forEach((m) => {
+    const u1 = String(m.user1?._id || m.user1);
+    const u2 = String(m.user2?._id || m.user2);
+    const otherId = u1 === userIdStr ? u2 : u1;
+    excludeIds.add(otherId);
+  });
+
+  let likes = await Like.find({
+    likedUser: { $in: [userObjId, userIdStr] },
+  })
     .populate('likedBy', 'firstName lastName profilePicture bio age gender')
     .sort({ createdAt: -1 });
+
+  likes = likes.filter((l) => {
+    const likerId = String(l.likedBy?._id || l.likedBy);
+    return l.likedBy && !excludeIds.has(likerId);
+  });
 
   res.status(200).json({
     success: true,
@@ -449,3 +522,36 @@ export const rejectMatch = asyncHandler(async (req, res, next) => {
     match,
   });
 });
+
+// @desc Pass/Nope a user in discovery
+// @route POST /api/matches/pass/:userId
+// @access Private
+export const passUser = asyncHandler(async (req, res, next) => {
+  const passedBy = req.user.id;
+  const passedUser = req.params.userId;
+
+  if (passedBy === passedUser) {
+    return res.status(400).json({
+      success: false,
+      message: 'Cannot pass yourself',
+    });
+  }
+
+  // Set expiration to 24 hours from now (so user won't see them today)
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const passedByObj = mongoose.Types.ObjectId.isValid(passedBy) ? new mongoose.Types.ObjectId(passedBy) : passedBy;
+  const passedUserObj = mongoose.Types.ObjectId.isValid(passedUser) ? new mongoose.Types.ObjectId(passedUser) : passedUser;
+
+  await Pass.findOneAndUpdate(
+    { passedBy: passedByObj, passedUser: passedUserObj },
+    { $set: { expiresAt } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'User passed for today',
+  });
+});
+

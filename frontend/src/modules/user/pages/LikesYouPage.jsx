@@ -127,12 +127,35 @@ const LikesYouPage = () => {
             } catch {}
 
             try {
-                const { data, ok } = await apiClient.get('/matches/likes/received');
+                const [{ data, ok }, { data: matchesData, ok: matchesOk }] = await Promise.all([
+                    apiClient.get('/matches/likes/received'),
+                    apiClient.get('/matches?withoutChat=false'),
+                ]);
+
                 if (!cancelled && ok && data.success) {
                     setLikesAreQueued(!!data.queued);
+
+                    const matchedUserIds = new Set();
+                    if (matchesOk && matchesData?.matches) {
+                        let myId = '';
+                        try {
+                            const sUser = sessionStorage.getItem('user') || localStorage.getItem('user');
+                            if (sUser) {
+                                const parsed = JSON.parse(sUser);
+                                myId = String(parsed._id || parsed.id || '');
+                            }
+                        } catch {}
+
+                        matchesData.matches.forEach((m) => {
+                            const u1 = String(m.user1?._id || m.user1 || '');
+                            const u2 = String(m.user2?._id || m.user2 || '');
+                            matchedUserIds.add(u1 === myId ? u2 : u1);
+                        });
+                    }
+
                     setLikesData(
                         data.likes
-                            .filter((like) => like.likedBy)
+                            .filter((like) => like.likedBy && !matchedUserIds.has(String(like.likedBy._id)))
                             .map((like) => ({
                                 id: like.likedBy._id,
                                 name: like.likedBy.firstName || 'User',

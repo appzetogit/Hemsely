@@ -237,7 +237,7 @@ const PremiumPopup = ({ type, onClose, onSuccess }) => {
     );
 };
 
-const ProfileHeaderBar = ({ onSettingsClick }) => (
+const ProfileHeaderBar = () => (
     <header
         className="relative flex items-center justify-center px-4 shrink-0 shadow-xs"
         style={{
@@ -249,14 +249,6 @@ const ProfileHeaderBar = ({ onSettingsClick }) => (
         <h1 className="text-center font-bold text-[17px] text-black">
             Profile
         </h1>
-        <button
-            type="button"
-            aria-label="Settings"
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-[#733FE0] hover:opacity-80 transition-opacity cursor-pointer border-0 bg-transparent"
-            onClick={onSettingsClick}
-        >
-            <img src={settingIcon} alt="" className="w-6 h-6 object-contain" />
-        </button>
     </header>
 );
 
@@ -612,7 +604,7 @@ const ProfilePreviewPage = () => {
             className="h-[100dvh] flex flex-col max-w-[414px] mx-auto overflow-hidden"
             style={{ background: '#FCFCFC' }}
         >
-            <ProfileHeaderBar onSettingsClick={() => navigate('/settings')} />
+            <ProfileHeaderBar />
 
             <main className="flex-1 flex flex-col justify-start overflow-y-auto px-4 pt-6 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <ProfileAvatarSection
@@ -636,6 +628,31 @@ const ProfilePreviewPage = () => {
                     isPremium={profileState.isPremium}
                     onUpgradeClick={() => navigate('/premium')}
                 />
+
+                {/* Settings Option Below Blue Card */}
+                <section className="mt-4 mb-2 w-full shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/settings')}
+                        className="w-full text-left px-4 py-3.5 rounded-[20px] bg-white border border-gray-100 flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer shadow-2xs hover:border-purple-200 group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#F4EFFE] flex items-center justify-center shrink-0 group-hover:bg-[#ECE4FD] transition-colors">
+                                <img src={settingIcon} alt="" className="w-5 h-5 object-contain" />
+                            </div>
+                            <div>
+                                <p className="font-extrabold text-[14px] text-gray-900 leading-tight">Settings</p>
+                                <p className="text-[11.5px] text-gray-500 font-medium mt-0.5">Account, privacy & preferences</p>
+                            </div>
+                        </div>
+
+                        <div className="shrink-0 flex items-center text-gray-400 group-hover:text-[#703DE2] transition-colors">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </div>
+                    </button>
+                </section>
             </main>
 
             <BottomNavigation activeTab="profile" />

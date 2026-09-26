@@ -35,8 +35,10 @@ const toProfileCardShape = (user) => {
     }
     if (allPhotos.length === 0) allPhotos.push(demoPhoto);
 
+    const userIdStr = String(user._id || user.id || '');
     return {
-        id: user._id,
+        id: userIdStr,
+        _id: userIdStr,
         name: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User',
         age: user.age || '',
         verified: user.selfieStatus === 'approved' || (Boolean(user.isVerified) && !user.selfieStatus),
@@ -122,6 +124,49 @@ const getMyPhoto = () => {
         return storedUser.profilePicture || demoPhoto;
     } catch {
         return demoPhoto;
+    }
+};
+
+const PASSED_USERS_STORAGE_KEY = 'hemsely_daily_passes_v1';
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+const getStoredDailyPasses = () => {
+    try {
+        const raw = localStorage.getItem(PASSED_USERS_STORAGE_KEY);
+        if (!raw) return new Set();
+        const data = JSON.parse(raw);
+        const now = Date.now();
+        const validIds = new Set();
+        const cleaned = {};
+        let modified = false;
+
+        Object.entries(data).forEach(([id, timestamp]) => {
+            if (now - Number(timestamp) < ONE_DAY_MS) {
+                validIds.add(String(id));
+                cleaned[id] = timestamp;
+            } else {
+                modified = true;
+            }
+        });
+
+        if (modified) {
+            localStorage.setItem(PASSED_USERS_STORAGE_KEY, JSON.stringify(cleaned));
+        }
+        return validIds;
+    } catch {
+        return new Set();
+    }
+};
+
+const savePassedProfileLocally = (userId) => {
+    if (!userId) return;
+    try {
+        const raw = localStorage.getItem(PASSED_USERS_STORAGE_KEY);
+        const data = raw ? JSON.parse(raw) : {};
+        data[String(userId)] = Date.now();
+        localStorage.setItem(PASSED_USERS_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+        // ignore
     }
 };
 
@@ -247,7 +292,7 @@ const DiscoveryPage = () => {
         }
     }, []);
 
-    const [swipedIds, setSwipedIds] = useState(new Set());
+    const [swipedIds, setSwipedIds] = useState(() => getStoredDailyPasses());
     const swipedIdsRef = useRef(swipedIds);
     swipedIdsRef.current = swipedIds;
     const [dragOffset, setDragOffset] = useState(0);
@@ -257,15 +302,17 @@ const DiscoveryPage = () => {
     const startX = useRef(0);
     const curX = useRef(0);
 
+    const [feedVersion, setFeedVersion] = useState(0);
+
     const loadFeed = useCallback(async (pageToLoad) => {
         const { data, ok } = await apiClient.get(`/users/discovery?${buildDiscoveryQuery(pageToLoad, filters)}`);
         if (ok && data.success) {
             setProfiles((prev) => {
-                const existingIds = new Set(prev.map((p) => String(p.id)));
+                const existingIds = pageToLoad === 1 ? new Set() : new Set(prev.map((p) => String(p.id)));
                 const newItems = data.users
                     .filter((u) => !existingIds.has(String(u._id)) && !swipedIdsRef.current.has(String(u._id)))
                     .map(toProfileCardShape);
-                return [...prev, ...newItems];
+                return pageToLoad === 1 ? newItems : [...prev, ...newItems];
             });
             setHasMore(!!data.hasMore);
         } else if (data?.queued) {
@@ -287,7 +334,7 @@ const DiscoveryPage = () => {
     useEffect(() => {
         setLoading(true);
         loadFeed(1).finally(() => setLoading(false));
-    }, [loadFeed]);
+    }, [loadFeed, feedVersion]);
 
     // Prefetch the next page once the user is close to the end of the loaded stack
     useEffect(() => {
@@ -339,15 +386,27 @@ const DiscoveryPage = () => {
     const handleReject = () => {
         if (!profile || isExiting) return;
         if (!isProfileComplete) { setShowIncomplete(true); return; }
-        setSwipedIds((prev) => new Set(prev).add(profile.id));
+
+        const profileId = String(profile.id || profile._id);
+        setSwipedIds((prev) => new Set(prev).add(profileId));
         setPassesCount((c) => c + 1);
+
+        // Save locally for instant persistence across page refreshes
+        savePassedProfileLocally(profileId);
+
+        // Notify backend to exclude user for 24 hours
+        apiClient.post(`/matches/pass/${profileId}`, {}).catch(() => {});
 
         setIsExiting(true);
         setExitDir('left');
         setTimeout(goNext, 350);
     };
 
-    const handleReset = () => {
+    const handleResetFilters = () => {
+        setFilters({ ...DEFAULT_FILTERS });
+        const dailyPasses = getStoredDailyPasses();
+        setSwipedIds(dailyPasses);
+        swipedIdsRef.current = dailyPasses;
         setCurrentIndex(0);
         setProfiles([]);
         setPage(1);
@@ -355,9 +414,9 @@ const DiscoveryPage = () => {
         setLikesCount(0);
         setPassesCount(0);
         setMatchesCount(0);
-        setLoading(true);
-        loadFeed(1).finally(() => setLoading(false));
+        setFeedVersion((v) => v + 1);
     };
+    const handleReset = handleResetFilters;
 
     const onStart = (x) => { if (isExiting) return; isDragging.current = true; startX.current = x; curX.current = x; };
     const onMove = (x) => { if (!isDragging.current || isExiting) return; curX.current = x; setDragOffset(curX.current - startX.current); };
@@ -409,16 +468,27 @@ const DiscoveryPage = () => {
 
     const handleReportSuccess = (reportedUserId) => {
         const targetName = targetSafetyUser?.name || profile?.name || 'User';
+        const idToRemove = reportedUserId || targetSafetyUser?.id || targetSafetyUser?._id || profile?.id || profile?._id;
+        if (idToRemove) {
+            setSwipedIds((prev) => new Set(prev).add(String(idToRemove)));
+            setProfiles((prev) => prev.filter((p) => String(p.id) !== String(idToRemove) && String(p._id) !== String(idToRemove)));
+            setDragOffset(0);
+            setIsExiting(false);
+            setExitDir(null);
+        }
         setToastMessage(`Report submitted for ${targetName}. Thank you.`);
     };
 
     const handleBlockSuccess = (blockedUserId) => {
         const targetName = targetSafetyUser?.name || profile?.name || 'User';
-        setSwipedIds((prev) => new Set(prev).add(blockedUserId));
-        setProfiles((prev) => prev.filter((p) => p.id !== blockedUserId));
-        setDragOffset(0);
-        setIsExiting(false);
-        setExitDir(null);
+        const idToRemove = blockedUserId || targetSafetyUser?.id || targetSafetyUser?._id || profile?.id || profile?._id;
+        if (idToRemove) {
+            setSwipedIds((prev) => new Set(prev).add(String(idToRemove)));
+            setProfiles((prev) => prev.filter((p) => String(p.id) !== String(idToRemove) && String(p._id) !== String(idToRemove)));
+            setDragOffset(0);
+            setIsExiting(false);
+            setExitDir(null);
+        }
         setToastMessage(`${targetName} has been blocked.`);
     };
 
@@ -575,9 +645,27 @@ const DiscoveryPage = () => {
                                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                             </svg>
                         </div>
-                        <h2 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: '22px', color: '#000' }}>No Profile yet</h2>
-                        <button type="button" onClick={handleReset} className="mt-4 active:scale-95 transition-colors" style={{ padding: '12px 32px', background: '#6F3BCE', color: '#fff', borderRadius: '80px', border: 'none', fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: '16px', boxShadow: '0 4px 16px rgba(111,59,206,0.3)', cursor: 'pointer' }}>
-                            Check again
+                        <h2 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: '20px', color: '#000', maxWidth: '300px', lineHeight: 1.35 }}>
+                            Not enough people in your area right now
+                        </h2>
+                        <button
+                            type="button"
+                            onClick={handleResetFilters}
+                            className="mt-4 active:scale-95 transition-transform"
+                            style={{
+                                padding: '12px 32px',
+                                background: '#6F3BCE',
+                                color: '#fff',
+                                borderRadius: '80px',
+                                border: 'none',
+                                fontFamily: "'Inter', sans-serif",
+                                fontWeight: 600,
+                                fontSize: '16px',
+                                boxShadow: '0 4px 16px rgba(111,59,206,0.3)',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Reset filters
                         </button>
                     </div>
                 ) : profile ? (
@@ -781,7 +869,7 @@ const DiscoveryPage = () => {
             <ReportUserModal
                 isOpen={showReportModal}
                 onClose={() => setShowReportModal(false)}
-                targetUserId={targetSafetyUser?.id || profile?.id}
+                targetUserId={targetSafetyUser?.id || targetSafetyUser?._id || profile?.id || profile?._id}
                 targetName={targetSafetyUser?.name || profile?.name}
                 onSuccess={handleReportSuccess}
                 onPromptBlock={(id) => {
@@ -794,7 +882,7 @@ const DiscoveryPage = () => {
             <BlockUserModal
                 isOpen={showBlockModal}
                 onClose={() => setShowBlockModal(false)}
-                targetUserId={targetSafetyUser?.id || profile?.id}
+                targetUserId={targetSafetyUser?.id || targetSafetyUser?._id || profile?.id || profile?._id}
                 targetName={targetSafetyUser?.name || profile?.name}
                 onSuccess={handleBlockSuccess}
             />

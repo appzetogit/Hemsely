@@ -882,7 +882,6 @@ const EditProfilePage = () => {
                     <h3 className="font-bold text-[15px] text-gray-900 mb-2.5 px-0.5">Details</h3>
                     <div className="flex flex-col gap-2.5">
                         {[
-                            { key: 'gender', label: 'Gender', value: form.gender || 'Not specified' },
                             {
                                 key: 'work',
                                 label: 'Work',
@@ -893,8 +892,8 @@ const EditProfilePage = () => {
                             { key: 'education', label: 'Education', value: form.education || 'Not specified', options: ['High School', 'Undergraduate', 'Graduate', 'Post Graduate'] },
                             { key: 'religion', label: 'Religious beliefs', value: form.religion || 'Not specified', options: ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Jain', 'Atheist'] },
                             { key: 'heightValue', label: 'Height', value: form.heightValue ? (form.heightValue.includes('Feet') ? form.heightValue : `${form.heightValue} Feet`) : 'Not specified', options: HEIGHT_OPTIONS },
-                            { key: 'languages', label: 'My Languages', value: form.languages || 'Not specified', options: ['English', 'Hindi', 'Bengali', 'Punjabi', 'Gujarati', 'Marathi', 'Tamil', 'Telugu'] },
-                            { key: 'relationshipGoal', label: 'Dating intentions', value: form.relationshipGoal || 'Not specified', options: ['Long Term', 'Casual'] },
+                            { key: 'languages', label: 'My language', value: form.languages || 'Not specified', options: ['English', 'Hindi', 'Bengali', 'Punjabi', 'Gujarati', 'Marathi', 'Tamil', 'Telugu'] },
+                            { key: 'relationshipGoal', label: 'Dating intentions', value: form.relationshipGoal || 'Not specified', options: ['Long term', 'Casual'] },
                         ].map((item) => (
                             <div
                                 key={item.key}
@@ -987,22 +986,19 @@ const EditProfilePage = () => {
                                         <button
                                             type="button"
                                             onClick={() => setModalGender('Male')}
-                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${
-                                                modalGender === 'Male'
-                                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
-                                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
-                                            }`}
+                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${modalGender === 'Male'
+                                                ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
+                                                : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
+                                                }`}
                                         >
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${
-                                                modalGender === 'Male' ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
-                                            }`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${modalGender === 'Male' ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
+                                                }`}>
                                                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM9.5 8a2 2 0 00-2 2v5a1 1 0 001 1h1v6a1 1 0 001 1h3a1 1 0 001-1v-6h1a1 1 0 001-1v-5a2 2 0 00-2-2h-5z" />
                                                 </svg>
                                             </div>
-                                            <span className={`flex-1 text-center text-[14px] pr-2 ${
-                                                modalGender === 'Male' ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
-                                            }`}>
+                                            <span className={`flex-1 text-center text-[14px] pr-2 ${modalGender === 'Male' ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
+                                                }`}>
                                                 Male
                                             </span>
                                         </button>
@@ -1010,22 +1006,19 @@ const EditProfilePage = () => {
                                         <button
                                             type="button"
                                             onClick={() => setModalGender('Female')}
-                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${
-                                                modalGender === 'Female'
-                                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
-                                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
-                                            }`}
+                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${modalGender === 'Female'
+                                                ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
+                                                : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
+                                                }`}
                                         >
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${
-                                                modalGender === 'Female' ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
-                                            }`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${modalGender === 'Female' ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
+                                                }`}>
                                                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM8.5 8a2 2 0 00-2 2v4a1 1 0 001 1h1v7a1 1 0 001 1h7a1 1 0 001-1v-7h1a1 1 0 001-1v-4a2 2 0 00-2-2h-7z" />
                                                 </svg>
                                             </div>
-                                            <span className={`flex-1 text-center text-[14px] pr-2 ${
-                                                modalGender === 'Female' ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
-                                            }`}>
+                                            <span className={`flex-1 text-center text-[14px] pr-2 ${modalGender === 'Female' ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
+                                                }`}>
                                                 Female
                                             </span>
                                         </button>
@@ -1040,22 +1033,19 @@ const EditProfilePage = () => {
                                         <button
                                             type="button"
                                             onClick={() => toggleModalInterest('Male')}
-                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${
-                                                modalInterestedIn.includes('Male')
-                                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
-                                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
-                                            }`}
+                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${modalInterestedIn.includes('Male')
+                                                ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
+                                                : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
+                                                }`}
                                         >
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${
-                                                modalInterestedIn.includes('Male') ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
-                                            }`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${modalInterestedIn.includes('Male') ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
+                                                }`}>
                                                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM9.5 8a2 2 0 00-2 2v5a1 1 0 001 1h1v6a1 1 0 001 1h3a1 1 0 001-1v-6h1a1 1 0 001-1v-5a2 2 0 00-2-2h-5z" />
                                                 </svg>
                                             </div>
-                                            <span className={`flex-1 text-center text-[14px] pr-2 ${
-                                                modalInterestedIn.includes('Male') ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
-                                            }`}>
+                                            <span className={`flex-1 text-center text-[14px] pr-2 ${modalInterestedIn.includes('Male') ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
+                                                }`}>
                                                 Male
                                             </span>
                                         </button>
@@ -1063,22 +1053,19 @@ const EditProfilePage = () => {
                                         <button
                                             type="button"
                                             onClick={() => toggleModalInterest('Female')}
-                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${
-                                                modalInterestedIn.includes('Female')
-                                                    ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
-                                                    : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
-                                            }`}
+                                            className={`flex-1 flex items-center px-2 h-[52px] rounded-full transition-all cursor-pointer ${modalInterestedIn.includes('Female')
+                                                ? 'bg-[#F3EAFF] border-2 border-[#6E36E4] shadow-xs'
+                                                : 'bg-white border-[1.5px] border-gray-200 hover:border-[#C7B5FB]'
+                                                }`}
                                         >
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${
-                                                modalInterestedIn.includes('Female') ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
-                                            }`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ml-1 ${modalInterestedIn.includes('Female') ? 'bg-[#6E36E4] text-white' : 'bg-[#F2EDFD] text-[#6E36E4]'
+                                                }`}>
                                                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M12 2a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM8.5 8a2 2 0 00-2 2v4a1 1 0 001 1h1v7a1 1 0 001 1h7a1 1 0 001-1v-7h1a1 1 0 001-1v-4a2 2 0 00-2-2h-7z" />
                                                 </svg>
                                             </div>
-                                            <span className={`flex-1 text-center text-[14px] pr-2 ${
-                                                modalInterestedIn.includes('Female') ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
-                                            }`}>
+                                            <span className={`flex-1 text-center text-[14px] pr-2 ${modalInterestedIn.includes('Female') ? 'font-bold text-[#6E36E4]' : 'font-semibold text-gray-600'
+                                                }`}>
                                                 Female
                                             </span>
                                         </button>
@@ -1136,11 +1123,10 @@ const EditProfilePage = () => {
                                             ref={isSel ? selectedHeightRef : null}
                                             type="button"
                                             onClick={() => setModalInputValue(opt)}
-                                            className={`w-[85%] text-center transition-all cursor-pointer rounded-full shrink-0 ${
-                                                isSel
-                                                    ? 'bg-[#F3EAFF] border-[1.5px] border-[#703DE2] text-[#703DE2] font-extrabold text-[18px] py-2.5 shadow-2xs'
-                                                    : 'text-gray-500 hover:text-gray-900 font-medium text-[15px] py-2 bg-transparent hover:bg-purple-50/50 border-0'
-                                            }`}
+                                            className={`w-[85%] text-center transition-all cursor-pointer rounded-full shrink-0 ${isSel
+                                                ? 'bg-[#F3EAFF] border-[1.5px] border-[#703DE2] text-[#703DE2] font-extrabold text-[18px] py-2.5 shadow-2xs'
+                                                : 'text-gray-500 hover:text-gray-900 font-medium text-[15px] py-2 bg-transparent hover:bg-purple-50/50 border-0'
+                                                }`}
                                         >
                                             {opt.includes('Feet') ? opt : `${opt} Feet`}
                                         </button>
@@ -1156,11 +1142,10 @@ const EditProfilePage = () => {
                                             key={opt}
                                             type="button"
                                             onClick={() => setModalInputValue(opt)}
-                                            className={`w-full bg-white rounded-full py-4 px-6 shadow-2xs flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${
-                                                isSel
-                                                    ? 'border-[1.5px] border-[#703DE2] bg-[#FAF8FF]'
-                                                    : 'border-[1.5px] border-[#D1C2F7] hover:border-[#703DE2]'
-                                            }`}
+                                            className={`w-full bg-white rounded-full py-4 px-6 shadow-2xs flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] ${isSel
+                                                ? 'border-[1.5px] border-[#703DE2] bg-[#FAF8FF]'
+                                                : 'border-[1.5px] border-[#D1C2F7] hover:border-[#703DE2]'
+                                                }`}
                                         >
                                             <span className="font-bold text-[14px] text-gray-900">{opt}</span>
                                             {isSel ? (

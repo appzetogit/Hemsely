@@ -157,7 +157,7 @@ const DiscoveryProfileCard = ({
                 <section className="px-1">
                     <h3 className="text-[14.5px] font-bold text-gray-900 mb-2.5">My interests</h3>
                     <div className="flex flex-wrap gap-2">
-                        {profile.interests.map(i => (
+                        {profile.interests.slice(0, 4).map(i => (
                             <Pill key={`interest-${i}`} icon={<span className="text-[#733FE0]">{renderInterestIcon(i)}</span>}>{i}</Pill>
                         ))}
                     </div>

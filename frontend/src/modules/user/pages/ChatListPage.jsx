@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import BottomNavigation from '../components/BottomNavigation';
 import apiClient from '../../../shared/services/apiClient';
 import { useSocket } from '../context/SocketContext';
-
 import demoPhoto from '../assets/6ee1ef9d2677e06049fb899a7658f4b9ac9c11dc.jpg';
+
 
 const getMyId = () => {
     try {
@@ -45,21 +45,13 @@ const MatchAvatar = ({ match, onClick }) => (
     <button
         type="button"
         onClick={onClick}
-        aria-label={match.isLikesYou ? "View likes" : `Match ${match.name}`}
+        aria-label={`Match ${match.name}`}
         className="flex flex-col items-center shrink-0 cursor-pointer bg-transparent border-0 p-0 active:scale-95 transition-transform"
     >
         <div className="relative w-[64px] h-[64px]">
-            {match.isLikesYou ? (
-                <div className="w-full h-full rounded-[22px] bg-gradient-to-br from-[#9B51E0] via-[#E05286] to-[#FF7A60] shadow-xs flex items-center justify-center relative overflow-hidden">
-                    <img src={match.photo} alt="" className="w-full h-full rounded-[22px] object-cover filter blur-[3px] opacity-40 scale-110" />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                    </div>
-                </div>
-            ) : (
-                <div className="w-full h-full rounded-[22px] p-[2.5px] border-[1.8px] border-[#8C52FF] flex items-center justify-center bg-white shadow-2xs">
-                    <img src={match.photo} alt="" className="w-full h-full rounded-[18px] object-cover" />
-                </div>
-            )}
+            <div className="w-full h-full rounded-[22px] p-[2.5px] border-[1.8px] border-[#8C52FF] flex items-center justify-center bg-white shadow-2xs">
+                <img src={match.photo} alt="" className="w-full h-full rounded-[18px] object-cover" />
+            </div>
         </div>
         <span className="text-[12px] font-medium text-gray-800 tracking-tight text-center max-w-[64px] truncate mt-1.5">
             {match.name}
@@ -484,38 +476,40 @@ const ChatListPage = () => {
         let conversationsRes = { ok: false, data: null };
         try {
             [matchesRes, conversationsRes] = await Promise.all([
-                apiClient.get('/matches'),
+                apiClient.get('/matches?withoutChat=true'),
                 apiClient.get(`/messages/conversations${buildConversationsQuery(filters)}`),
             ]);
         } catch {
             // Network failure — fall through and stop the loading spinner below.
         }
 
-        if (matchesRes.ok && matchesRes.data.success) {
-            setMatches(
-                matchesRes.data.matches.map((m) => {
-                    const other = String(m.user1?._id) === String(myId) ? m.user2 : m.user1;
-                    return {
-                        id: other?._id,
-                        name: other?.firstName || 'Match',
-                        photo: other?.profilePicture || demoPhoto,
-                    };
-                }).filter((m) => m.id)
-            );
+        let formattedChats = [];
+        if (conversationsRes.ok && conversationsRes.data.success) {
+            formattedChats = (conversationsRes.data.conversations || []).map((c) => ({
+                id: c.otherUser?._id,
+                name: c.isUnmatched ? 'Hemsely User' : (c.otherUser?.firstName || 'User'),
+                photo: c.isUnmatched ? demoPhoto : (c.otherUser?.profilePicture || demoPhoto),
+                message: c.lastMessageImage ? '📷 Photo' : (c.lastMessage || ''),
+                time: timeAgo(c.lastMessageTime),
+                unread: c.unreadCount || 0,
+                isUnmatched: !!c.isUnmatched,
+            }));
+            setChats(formattedChats);
         }
 
-        if (conversationsRes.ok && conversationsRes.data.success) {
-            setChats(
-                conversationsRes.data.conversations.map((c) => ({
-                    id: c.otherUser?._id,
-                    name: c.isUnmatched ? 'Hemsely User' : (c.otherUser?.firstName || 'User'),
-                    photo: c.isUnmatched ? demoPhoto : (c.otherUser?.profilePicture || demoPhoto),
-                    message: c.lastMessageImage ? '📷 Photo' : (c.lastMessage || ''),
-                    time: timeAgo(c.lastMessageTime),
-                    unread: c.unreadCount || 0,
-                    isUnmatched: !!c.isUnmatched,
-                }))
-            );
+        if (matchesRes.ok && matchesRes.data.success) {
+            const rawMatches = (matchesRes.data.matches || []).map((m) => {
+                const other = String(m.user1?._id) === String(myId) ? m.user2 : m.user1;
+                return {
+                    id: other?._id,
+                    name: other?.firstName || 'Match',
+                    photo: other?.profilePicture || demoPhoto,
+                };
+            }).filter((m) => m.id);
+
+            // Only show matches where chat has NOT started yet
+            const chattedUserIds = new Set(formattedChats.map((c) => String(c.id)));
+            setMatches(rawMatches.filter((m) => !chattedUserIds.has(String(m.id))));
         }
 
         setLoading(false);
@@ -558,11 +552,6 @@ const ChatListPage = () => {
         }
     };
 
-    const avatarRow = [
-        { id: 'likes', name: 'Likes you', photo: demoPhoto, isLikesYou: true },
-        ...matches,
-    ];
-
     return (
         <div className="h-[100dvh] flex flex-col max-w-[414px] mx-auto bg-[#FAFAFD] overflow-hidden select-none">
 
@@ -579,21 +568,25 @@ const ChatListPage = () => {
             <main className="flex-1 overflow-y-auto pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
                 {/* Your Matches Section */}
-                <div className="px-5 pt-3 pb-1.5">
-                    <h2 className="text-[14.5px] font-bold text-gray-900 tracking-tight">
-                        Your Matches {matches.length > 0 && `(${matches.length})`}
-                    </h2>
-                </div>
+                {matches.length > 0 && (
+                    <>
+                        <div className="px-5 pt-3 pb-1.5">
+                            <h2 className="text-[14.5px] font-bold text-gray-900 tracking-tight">
+                                Your Matches ({matches.length})
+                            </h2>
+                        </div>
 
-                <div className="flex gap-3.5 px-5 py-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {avatarRow.map(m => (
-                        <MatchAvatar
-                            key={m.id}
-                            match={m}
-                            onClick={() => m.isLikesYou ? navigate('/likes') : navigate(`/chat/${m.id}`, { state: { name: m.name, photo: m.photo } })}
-                        />
-                    ))}
-                </div>
+                        <div className="flex gap-3.5 px-5 py-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {matches.map(m => (
+                                <MatchAvatar
+                                    key={m.id}
+                                    match={m}
+                                    onClick={() => navigate(`/chat/${m.id}`, { state: { name: m.name, photo: m.photo } })}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
 
                 {/* Chats label */}
                 <div className="px-5 pt-1 pb-1 mt-1">

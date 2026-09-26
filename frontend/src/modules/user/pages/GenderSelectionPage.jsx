@@ -63,18 +63,18 @@ const GenderSelectionPage = () => {
         }
     }, []);
 
-    const [userGender, setUserGender] = useState(savedGenderData.userGender || 'Male');
+    const [userGender, setUserGender] = useState(
+        savedGenderData.isManualSelection ? (savedGenderData.userGender || '') : ''
+    );
     const [interestedIn, setInterestedIn] = useState(
-        Array.isArray(savedGenderData.interestedIn) && savedGenderData.interestedIn.length > 0
+        savedGenderData.isManualSelection && Array.isArray(savedGenderData.interestedIn)
             ? savedGenderData.interestedIn
-            : ['Female']
+            : []
     );
 
     const toggleInterest = (gender) => {
         if (interestedIn.includes(gender)) {
-            if (interestedIn.length > 1) {
-                setInterestedIn(interestedIn.filter(g => g !== gender));
-            }
+            setInterestedIn(interestedIn.filter(g => g !== gender));
         } else {
             setInterestedIn([...interestedIn, gender]);
         }
@@ -85,7 +85,7 @@ const GenderSelectionPage = () => {
             alert("Please select your gender and who you are interested in.");
             return;
         }
-        localStorage.setItem(GENDER_STORAGE_KEY, JSON.stringify({ userGender, interestedIn }));
+        localStorage.setItem(GENDER_STORAGE_KEY, JSON.stringify({ userGender, interestedIn, isManualSelection: true }));
         try {
             await syncFullOnboardingData();
         } catch {
@@ -141,12 +141,12 @@ const GenderSelectionPage = () => {
                         <GenderButton
                             label="Male"
                             isSelected={userGender === 'Male'}
-                            onClick={() => setUserGender('Male')}
+                            onClick={() => setUserGender(prev => prev === 'Male' ? '' : 'Male')}
                         />
                         <GenderButton
                             label="Female"
                             isSelected={userGender === 'Female'}
-                            onClick={() => setUserGender('Female')}
+                            onClick={() => setUserGender(prev => prev === 'Female' ? '' : 'Female')}
                         />
                     </div>
                 </div>

@@ -25,26 +25,31 @@ const BlockUserModal = ({
         setErrorMessage('');
 
         const myId = getCurrentUserId();
-        if (!myId) {
-            setErrorMessage('You must be logged in to block this profile.');
-            return;
-        }
+        const effectiveTargetUserId = (
+            typeof targetUserId === 'object' && targetUserId !== null
+                ? (targetUserId._id || targetUserId.id)
+                : targetUserId
+        )?.toString()?.trim();
 
-        if (!targetUserId) {
+        if (!effectiveTargetUserId) {
             setErrorMessage('Unable to block: target user ID is missing.');
             return;
         }
 
         setSubmitting(true);
         try {
-            const { ok, data } = await apiClient.post(`/users/${myId}/block/${targetUserId}`, {});
-            if (ok) {
+            let res = await apiClient.post(`/users/block/${effectiveTargetUserId}`, {});
+            if (!res.ok && res.status === 404 && myId) {
+                res = await apiClient.post(`/users/${myId}/block/${effectiveTargetUserId}`, {});
+            }
+
+            if (res.ok) {
                 if (onSuccess) {
-                    onSuccess(targetUserId);
+                    onSuccess(effectiveTargetUserId);
                 }
                 handleClose();
             } else {
-                setErrorMessage(data?.message || 'Failed to block user. Please try again.');
+                setErrorMessage(res.data?.message || 'Failed to block user. Please try again.');
             }
         } catch {
             setErrorMessage('An unexpected error occurred while blocking this profile.');
@@ -59,7 +64,7 @@ const BlockUserModal = ({
             onClick={handleClose}
         >
             <div
-                className="w-full max-w-[390px] bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-200"
+                className="w-full sm:max-w-md bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl p-6 pb-8 sm:pb-6 animate-in slide-in-from-bottom duration-200"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}

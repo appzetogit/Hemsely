@@ -45,9 +45,12 @@ router.post('/:id/selfie', protect, mongoIdParam('id'), validate, uploadSelfieMi
 router.post('/selfie-verify-aws', protect, selfieVerificationRateLimiter, uploadSelfieMiddleware.single('selfie'), verifySelfieAWS);
 
 router.delete('/:id/gallery/:imageId', protect, mongoIdParam('id'), validate, deleteGalleryImage);
-router.post('/:id/block/:blockedUserId', protect, mongoIdParam('id'), mongoIdParam('blockedUserId'), validate, blockUser);
-router.post('/:id/unblock/:blockedUserId', protect, mongoIdParam('id'), mongoIdParam('blockedUserId'), validate, unblockUser);
-router.post('/:id/report/:reportedUserId', protect, mongoIdParam('id'), mongoIdParam('reportedUserId'), validate, reportUser);
+router.post('/block/:blockedUserId', protect, mongoIdParam('blockedUserId'), validate, blockUser);
+router.post('/:id/block/:blockedUserId', protect, mongoIdParam('blockedUserId'), validate, blockUser);
+router.post('/unblock/:blockedUserId', protect, mongoIdParam('blockedUserId'), validate, unblockUser);
+router.post('/:id/unblock/:blockedUserId', protect, mongoIdParam('blockedUserId'), validate, unblockUser);
+router.post('/report/:reportedUserId', protect, mongoIdParam('reportedUserId'), validate, reportUser);
+router.post('/:id/report/:reportedUserId', protect, mongoIdParam('reportedUserId'), validate, reportUser);
 
 // Subscription routes mounted separately at /api/subscriptions
 export const subscriptionRouter = express.Router();

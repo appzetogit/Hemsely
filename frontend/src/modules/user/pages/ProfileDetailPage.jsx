@@ -31,6 +31,7 @@ const ProfileDetailPage = () => {
     const [error, setError] = useState('');
     const [liking, setLiking] = useState(false);
     const [liked, setLiked] = useState(false);
+    const [isMatched, setIsMatched] = useState(false);
     const [likeLimitMessage, setLikeLimitMessage] = useState('');
     const [showReportModal, setShowReportModal] = useState(false);
     const [showBlockModal, setShowBlockModal] = useState(false);
@@ -42,12 +43,14 @@ const ProfileDetailPage = () => {
         return () => clearTimeout(timer);
     }, [toastMessage]);
 
+    const targetName = profile ? ([profile.firstName, profile.lastName].filter(Boolean).join(' ') || 'User') : 'User';
+
     const handleReportSuccess = () => {
-        setToastMessage(`Report submitted for ${name}. Thank you.`);
+        setToastMessage(`Report submitted for ${targetName}. Thank you.`);
     };
 
     const handleBlockSuccess = () => {
-        setToastMessage(`${name} has been blocked.`);
+        setToastMessage(`${targetName} has been blocked.`);
         setTimeout(() => {
             navigate(-1);
         }, 1200);
@@ -68,6 +71,8 @@ const ProfileDetailPage = () => {
             if (!cancelled) {
                 if (ok && data.success) {
                     setProfile(data.user);
+                    if (data.isMatched) setIsMatched(true);
+                    if (data.hasLiked) setLiked(true);
                 } else {
                     setError(data.message || 'Could not load this profile.');
                 }
@@ -86,6 +91,10 @@ const ProfileDetailPage = () => {
             const { data, ok, status } = await apiClient.post(`/matches/like/${userId}`, {});
             if (ok) {
                 setLiked(true);
+                if (data.isMatched) {
+                    setIsMatched(true);
+                    setToastMessage(`It's a Match with ${name}! 💕`);
+                }
             } else if (status === 429 || (!ok && data?.message?.toLowerCase().includes('limit'))) {
                 setLikeLimitMessage(data?.message || "You've reached your daily like limit. Upgrade to Premium for unlimited likes or try again tomorrow.");
             }
@@ -133,6 +142,11 @@ const ProfileDetailPage = () => {
                 <div className="flex flex-col mb-4 px-2">
                     <div className="flex items-center space-x-2 mb-1 flex-wrap gap-y-1">
                         <h2 className="text-[22px] font-bold text-black tracking-tight">{name}{profile.age ? `, ${profile.age}` : ''}</h2>
+                        {isMatched && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-[#703DE2] text-[11px] font-bold tracking-tight inline-flex items-center gap-1">
+                                <span>💕</span> Matched
+                            </span>
+                        )}
                         {Boolean(profile.isPremium || profile.subscriptionName === 'Premium' || profile.isSuperPremium || profile.isSuperUser || profile.isSuperSubscriber) &&
                             (profile.selfieStatus === 'approved' || (Boolean(profile.isVerified) && !profile.selfieStatus)) && (
                                 <VerifiedBadge size={20} />
@@ -158,22 +172,48 @@ const ProfileDetailPage = () => {
                     <img src={mainPhoto} alt="" className="w-full h-full object-cover object-center" />
 
                     {/* Action Buttons Overlay */}
-                    <div className="absolute bottom-5 inset-x-0 px-8 flex justify-between items-center z-20">
-                        <button type="button" aria-label="Go back" className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform" onClick={handleBack}>
-                            <img src={crossIcon} alt="" className="w-8 h-8 object-contain" />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="Like profile"
-                            disabled={liking || liked}
-                            className="w-16 h-16 bg-[#F9F7FF] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-60"
-                            onClick={handleLike}
-                        >
-                            <svg width="34" height="34" viewBox="0 0 24 24" fill={liked ? '#6F3BCE' : '#FE7C69'} stroke="none">
-                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                            </svg>
-                        </button>
-                    </div>
+                    {isMatched ? (
+                        <div className="absolute bottom-5 inset-x-0 px-6 flex items-center justify-center gap-3 z-20">
+                            <button
+                                type="button"
+                                aria-label="Go back"
+                                className="w-14 h-14 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform border border-gray-100 cursor-pointer shrink-0"
+                                onClick={handleBack}
+                            >
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M15 18l-6-6 6-6" />
+                                </svg>
+                            </button>
+                            <button
+                                type="button"
+                                aria-label="Chat with match"
+                                onClick={() => navigate(`/chat/${userId}`, { state: { name, photo: mainPhoto } })}
+                                className="flex-1 h-14 rounded-full bg-gradient-to-r from-[#703DE2] to-[#8C52FF] text-white font-bold text-[15px] shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2.5 active:scale-95 transition-transform cursor-pointer border-0"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                </svg>
+                                <span>Message {profile.firstName || 'Match'}</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="absolute bottom-5 inset-x-0 px-8 flex justify-between items-center z-20">
+                            <button type="button" aria-label="Go back" className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer border-0" onClick={handleBack}>
+                                <img src={crossIcon} alt="" className="w-8 h-8 object-contain" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label="Like profile"
+                                disabled={liking || liked}
+                                className="w-16 h-16 bg-[#F9F7FF] rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-60 cursor-pointer border-0"
+                                onClick={handleLike}
+                            >
+                                <svg width="34" height="34" viewBox="0 0 24 24" fill={liked ? '#6F3BCE' : '#FE7C69'} stroke="none">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Details Section */}
@@ -258,7 +298,7 @@ const ProfileDetailPage = () => {
                         <section>
                             <h3 className="text-[16px] font-bold text-black mb-2">Interests</h3>
                             <div className="flex flex-wrap gap-2.5">
-                                {profile.interests.map((interest) => (
+                                {profile.interests.slice(0, 4).map((interest) => (
                                     <Chip key={interest} label={interest} />
                                 ))}
                             </div>
@@ -358,8 +398,8 @@ const ProfileDetailPage = () => {
             <ReportUserModal
                 isOpen={showReportModal}
                 onClose={() => setShowReportModal(false)}
-                targetUserId={userId}
-                targetName={name}
+                targetUserId={userId || profile?._id || profile?.id}
+                targetName={targetName}
                 onSuccess={handleReportSuccess}
                 onPromptBlock={() => {
                     setShowReportModal(false);
@@ -371,8 +411,8 @@ const ProfileDetailPage = () => {
             <BlockUserModal
                 isOpen={showBlockModal}
                 onClose={() => setShowBlockModal(false)}
-                targetUserId={userId}
-                targetName={name}
+                targetUserId={userId || profile?._id || profile?.id}
+                targetName={targetName}
                 onSuccess={handleBlockSuccess}
             />
 

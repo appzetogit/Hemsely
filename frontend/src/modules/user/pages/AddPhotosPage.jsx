@@ -33,6 +33,10 @@ const AddPhotosPage = () => {
         try {
             const hasPhotos = updatedPhotos.some(p => p !== null);
             localStorage.setItem('onboarding_photos:v1', JSON.stringify({ photos: updatedPhotos, hasPhotos }));
+            const primaryPhoto = updatedPhotos[0] || updatedPhotos.find(p => p !== null);
+            if (primaryPhoto) {
+                localStorage.setItem('onboarding_cover_photo:v1', primaryPhoto);
+            }
         } catch {
             // Ignore
         }
@@ -84,9 +88,16 @@ const AddPhotosPage = () => {
                 formData.append('profilePicture', croppedFile);
                 const { data, ok } = await apiClient.post(`/users/${userId}/profile-picture`, formData);
                 if (ok && data.success && data.user.profilePicture) {
+                    const serverPhoto = data.user.profilePicture;
+                    localStorage.setItem('onboarding_cover_photo:v1', serverPhoto);
+                    try {
+                        const existingUser = JSON.parse(localStorage.getItem('user') || '{}');
+                        existingUser.profilePicture = serverPhoto;
+                        localStorage.setItem('user', JSON.stringify(existingUser));
+                    } catch {}
                     setPhotos((prev) => {
                         const next = [...prev];
-                        next[0] = data.user.profilePicture;
+                        next[0] = serverPhoto;
                         savePhotosToStorage(next);
                         return next;
                     });
@@ -118,6 +129,10 @@ const AddPhotosPage = () => {
             return;
         }
         savePhotosToStorage(photos);
+        const primaryPhoto = photos[0] || photos.find(p => p !== null);
+        if (primaryPhoto) {
+            localStorage.setItem('onboarding_cover_photo:v1', primaryPhoto);
+        }
         if (returnPath) {
             navigate(returnPath, { replace: true });
         } else {

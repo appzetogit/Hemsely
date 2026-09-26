@@ -93,6 +93,21 @@ export const sendMessage = asyncHandler(async (req, res, next) => {
   emitToUser(receiver, 'new_message', newMessage);
   emitToUser(sender, 'new_message', newMessage);
 
+  // Update lastMessageAt on Match and un-hide if previously deleted
+  Match.updateMany(
+    {
+      $or: [
+        { user1: sender, user2: receiver },
+        { user1: receiver, user2: sender },
+      ],
+      status: 'accepted',
+    },
+    {
+      $set: { lastMessageAt: new Date() },
+      $pull: { deletedBy: { $in: [sender, receiver] } },
+    }
+  ).catch((err) => console.warn('Failed to update match lastMessageAt:', err?.message));
+
   // Send Notification & FCM Push to receiver for background / lockscreen
   const senderFirstName = newMessage.sender?.firstName || 'User';
   const senderLastName = newMessage.sender?.lastName || '';

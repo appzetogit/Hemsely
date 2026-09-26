@@ -230,7 +230,7 @@ const ReportsPage = () => {
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Reports</p>
-                        <h3 className="text-xl font-medium text-zinc-900 leading-none">{pagination.totalReports}</h3>
+                        <h3 className="text-xl font-medium text-zinc-900 leading-none">{counts.total ?? pagination.totalReports}</h3>
                     </div>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border border-zinc-200 p-4 flex items-center">

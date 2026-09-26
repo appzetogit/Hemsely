@@ -94,7 +94,7 @@ const ProfileDetailsPage = () => {
                                 aria-label="Name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="Enter your name"
+                                placeholder="Name"
                                 className="w-full bg-transparent border-none outline-none text-[16px] font-medium text-gray-900 placeholder:text-gray-400"
                             />
                         </div>
@@ -104,7 +104,7 @@ const ProfileDetailsPage = () => {
                     <div>
                         <div
                             onClick={handleContainerClick}
-                            className={`relative w-full h-[52px] border-[1.5px] ${dob ? 'border-[#6E36E4]' : 'border-[#B89CF5]'} rounded-full flex items-center px-6 justify-between bg-white shadow-xs cursor-pointer transition-colors hover:border-[#6E36E4] focus-within:border-[#6E36E4]`}
+                            className="relative w-full h-[52px] border-[1.5px] border-[#6E36E4] rounded-full flex items-center px-6 justify-between bg-white shadow-xs cursor-pointer transition-colors hover:border-[#5e2cd6] focus-within:border-[#6E36E4]"
                         >
                             <input
                                 ref={dateInputRef}
@@ -119,7 +119,7 @@ const ProfileDetailsPage = () => {
                             />
                             {!dob && (
                                 <span className="absolute left-6 pointer-events-none text-[15px] font-medium text-[#9CA3AF]">
-                                    DOB
+                                    Date of Birth
                                 </span>
                             )}
                             <div className="text-[#9CA3AF] pointer-events-none shrink-0 ml-2">

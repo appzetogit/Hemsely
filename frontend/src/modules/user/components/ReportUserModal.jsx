@@ -44,12 +44,13 @@ const ReportUserModal = ({
         setErrorMessage('');
 
         const myId = getCurrentUserId();
-        if (!myId) {
-            setErrorMessage('You must be logged in to submit a report.');
-            return;
-        }
+        const effectiveTargetUserId = (
+            typeof targetUserId === 'object' && targetUserId !== null
+                ? (targetUserId._id || targetUserId.id)
+                : targetUserId
+        )?.toString()?.trim();
 
-        if (!targetUserId) {
+        if (!effectiveTargetUserId) {
             setErrorMessage('Unable to report: target user ID is missing.');
             return;
         }
@@ -66,18 +67,27 @@ const ReportUserModal = ({
 
         setSubmitting(true);
         try {
-            const { ok, data } = await apiClient.post(`/users/${myId}/report/${targetUserId}`, {
+            // First try direct /users/report/:targetUserId
+            let res = await apiClient.post(`/users/report/${effectiveTargetUserId}`, {
                 category: selectedCategory,
                 reason: reasonText,
             });
 
-            if (ok) {
+            // If 404 (e.g. legacy route only), fallback to /users/:myId/report/:targetUserId
+            if (!res.ok && res.status === 404 && myId) {
+                res = await apiClient.post(`/users/${myId}/report/${effectiveTargetUserId}`, {
+                    category: selectedCategory,
+                    reason: reasonText,
+                });
+            }
+
+            if (res.ok) {
                 setSubmitted(true);
                 if (onSuccess) {
-                    onSuccess(targetUserId);
+                    onSuccess(effectiveTargetUserId);
                 }
             } else {
-                setErrorMessage(data?.message || 'Failed to submit report. Please try again.');
+                setErrorMessage(res.data?.message || 'Failed to submit report. Please try again.');
             }
         } catch {
             setErrorMessage('An unexpected error occurred while submitting your report.');
@@ -92,7 +102,7 @@ const ReportUserModal = ({
             onClick={handleClose}
         >
             <div
-                className="w-full max-w-[420px] bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
+                className="w-full sm:max-w-md bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl p-5 sm:p-6 pb-8 sm:pb-6 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close Button Header */}

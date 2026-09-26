@@ -23,13 +23,13 @@ const LoginScreen = () => {
     }
 
     return (
-        <div className="h-[100dvh] bg-white flex flex-col justify-between items-center py-6 px-6 font-sans overflow-hidden max-w-[420px] mx-auto select-none">
+        <div className="h-[100dvh] bg-white flex flex-col justify-between items-center pt-10 pb-12 px-6 font-sans overflow-hidden max-w-[420px] mx-auto select-none">
             {/* Header Text */}
-            <div className="mt-2 text-center shrink-0">
-                <h2 className="text-[30px] leading-[1.15] font-bold text-black tracking-tight">
-                    Find <span className="text-[#FF8878]">your</span>
+            <div className="mt-4 sm:mt-6 text-center shrink-0">
+                <h2 className="text-[30px] leading-[1.2] font-extrabold text-black tracking-tight">
+                    Find your
                     <br />
-                    <span className="text-[#FF8878]">best</span> match
+                    best match
                 </h2>
             </div>
 
@@ -146,11 +146,11 @@ const LoginScreen = () => {
             </div>
 
             {/* Actions Section */}
-            <div className="w-full flex flex-col items-center shrink-0 mb-8">
+            <div className="w-full flex flex-col items-center shrink-0 mb-8 sm:mb-10">
                 <button
                     type="button"
                     onClick={handlePhoneLoginClick}
-                    className="w-full bg-[#733FE0] text-white font-bold h-[54px] rounded-[27px] text-[16px] shadow-lg hover:bg-[#6533c9] active:scale-[0.98] transition-colors"
+                    className="w-full bg-[#733FE0] text-white font-bold h-[54px] rounded-full text-[16px] shadow-lg hover:bg-[#6533c9] active:scale-[0.98] transition-all cursor-pointer"
                 >
                     Login using phone number
                 </button>

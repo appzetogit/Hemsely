@@ -4,6 +4,7 @@ import Like from '../models/Like.js';
 import Match from '../models/Match.js';
 import Message from '../models/Message.js';
 import Report from '../models/Report.js';
+import Pass from '../models/Pass.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { evaluateQueueAccessForUser, isBlockedByQueue, getQueueStatusForUser, processQueueReevaluation } from '../utils/queueService.js';
 import { getOrCreateConfig } from './appConfigController.js';
@@ -50,9 +51,37 @@ export const getUserProfile = asyncHandler(async (req, res, next) => {
     await User.findByIdAndUpdate(user._id, { isBoosted: false });
   }
 
+  const viewerId = req.user?.id || req.user?._id;
+  let isMatched = false;
+  let hasLiked = false;
+  if (viewerId && String(viewerId) !== String(targetId)) {
+    const viewerObjId = mongoose.Types.ObjectId.isValid(viewerId) ? new mongoose.Types.ObjectId(viewerId) : viewerId;
+    const targetObjId = mongoose.Types.ObjectId.isValid(targetId) ? new mongoose.Types.ObjectId(targetId) : targetId;
+
+    const [matchDoc, likeDoc] = await Promise.all([
+      Match.findOne({
+        $or: [
+          { user1: viewerObjId, user2: targetObjId },
+          { user1: targetObjId, user2: viewerObjId },
+          { user1: String(viewerId), user2: String(targetId) },
+          { user1: String(targetId), user2: String(viewerId) },
+        ],
+        status: 'accepted',
+      }),
+      Like.findOne({
+        likedBy: { $in: [viewerObjId, String(viewerId)] },
+        likedUser: { $in: [targetObjId, String(targetId)] },
+      }),
+    ]);
+    isMatched = !!matchDoc;
+    hasLiked = !!likeDoc;
+  }
+
   res.status(200).json({
     success: true,
     user,
+    isMatched,
+    hasLiked,
   });
 });
 
@@ -566,10 +595,20 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
     return u1 === userIdStr ? String(m.user2) : u1;
   });
 
+  // Passed/Noped users within their active expiration period (today / 24 hours) shouldn't reappear in feed
+  const passedUserIds = await Pass.find({
+    $or: [{ passedBy: userObjId }, { passedBy: userIdStr }],
+    $or: [
+      { expiresAt: { $gt: new Date() } },
+      { createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+    ],
+  }).distinct('passedUser');
+
   const rawExcluded = [
     userIdStr,
     ...(currentUser.blockedUsers || []).map((id) => String(id)),
     ...likedUserIds.map((id) => String(id)),
+    ...passedUserIds.map((id) => String(id)),
     ...activeMatchedUserIds,
   ];
 
@@ -739,17 +778,21 @@ export const getDiscoveryFeed = asyncHandler(async (req, res, next) => {
 });
 
 // @desc Block user
+// @route POST /api/users/block/:blockedUserId
 // @route POST /api/users/:id/block/:blockedUserId
 // @access Private
 export const blockUser = asyncHandler(async (req, res, next) => {
-  if (req.params.id !== req.user.id) {
+  const blockerId = req.user.id;
+  const blockedUserId = req.params.blockedUserId;
+
+  if (req.params.id && req.params.id !== 'me' && req.params.id !== blockerId) {
     return res.status(403).json({
       success: false,
       message: 'You can only manage your own block list',
     });
   }
 
-  const user = await User.findById(req.params.id);
+  const user = await User.findById(blockerId);
 
   if (!user) {
     return res.status(404).json({
@@ -758,11 +801,18 @@ export const blockUser = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (!user.blockedUsers.includes(req.params.blockedUserId)) {
-    user.blockedUsers.push(req.params.blockedUserId);
+  if (!Array.isArray(user.blockedUsers)) {
+    user.blockedUsers = [];
   }
 
-  await user.save();
+  const alreadyBlocked = user.blockedUsers.some(
+    (id) => id && id.toString() === blockedUserId.toString()
+  );
+
+  if (!alreadyBlocked) {
+    user.blockedUsers.push(blockedUserId);
+    await user.save();
+  }
 
   res.status(200).json({
     success: true,
@@ -771,17 +821,21 @@ export const blockUser = asyncHandler(async (req, res, next) => {
 });
 
 // @desc Unblock user
+// @route POST /api/users/unblock/:blockedUserId
 // @route POST /api/users/:id/unblock/:blockedUserId
 // @access Private
 export const unblockUser = asyncHandler(async (req, res, next) => {
-  if (req.params.id !== req.user.id) {
+  const blockerId = req.user.id;
+  const blockedUserId = req.params.blockedUserId;
+
+  if (req.params.id && req.params.id !== 'me' && req.params.id !== blockerId) {
     return res.status(403).json({
       success: false,
       message: 'You can only manage your own block list',
     });
   }
 
-  const user = await User.findById(req.params.id);
+  const user = await User.findById(blockerId);
 
   if (!user) {
     return res.status(404).json({
@@ -790,11 +844,12 @@ export const unblockUser = asyncHandler(async (req, res, next) => {
     });
   }
 
-  user.blockedUsers = user.blockedUsers.filter(
-    (blockedUser) => blockedUser.toString() !== req.params.blockedUserId
-  );
-
-  await user.save();
+  if (Array.isArray(user.blockedUsers)) {
+    user.blockedUsers = user.blockedUsers.filter(
+      (blockedUser) => blockedUser && blockedUser.toString() !== blockedUserId.toString()
+    );
+    await user.save();
+  }
 
   res.status(200).json({
     success: true,
@@ -803,18 +858,28 @@ export const unblockUser = asyncHandler(async (req, res, next) => {
 });
 
 // @desc Report user
+// @route POST /api/users/report/:reportedUserId
 // @route POST /api/users/:id/report/:reportedUserId
 // @access Private
 export const reportUser = asyncHandler(async (req, res, next) => {
-  if (req.params.id !== req.user.id) {
+  const reporterId = req.user.id;
+  const reportedUserId = req.params.reportedUserId;
+
+  if (req.params.id && req.params.id !== 'me' && req.params.id !== reporterId) {
     return res.status(403).json({
       success: false,
       message: 'You can only report users as yourself',
     });
   }
 
-  const user = await User.findById(req.params.id);
+  if (String(reporterId) === String(reportedUserId)) {
+    return res.status(400).json({
+      success: false,
+      message: 'You cannot report your own profile',
+    });
+  }
 
+  const user = await User.findById(reporterId);
   if (!user) {
     return res.status(404).json({
       success: false,
@@ -822,24 +887,55 @@ export const reportUser = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (!user.reportedUsers.includes(req.params.reportedUserId)) {
-    user.reportedUsers.push(req.params.reportedUserId);
+  const targetUser = await User.findById(reportedUserId);
+  if (!targetUser) {
+    return res.status(404).json({
+      success: false,
+      message: 'Reported user not found',
+    });
   }
 
-  await user.save();
+  if (!Array.isArray(user.reportedUsers)) {
+    user.reportedUsers = [];
+  }
 
-  // Real, admin-queryable report record (the embedded reportedUsers array above
-  // is kept only for quick "have I already reported this person" checks).
-  await Report.create({
-    reporter: req.user.id,
-    reportedUser: req.params.reportedUserId,
-    category: req.body.category || 'other',
-    reason: req.body.reason || '',
+  const alreadyReported = user.reportedUsers.some(
+    (id) => id && id.toString() === reportedUserId.toString()
+  );
+
+  if (!alreadyReported) {
+    user.reportedUsers.push(reportedUserId);
+    await user.save();
+  }
+
+  const validCategories = [
+    'spam',
+    'fake_profile',
+    'inappropriate_content',
+    'harassment',
+    'scams',
+    'underage',
+    'hate_speech',
+    'impersonation',
+    'other',
+  ];
+
+  const category = validCategories.includes(req.body.category)
+    ? req.body.category
+    : 'other';
+
+  const report = await Report.create({
+    reporter: reporterId,
+    reportedUser: reportedUserId,
+    category,
+    reason: typeof req.body.reason === 'string' ? req.body.reason.trim().substring(0, 1000) : '',
+    status: 'pending',
   });
 
   res.status(200).json({
     success: true,
     message: 'User reported successfully',
+    reportId: report._id,
   });
 });
 

@@ -8,6 +8,7 @@ import {
   getLikesSent,
   acceptMatch,
   rejectMatch,
+  passUser,
 } from '../controllers/matchController.js';
 import { protect } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -16,6 +17,8 @@ import { userIdParamValidator, matchIdParamValidator } from '../validators/match
 const router = express.Router();
 
 router.post('/like/:userId', protect, userIdParamValidator, validate, likeUser);
+router.post('/pass/:userId', protect, userIdParamValidator, validate, passUser);
+router.post('/nope/:userId', protect, userIdParamValidator, validate, passUser);
 router.post('/unmatch/:userId', protect, userIdParamValidator, validate, unmatchUser);
 router.delete('/unmatch/:userId', protect, userIdParamValidator, validate, unmatchUser);
 router.delete('/unlike/:userId', protect, userIdParamValidator, validate, unlikeUser);

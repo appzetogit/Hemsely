@@ -18,7 +18,7 @@ export const getReports = asyncHandler(async (req, res) => {
     query.status = req.query.status;
   }
 
-  const [reports, totalReports, pendingCount, reviewedCount, actionedCount, dismissedCount] = await Promise.all([
+  const [reports, totalReports, allCount, pendingCount, reviewedCount, actionedCount, dismissedCount] = await Promise.all([
     Report.find(query)
       .populate('reporter', 'firstName lastName profilePicture')
       .populate('reportedUser', 'firstName lastName profilePicture isBanned')
@@ -27,6 +27,7 @@ export const getReports = asyncHandler(async (req, res) => {
       .skip(skip)
       .limit(limit),
     Report.countDocuments(query),
+    Report.countDocuments({}),
     Report.countDocuments({ status: 'pending' }),
     Report.countDocuments({ status: 'reviewed' }),
     Report.countDocuments({ status: 'actioned' }),
@@ -37,6 +38,7 @@ export const getReports = asyncHandler(async (req, res) => {
     success: true,
     reports,
     counts: {
+      total: allCount,
       pending: pendingCount,
       reviewed: reviewedCount,
       actioned: actionedCount,
