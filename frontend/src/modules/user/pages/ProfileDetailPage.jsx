@@ -3,6 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../../../shared/services/apiClient';
 import demoPhoto from '../assets/6ee1ef9d2677e06049fb899a7658f4b9ac9c11dc.jpg';
 import VerifiedBadge from '../components/VerifiedBadge';
+import ProfileBottomActions from '../components/ProfileBottomActions';
+import ReportUserModal from '../components/ReportUserModal';
+import BlockUserModal from '../components/BlockUserModal';
+import { CheckCircle2 } from 'lucide-react';
 
 // Reusing icons from assets or SVGs where needed
 import crossIcon from '../assets/icons/cross.png';
@@ -28,6 +32,26 @@ const ProfileDetailPage = () => {
     const [liking, setLiking] = useState(false);
     const [liked, setLiked] = useState(false);
     const [likeLimitMessage, setLikeLimitMessage] = useState('');
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [showBlockModal, setShowBlockModal] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+
+    useEffect(() => {
+        if (!toastMessage) return undefined;
+        const timer = setTimeout(() => setToastMessage(''), 3500);
+        return () => clearTimeout(timer);
+    }, [toastMessage]);
+
+    const handleReportSuccess = () => {
+        setToastMessage(`Report submitted for ${name}. Thank you.`);
+    };
+
+    const handleBlockSuccess = () => {
+        setToastMessage(`${name} has been blocked.`);
+        setTimeout(() => {
+            navigate(-1);
+        }, 1200);
+    };
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -251,6 +275,13 @@ const ProfileDetailPage = () => {
                             ))}
                         </section>
                     )}
+
+                    {/* Additional options at bottom of profile: Report profile & Block profile */}
+                    <ProfileBottomActions
+                        onReport={() => setShowReportModal(true)}
+                        onBlock={() => setShowBlockModal(true)}
+                        name={name}
+                    />
                 </div>
             </div>
 
@@ -320,6 +351,39 @@ const ProfileDetailPage = () => {
                             Maybe Later
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* Report Profile Modal */}
+            <ReportUserModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                targetUserId={userId}
+                targetName={name}
+                onSuccess={handleReportSuccess}
+                onPromptBlock={() => {
+                    setShowReportModal(false);
+                    setShowBlockModal(true);
+                }}
+            />
+
+            {/* Block Profile Modal */}
+            <BlockUserModal
+                isOpen={showBlockModal}
+                onClose={() => setShowBlockModal(false)}
+                targetUserId={userId}
+                targetName={name}
+                onSuccess={handleBlockSuccess}
+            />
+
+            {/* In-app action feedback toast */}
+            {toastMessage && (
+                <div
+                    role="status"
+                    className="fixed top-6 left-1/2 -translate-x-1/2 z-[10000] bg-gray-900/95 backdrop-blur-md text-white text-[13px] font-medium py-2.5 px-4 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-200"
+                >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{toastMessage}</span>
                 </div>
             )}
         </div>

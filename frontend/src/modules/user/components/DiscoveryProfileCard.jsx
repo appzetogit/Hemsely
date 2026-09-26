@@ -9,6 +9,7 @@ import studyIcon from '../assets/icons/study.png';
 import heartIcon from '../assets/icons/heart.png';
 import VerifiedBadge from './VerifiedBadge';
 import { Pill, renderInterestIcon } from '../constants/discoveryData';
+import ProfileBottomActions from './ProfileBottomActions';
 
 const DiscoveryProfileCard = ({
     profile,
@@ -21,7 +22,9 @@ const DiscoveryProfileCard = ({
     onReject,
     onLike,
     onFilterClick,
-    hasActiveFilter
+    hasActiveFilter,
+    onReport,
+    onBlock
 }) => (
     <>
         {/* Name & Info Header */}
@@ -257,6 +260,13 @@ const DiscoveryProfileCard = ({
                 </div>
             );
         })()}
+
+        {/* Additional options at bottom of profile: Report profile & Block profile */}
+        <ProfileBottomActions
+            onReport={onReport}
+            onBlock={onBlock}
+            name={profile?.name}
+        />
 
     </>
 );

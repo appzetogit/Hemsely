@@ -1165,35 +1165,6 @@ const ChatScreenPage = () => {
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
-    const handleSendLike = async () => {
-        if (!partnerId || sending || isUnmatched) return;
-        setSending(true);
-        const currentReply = replyingTo;
-        setReplyingTo(null);
-
-        const payload = { message: '👍' };
-        if (currentReply) {
-            payload.replyTo = currentReply._id;
-            payload.replyToMessage = {
-                id: currentReply._id,
-                senderName: String(currentReply.sender?._id || currentReply.sender) === String(myId) ? 'You' : currentName,
-                message: currentReply.message || '',
-                image: currentReply.image || '',
-                audio: currentReply.audio || '',
-            };
-        }
-
-        const { data, ok } = await apiClient.post(`/messages/send/${partnerId}`, payload);
-        if (ok && data.success) {
-            setMessages((prev) => {
-                if (prev.some((m) => String(m._id) === String(data.data._id))) {
-                    return prev;
-                }
-                return [...prev, data.data];
-            });
-        }
-        setSending(false);
-    };
 
     const handleFileSelected = async (e) => {
         const file = e.target.files?.[0];
@@ -1450,7 +1421,7 @@ const ChatScreenPage = () => {
                 </footer>
             ) : isRecording ? (
                 <footer style={{
-                    width: '100%', padding: '10px 14px 28px',
+                    width: '100%', padding: '10px 14px calc(38px + env(safe-area-inset-bottom, 0px))',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     gap: '12px', flexShrink: 0, background: '#FFFFFF',
                     borderTop: '1px solid rgba(0,0,0,0.03)',
@@ -1495,7 +1466,7 @@ const ChatScreenPage = () => {
                 </footer>
             ) : (
                 <footer style={{
-                    width: '100%', padding: '8px 12px 24px',
+                    width: '100%', padding: '8px 12px calc(38px + env(safe-area-inset-bottom, 0px))',
                     display: 'flex', flexDirection: 'column', gap: '6px',
                     flexShrink: 0, background: '#FFFFFF',
                     borderTop: '1px solid rgba(0,0,0,0.04)',
@@ -1632,7 +1603,7 @@ const ChatScreenPage = () => {
                                 aria-label="Type a message"
                                 disabled={sending}
                                 style={{
-                                    width: '100%', background: 'transparent', border: 'none', outline: 'none',
+                                    width: '100%', height: '100%', background: 'transparent', border: 'none', outline: 'none',
                                     fontFamily: "'Roboto', sans-serif", fontWeight: 400, fontSize: '15px', color: '#18181B',
                                     userSelect: 'text', WebkitUserSelect: 'text',
                                 }}
@@ -1653,17 +1624,6 @@ const ChatScreenPage = () => {
                             </button>
                         </div>
 
-                        <button
-                            type="button"
-                            aria-label="Send like"
-                            onClick={handleSendLike}
-                            disabled={sending}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-                        >
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="#6F3BCE">
-                                <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.58 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
-                            </svg>
-                        </button>
                     </div>
                 </footer>
             )}

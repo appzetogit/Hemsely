@@ -5,6 +5,9 @@ import DiscoveryMatchPopup from '../components/DiscoveryMatchPopup';
 import DiscoveryProfileCard from '../components/DiscoveryProfileCard';
 import AwsSelfieVerificationModal from '../components/AwsSelfieVerificationModal';
 import BottomNavigation from '../components/BottomNavigation';
+import ReportUserModal from '../components/ReportUserModal';
+import BlockUserModal from '../components/BlockUserModal';
+import { CheckCircle2 } from 'lucide-react';
 
 import { getStored, setStored } from '../constants/discoveryData';
 import apiClient from '../../../shared/services/apiClient';
@@ -140,6 +143,10 @@ const DiscoveryPage = () => {
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [showSelfieModal, setShowSelfieModal] = useState(false);
     const [likeLimitMessage, setLikeLimitMessage] = useState('');
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [showBlockModal, setShowBlockModal] = useState(false);
+    const [targetSafetyUser, setTargetSafetyUser] = useState(null);
+    const [toastMessage, setToastMessage] = useState('');
     const [isUserVerified, setIsUserVerified] = useState(() => {
         try {
             const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
@@ -384,6 +391,37 @@ const DiscoveryPage = () => {
         });
     };
 
+    useEffect(() => {
+        if (!toastMessage) return undefined;
+        const timer = setTimeout(() => setToastMessage(''), 3500);
+        return () => clearTimeout(timer);
+    }, [toastMessage]);
+
+    const handleOpenReport = (target) => {
+        setTargetSafetyUser(target || profile);
+        setShowReportModal(true);
+    };
+
+    const handleOpenBlock = (target) => {
+        setTargetSafetyUser(target || profile);
+        setShowBlockModal(true);
+    };
+
+    const handleReportSuccess = (reportedUserId) => {
+        const targetName = targetSafetyUser?.name || profile?.name || 'User';
+        setToastMessage(`Report submitted for ${targetName}. Thank you.`);
+    };
+
+    const handleBlockSuccess = (blockedUserId) => {
+        const targetName = targetSafetyUser?.name || profile?.name || 'User';
+        setSwipedIds((prev) => new Set(prev).add(blockedUserId));
+        setProfiles((prev) => prev.filter((p) => p.id !== blockedUserId));
+        setDragOffset(0);
+        setIsExiting(false);
+        setExitDir(null);
+        setToastMessage(`${targetName} has been blocked.`);
+    };
+
     const cardStyle = isExiting
         ? { transform: `translateX(${exitDir === 'right' ? '120%' : '-120%'}) rotate(${exitDir === 'right' ? '12deg' : '-12deg'})`, opacity: 0, transition: 'transform 0.35s ease, opacity 0.35s ease' }
         : { transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.04}deg)`, transition: isDragging.current ? 'none' : 'transform 0.3s ease' };
@@ -555,6 +593,8 @@ const DiscoveryPage = () => {
                         onLike={handleLike}
                         onFilterClick={() => setShowFilter(true)}
                         hasActiveFilter={hasActiveFilter}
+                        onReport={() => handleOpenReport(profile)}
+                        onBlock={() => handleOpenBlock(profile)}
                     />
                 ) : null}
             </main>
@@ -734,6 +774,39 @@ const DiscoveryPage = () => {
                             Maybe Later
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* Report Profile Modal */}
+            <ReportUserModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                targetUserId={targetSafetyUser?.id || profile?.id}
+                targetName={targetSafetyUser?.name || profile?.name}
+                onSuccess={handleReportSuccess}
+                onPromptBlock={(id) => {
+                    setShowReportModal(false);
+                    setShowBlockModal(true);
+                }}
+            />
+
+            {/* Block Profile Modal */}
+            <BlockUserModal
+                isOpen={showBlockModal}
+                onClose={() => setShowBlockModal(false)}
+                targetUserId={targetSafetyUser?.id || profile?.id}
+                targetName={targetSafetyUser?.name || profile?.name}
+                onSuccess={handleBlockSuccess}
+            />
+
+            {/* In-app action feedback toast */}
+            {toastMessage && (
+                <div
+                    role="status"
+                    className="fixed top-6 left-1/2 -translate-x-1/2 z-[10000] bg-gray-900/95 backdrop-blur-md text-white text-[13px] font-medium py-2.5 px-4 rounded-full shadow-2xl flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-200"
+                >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{toastMessage}</span>
                 </div>
             )}
         </div>
