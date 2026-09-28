@@ -85,7 +85,7 @@ export const getUserProfile = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc Consume 1 boost credit and activate a 30-minute profile boost window
+// @desc Consume 1 boost credit and activate a 40-minute profile boost window
 // @route POST /api/users/boost/activate
 // @access Private
 export const activateBoost = asyncHandler(async (req, res, next) => {
@@ -108,7 +108,8 @@ export const activateBoost = asyncHandler(async (req, res, next) => {
     user.boostCount = 0;
   }
 
-  user.boostUntil = new Date(Date.now() + 30 * 60 * 1000);
+  // Always activate a fresh 40-minute countdown window from right now
+  user.boostUntil = new Date(Date.now() + 40 * 60 * 1000);
   user.isBoosted = true;
   await user.save();
 

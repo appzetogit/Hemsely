@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../shared/services/apiClient';
 import tickIcon from '../assets/icons/tick.png';
@@ -15,6 +15,7 @@ import { launchGooglePlayPurchase, queryGooglePlayProductDetails, isGooglePlayBr
 import GooglePlayBillingModal from '../components/GooglePlayBillingModal';
 import { devError } from '../../../shared/utils/logger';
 import { calculateProfileStrength } from '../../../shared/utils/profileStrength';
+import { useProfileBoost } from '../../../shared/hooks/useProfileBoost';
 
 /* ─── Premium Purchase Popup (Google Play Billing for In-App Boosts) ─── */
 const PremiumPopup = ({ type, onClose, onSuccess }) => {
@@ -47,7 +48,7 @@ const PremiumPopup = ({ type, onClose, onSuccess }) => {
                         })));
                     }
                 })
-                .catch(() => {});
+                .catch(() => { });
 
             // Query dynamic Google Play Store localized prices
             queryGooglePlayProductDetails(['hemsely_boost_1', 'hemsely_boost_5']).then((details) => {
@@ -60,7 +61,7 @@ const PremiumPopup = ({ type, onClose, onSuccess }) => {
                         return p;
                     }));
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }, [isComments]);
 
@@ -330,11 +331,40 @@ const ProfileAvatarSection = ({ name, age, photo, completionPercentage, isVerifi
     </section>
 );
 
-const QuickActionCards = ({ isPremium, boostCount, onOpenPopup, onUseBoost, boosting }) => {
+const QuickActionCards = ({ isPremium, boostCount, onOpenPopup, onUseBoost, boosting, isBoostActive, formattedRemaining }) => {
     const totalBoosts = isPremium
         ? (typeof boostCount === 'number' && boostCount > 0 ? boostCount : 1)
         : (typeof boostCount === 'number' ? boostCount : 0);
     const hasBoosts = totalBoosts > 0;
+
+    if (isBoostActive) {
+        return (
+            <section className="mt-4 mb-4 w-full shrink-0">
+                <div
+                    className="w-full text-left px-3.5 py-3 rounded-[20px] bg-gradient-to-r from-[#FFF5F1] via-[#FFEBE4] to-[#FFF0EA] border-2 border-[#FF6B4A] flex items-center justify-between shadow-sm relative overflow-hidden transition-all"
+                >
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-9.5 h-9.5 rounded-full bg-gradient-to-tr from-[#FF6B4A] to-[#FFA733] flex items-center justify-center shrink-0 shadow-xs text-white">
+                            <span className="text-[17px] leading-none animate-pulse">🚀</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <p className="font-extrabold text-[13.5px] text-gray-900 leading-tight tracking-tight">Boost</p>
+                            <p className="text-[11px] text-[#E04F2E] font-semibold mt-0.5 tracking-tight tabular-nums">
+                                Boost active · <span className="font-black text-gray-900">{formattedRemaining}</span> remaining
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="shrink-0">
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B4A] to-[#FFA733] text-white text-[11px] font-extrabold shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            Active
+                        </span>
+                    </div>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="mt-4 mb-4 w-full shrink-0">
@@ -438,10 +468,6 @@ const PremiumOfferCard = ({ isPremium, onUpgradeClick }) => (
                         <span className="text-[13px]">⚡</span>
                         <span className="text-[11px] font-semibold text-white truncate">1 Free Boost</span>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-xs px-2.5 py-1.5 rounded-[12px] border border-white/10">
-                        <span className="text-[13px]">🛡️</span>
-                        <span className="text-[11px] font-semibold text-white truncate">Verified Blue Badge</span>
-                    </div>
                 </div>
 
                 {/* Upgrade Button */}
@@ -482,6 +508,9 @@ const ProfilePreviewPage = () => {
                     setUserProfile(res.data.user);
                     sessionStorage.setItem('user', JSON.stringify(res.data.user));
                     localStorage.setItem('user', JSON.stringify(res.data.user));
+                    if (res.data.user.boostUntil) {
+                        localStorage.setItem('hemsely_boost_until', res.data.user.boostUntil);
+                    }
                 }
             } catch {
                 // Silent catch for profile fetch
@@ -491,8 +520,23 @@ const ProfilePreviewPage = () => {
         fetchUserProfile();
     }, []);
 
+    const handleBoostExpired = useCallback(() => {
+        setUserProfile((prev) => ({
+            ...prev,
+            isBoosted: false,
+            boostUntil: null,
+        }));
+    }, []);
+
+    const {
+        isBoostActive,
+        formattedRemaining,
+        boostText,
+        activateBoostState,
+    } = useProfileBoost(userProfile, handleBoostExpired);
+
     const handleUseBoost = async () => {
-        if (boosting) return;
+        if (boosting || isBoostActive) return;
         setBoosting(true);
         try {
             const { data, ok } = await apiClient.post('/users/boost/activate');
@@ -500,6 +544,9 @@ const ProfilePreviewPage = () => {
                 setUserProfile(data.user);
                 sessionStorage.setItem('user', JSON.stringify(data.user));
                 localStorage.setItem('user', JSON.stringify(data.user));
+                if (data.boostUntil || data.user?.boostUntil) {
+                    activateBoostState(data.boostUntil || data.user.boostUntil);
+                }
                 setShowBoostAnim(true);
             } else {
                 alert(data?.message || 'Could not activate boost');
@@ -577,6 +624,11 @@ const ProfilePreviewPage = () => {
             religion: userProfile.religion || '',
             profession: userProfile.profession || '',
             company: userProfile.company || '',
+            height: userProfile.height,
+            languages: userProfile.languages,
+            relationshipGoal: userProfile.relationshipGoal,
+            drinkingStatus: userProfile.drinkingStatus,
+            smokingStatus: userProfile.smokingStatus,
         });
 
         const isSelfieVerified = userProfile.selfieStatus === 'approved' || (Boolean(userProfile.isVerified) && !userProfile.selfieStatus);
@@ -623,6 +675,9 @@ const ProfilePreviewPage = () => {
                     onOpenPopup={setPopup}
                     onUseBoost={handleUseBoost}
                     boosting={boosting}
+                    isBoostActive={isBoostActive}
+                    formattedRemaining={formattedRemaining}
+                    boostText={boostText}
                 />
                 <PremiumOfferCard
                     isPremium={profileState.isPremium}

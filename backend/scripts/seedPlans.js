@@ -31,7 +31,7 @@ const STATIC_PLANS = [
     slug: 'monthly',
     productId: 'hemsely_premium_monthly',
     name: '1 Month',
-    description: 'Full monthly access to priority discovery, unlimited likes, and direct chat!',
+    description: 'Full monthly access to priority discovery, unlimited likes, and Change location!',
     price: 499,
     durationDays: 30,
     badge: 'POPULAR',
@@ -75,9 +75,9 @@ const run = async () => {
   await Plan.deleteMany({ name: { $in: ['Premium', 'Weekly Lite', 'Monthly', '3 Months VIP'] } });
 
   for (const planData of STATIC_PLANS) {
-    const existing = await Plan.findOne({ 
+    const existing = await Plan.findOne({
       $or: [{ name: planData.name }, { productId: planData.productId }, { slug: planData.slug }],
-      isSystemPlan: true 
+      isSystemPlan: true
     });
     if (existing) {
       existing.name = planData.name;

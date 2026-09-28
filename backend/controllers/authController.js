@@ -433,6 +433,11 @@ export const getCurrentUser = asyncHandler(async (req, res, next) => {
     });
   }
 
+  if (user.isBoosted && (!user.boostUntil || new Date(user.boostUntil) < new Date())) {
+    user.isBoosted = false;
+    await User.findByIdAndUpdate(user._id, { isBoosted: false });
+  }
+
   res.status(200).json({
     success: true,
     user: {

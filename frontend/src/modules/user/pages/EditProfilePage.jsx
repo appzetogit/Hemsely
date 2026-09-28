@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../shared/services/apiClient';
 import { cropImageToSquare } from '../../../shared/utils/imageCrop';
 import { devError } from '../../../shared/utils/logger';
-import { calculateProfileStrength } from '../../../shared/utils/profileStrength';
+import { calculateProfileStrength, getProfileStrengthDetails } from '../../../shared/utils/profileStrength';
 
 const INTEREST_ICONS = {
     'Art & Crafts': '🎨',
@@ -93,6 +93,14 @@ const EditProfilePage = () => {
     const fileInputRef = useRef(null);
     const heightContainerRef = useRef(null);
     const selectedHeightRef = useRef(null);
+
+    // Section references for quick scrolling from the Profile Strength checklist
+    const photosSectionRef = useRef(null);
+    const bioSectionRef = useRef(null);
+    const questionsSectionRef = useRef(null);
+    const interestsSectionRef = useRef(null);
+    const detailsSectionRef = useRef(null);
+    const habitsSectionRef = useRef(null);
 
     useEffect(() => {
         if (activeModal?.key === 'heightValue') {
@@ -436,12 +444,8 @@ const EditProfilePage = () => {
         }
     };
 
-    const answeredQuestionsCount = questions.filter((q) => q.answer && q.answer.trim().length > 0).length;
-    const hasPhotos = (form.profilePicture ? 1 : 0) + (form.galleryImages?.length || 0) >= 1;
-    const hasInterests = form.interests && form.interests.length > 0;
-
-    // Calculate dynamic strength %
-    const calculateStrength = () => calculateProfileStrength({
+    // Calculate dynamic strength details & percentage
+    const strengthDetails = getProfileStrengthDetails({
         profilePicture: form.profilePicture,
         galleryImages: form.galleryImages,
         interests: form.interests,
@@ -451,7 +455,55 @@ const EditProfilePage = () => {
         religion: form.religion,
         profession: form.profession,
         company: form.company,
+        heightValue: form.heightValue,
+        languages: form.languages,
+        relationshipGoal: form.relationshipGoal,
+        drinkingStatus: form.drinkingStatus,
+        smokingStatus: form.smokingStatus,
     });
+
+    const checklistItems = [
+        {
+            id: 'photos',
+            label: strengthDetails.has4Photos
+                ? '4 Photos added'
+                : (strengthDetails.photosCount > 0 ? `Add 4 photos (${strengthDetails.photosCount}/4)` : 'Add 4 photos'),
+            isDone: strengthDetails.has4Photos,
+            ref: photosSectionRef,
+        },
+        {
+            id: 'questions',
+            label: strengthDetails.has2Questions
+                ? '2 Questions answered'
+                : (strengthDetails.answeredQuestionsCount > 0 ? `Answer 2 questions (${strengthDetails.answeredQuestionsCount}/2)` : 'Answer 2 questions'),
+            isDone: strengthDetails.has2Questions,
+            ref: questionsSectionRef,
+        },
+        {
+            id: 'interests',
+            label: strengthDetails.hasInterests ? 'Interests added' : 'Add interests',
+            isDone: strengthDetails.hasInterests,
+            ref: interestsSectionRef,
+        },
+        {
+            id: 'bio',
+            label: strengthDetails.hasBio ? 'Bio added' : 'Add bio',
+            isDone: strengthDetails.hasBio,
+            ref: bioSectionRef,
+        },
+        {
+            id: 'details',
+            label: strengthDetails.hasDetails ? 'Details added' : 'Add details',
+            isDone: strengthDetails.hasDetails,
+            ref: detailsSectionRef,
+        },
+        {
+            id: 'habits',
+            label: strengthDetails.hasHabits ? 'Habits added' : 'Add habits',
+            isDone: strengthDetails.hasHabits,
+            ref: habitsSectionRef,
+        },
+    ];
 
     const openQuestionModal = (idx) => {
         const q = questions[idx];
@@ -613,7 +665,7 @@ const EditProfilePage = () => {
                 )}
 
                 {/* Profile Photo */}
-                <section className="bg-white rounded-[24px] p-4 shadow-2xs border border-gray-100/70 mt-3">
+                <section ref={photosSectionRef} className="bg-white rounded-[24px] p-4 shadow-2xs border border-gray-100/70 mt-3">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="font-bold text-[15px] text-gray-900">Profile Photo</h2>
                         {uploading && uploadTarget === 'profile' && (
@@ -760,7 +812,7 @@ const EditProfilePage = () => {
                 <section className="mt-4 px-0.5">
                     <div className="flex items-center justify-between mb-1.5">
                         <span className="font-bold text-[14.5px] text-gray-900">
-                            Profile Strength: <span className="font-black text-gray-900">{calculateStrength()}%</span>
+                            Profile Strength: <span className="font-black text-gray-900">{strengthDetails.score}%</span>
                         </span>
                     </div>
 
@@ -768,29 +820,37 @@ const EditProfilePage = () => {
                     <div className="w-full h-2 rounded-full bg-gray-200/70 overflow-hidden">
                         <div
                             className="h-full bg-[#733FE0] rounded-full transition-all duration-500"
-                            style={{ width: `${calculateStrength()}%` }}
+                            style={{ width: `${strengthDetails.score}%` }}
                         />
                     </div>
 
                     {/* Checklist */}
-                    <div className="flex items-center gap-4 mt-3 text-[12.5px] font-semibold flex-wrap">
-                        <div className="flex items-center gap-1.5 text-gray-900">
-                            <span className={`w-4 h-4 rounded-full text-white flex items-center justify-center text-[10px] font-bold ${hasPhotos ? 'bg-emerald-500' : 'bg-gray-300'}`}>✓</span>
-                            Photos added
-                        </div>
-                        <div className="flex items-center gap-1.5 text-gray-900">
-                            <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${answeredQuestionsCount >= 2 ? 'bg-emerald-500' : 'bg-gray-300'}`}>✓</span>
-                            2 Questions answered
-                        </div>
-                        <div className="flex items-center gap-1.5 text-gray-900">
-                            <span className={`w-4 h-4 rounded-full text-white flex items-center justify-center text-[10px] font-bold ${hasInterests ? 'bg-emerald-500' : 'bg-gray-300'}`}>✓</span>
-                            Add interests
-                        </div>
+                    <div className="flex items-center gap-x-4 gap-y-2 mt-3 text-[12px] font-semibold flex-wrap">
+                        {checklistItems.map((item) => (
+                            <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => item.ref?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                                className="flex items-center gap-1.5 text-gray-800 hover:text-[#733FE0] transition-colors cursor-pointer bg-transparent border-0 p-0 text-left active:scale-95"
+                                title={`Tap to jump to ${item.label}`}
+                            >
+                                <span
+                                    className={`w-4 h-4 rounded-full text-white flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors ${
+                                        item.isDone ? 'bg-emerald-500 shadow-xs' : 'bg-gray-300'
+                                    }`}
+                                >
+                                    ✓
+                                </span>
+                                <span className={item.isDone ? 'text-gray-900' : 'text-gray-600'}>
+                                    {item.label}
+                                </span>
+                            </button>
+                        ))}
                     </div>
                 </section>
 
                 {/* Basic info */}
-                <section className="mt-5">
+                <section ref={bioSectionRef} className="mt-5">
                     <h3 className="font-bold text-[15px] text-gray-900 mb-2 px-0.5">Basic info</h3>
                     <div className="bg-[#F7F7FA] border border-gray-200/60 rounded-[20px] p-3.5 relative">
                         <textarea
@@ -807,7 +867,7 @@ const EditProfilePage = () => {
                 </section>
 
                 {/* Questions */}
-                <section className="mt-5">
+                <section ref={questionsSectionRef} className="mt-5">
                     <div className="flex items-center gap-1.5 mb-2.5 px-0.5">
                         <h3 className="font-bold text-[15px] text-gray-900">Questions</h3>
                         <span className="text-gray-400 text-[11.5px] font-medium">( Answer at least 2 to stand out )</span>
@@ -844,7 +904,7 @@ const EditProfilePage = () => {
                 </section>
 
                 {/* My interests */}
-                <section className="mt-5">
+                <section ref={interestsSectionRef} className="mt-5">
                     <h3 className="font-bold text-[15px] text-gray-900 mb-2 px-0.5">My interests</h3>
                     <div className="bg-white rounded-[20px] p-4 shadow-2xs border border-gray-100/70 flex flex-wrap items-center gap-2">
                         {form.interests.map((interest) => (
@@ -878,7 +938,7 @@ const EditProfilePage = () => {
                 </section>
 
                 {/* Details */}
-                <section className="mt-5">
+                <section ref={detailsSectionRef} className="mt-5">
                     <h3 className="font-bold text-[15px] text-gray-900 mb-2.5 px-0.5">Details</h3>
                     <div className="flex flex-col gap-2.5">
                         {[
@@ -915,7 +975,7 @@ const EditProfilePage = () => {
                 </section>
 
                 {/* Habits */}
-                <section className="mt-5">
+                <section ref={habitsSectionRef} className="mt-5">
                     <h3 className="font-bold text-[15px] text-gray-900 mb-2.5 px-0.5">Habits</h3>
                     <div className="flex flex-col gap-2.5">
                         {[

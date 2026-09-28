@@ -122,7 +122,7 @@ const ChatItem = ({ chat, onClick, onHold }) => {
                 </div>
 
                 <div className="flex items-center justify-between gap-2 mt-1">
-                    <p className={`text-[13px] truncate leading-tight ${chat.unread ? 'text-[#703DE2] font-bold' : 'text-gray-500 font-normal'}`}>
+                    <p className={`text-[13px] truncate leading-tight ${chat.unread ? 'text-black font-bold' : 'text-gray-500 font-normal'}`}>
                         {chat.message}
                     </p>
                     {chat.unread > 0 && (

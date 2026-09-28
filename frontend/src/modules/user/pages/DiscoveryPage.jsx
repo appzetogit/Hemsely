@@ -11,6 +11,7 @@ import { CheckCircle2 } from 'lucide-react';
 
 import { getStored, setStored } from '../constants/discoveryData';
 import apiClient from '../../../shared/services/apiClient';
+import { useProfileBoost } from '../../../shared/hooks/useProfileBoost';
 import demoPhoto from '../assets/6ee1ef9d2677e06049fb899a7658f4b9ac9c11dc.jpg';
 
 const isValValid = (val) => {
@@ -248,6 +249,7 @@ const DiscoveryPage = () => {
         (filters.smokingStatus && filters.smokingStatus.trim() && filters.smokingStatus.toLowerCase() !== 'any')
     );
     const isProfileComplete = getStored('profile_complete', false);
+    const { isBoostActive, formattedRemaining } = useProfileBoost();
 
     const refreshUserVerificationStatus = async () => {
         setCheckingStatus(true);
@@ -502,6 +504,20 @@ const DiscoveryPage = () => {
         <div className="h-[100dvh] flex flex-col font-sans overflow-hidden max-w-[414px] mx-auto relative" style={{ background: '#FCFCFC' }}>
 
             <main className="flex-1 overflow-y-auto pt-3 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[15.53px]">
+                {isBoostActive && (
+                    <div
+                        onClick={() => navigate('/profile-preview')}
+                        className="mb-2.5 w-full py-2 px-3.5 rounded-full bg-gradient-to-r from-[#FFF5F1] to-[#FFEBE4] border border-[#FF6B4A]/50 flex items-center justify-between shadow-2xs cursor-pointer active:scale-[0.99] transition-all shrink-0"
+                    >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-xs">🚀</span>
+                            <span className="text-[11.5px] font-bold text-gray-900 truncate">
+                                Boost active · <span className="font-black text-[#E04F2E] tabular-nums">{formattedRemaining}</span> remaining
+                            </span>
+                        </div>
+                        <span className="text-[10px] font-black uppercase text-[#703DE2] shrink-0 tracking-wide">20x Visibility</span>
+                    </div>
+                )}
                 {!isUserVerified && !selfieSkipped ? (
                     selfieStatus === 'pending' ? (
                         <div className="flex flex-col items-center justify-center min-h-[440px] h-full text-center gap-5 pt-10 px-4">
@@ -645,7 +661,7 @@ const DiscoveryPage = () => {
                                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                             </svg>
                         </div>
-                        <h2 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600, fontSize: '20px', color: '#000', maxWidth: '300px', lineHeight: 1.35 }}>
+                        <h2 style={{ fontFamily: "'Inter', sans-serif", fontWeight: 500, fontSize: '20px', color: '#111827', maxWidth: '300px', lineHeight: 1.35 }}>
                             Not enough people in your area right now
                         </h2>
                         <button

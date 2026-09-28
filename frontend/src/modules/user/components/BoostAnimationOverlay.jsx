@@ -50,7 +50,7 @@ const BoostAnimationOverlay = ({ onClose }) => {
                 </div>
 
                 <div className="inline-flex items-center gap-1.5 px-4 py-1 rounded-full bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-amber-400/40 text-amber-300 text-[12px] font-extrabold tracking-widest uppercase mb-3 shadow-sm">
-                    <span>🎆</span> BOOST ACTIVE
+                    <span>🎆</span> BOOST ACTIVE · 40 MINUTES
                 </div>
 
                 <h2 className="text-[22px] font-extrabold text-white leading-tight mb-2 tracking-tight">
@@ -58,7 +58,7 @@ const BoostAnimationOverlay = ({ onClose }) => {
                 </h2>
 
                 <p className="text-[13.5px] text-purple-200/80 mb-7 leading-relaxed">
-                    Your profile is now 20x more visible to compatible matches!
+                    Your profile is now 20x more visible to compatible matches for the next 40 minutes!
                 </p>
 
                 <button

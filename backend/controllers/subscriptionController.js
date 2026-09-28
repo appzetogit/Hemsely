@@ -42,7 +42,7 @@ export const getPlans = asyncHandler(async (req, res) => {
         slug: 'monthly',
         productId: 'hemsely_premium_monthly',
         name: '1 Month',
-        description: 'Full monthly access to priority discovery, unlimited likes, and direct chat!',
+        description: 'Full monthly access to priority discovery, unlimited likes, and Change location!',
         price: 499,
         durationDays: 30,
         badge: 'POPULAR',
