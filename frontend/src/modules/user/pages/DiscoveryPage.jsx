@@ -503,7 +503,7 @@ const DiscoveryPage = () => {
     return (
         <div className="h-[100dvh] flex flex-col font-sans overflow-hidden max-w-[414px] mx-auto relative" style={{ background: '#FCFCFC' }}>
 
-            <main className="flex-1 overflow-y-auto pt-3 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[15.53px]">
+            <main className="flex-1 overflow-y-auto pt-3 pb-48 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[15.53px]">
                 {isBoostActive && (
                     <div
                         onClick={() => navigate('/profile-preview')}
