@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, Check, Navigation, Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 
 import { syncFullOnboardingData } from '../services/userApi';
 import { devWarn } from '../../../shared/utils/logger';
@@ -14,6 +14,7 @@ const EnableLocationPage = () => {
 
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
+    const [permissionDenied, setPermissionDenied] = useState(false);
 
     const saveLocationAndNext = async (locationData) => {
         localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(locationData));
@@ -31,7 +32,8 @@ const EnableLocationPage = () => {
 
     const handleEnableLocation = () => {
         setLoading(true);
-        setStatusMsg('Detecting location...');
+        setStatusMsg('Requesting permission...');
+        setPermissionDenied(false);
 
         if (!navigator.geolocation) {
             saveLocationAndNext({ granted: false, error: 'Not supported' });
@@ -40,11 +42,18 @@ const EnableLocationPage = () => {
 
         navigator.geolocation.getCurrentPosition(
             async (position) => {
+                setStatusMsg('Location enabled!');
                 const { latitude, longitude } = position.coords;
                 let city = '';
                 let state = '';
                 try {
-                    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 2000);
+                    const res = await fetch(
+                        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+                        { signal: controller.signal }
+                    );
+                    clearTimeout(timeoutId);
                     if (res.ok) {
                         const data = await res.json();
                         city = data.city || data.locality || '';
@@ -64,18 +73,19 @@ const EnableLocationPage = () => {
             },
             (error) => {
                 devWarn('Location permission denied or unavailable:', error.message);
-                saveLocationAndNext({
-                    granted: false,
-                    error: error.message,
-                    timestamp: Date.now()
-                });
+                setLoading(false);
+                setPermissionDenied(true);
             },
             { timeout: 10000, enableHighAccuracy: true }
         );
     };
 
-    const handleSkip = () => {
-        saveLocationAndNext({ granted: false, skipped: true });
+    const handleContinueWithoutLocation = () => {
+        saveLocationAndNext({
+            granted: false,
+            skipped: true,
+            timestamp: Date.now(),
+        });
     };
 
     return (
@@ -104,9 +114,9 @@ const EnableLocationPage = () => {
             {/* Main Content Area - Aligned to top */}
             <div className="flex-1 flex flex-col justify-start w-full pt-6 px-2">
                 {/* Title */}
-                <h2 className="text-[26px] leading-tight font-extrabold text-black mb-2 text-center tracking-tight">
+                <h1 className="text-[26px] leading-tight font-extrabold text-black mb-2 text-center tracking-tight">
                     Enable location
-                </h2>
+                </h1>
 
                 {/* Subtitle */}
                 <p className="text-[13px] text-gray-400 text-center mb-10 leading-relaxed font-normal max-w-[290px] mx-auto">
@@ -115,37 +125,39 @@ const EnableLocationPage = () => {
 
                 {/* Why we need your location section */}
                 <div className="w-full text-left">
-                    <h3 className="text-[15px] font-bold text-gray-900 mb-4">
+                    <h2 className="text-[15px] font-bold text-gray-900 mb-4">
                         Why we need your location
-                    </h3>
+                    </h2>
 
-                    <div className="space-y-3.5">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-5 h-5 rounded-full bg-[#555555] text-white flex items-center justify-center shrink-0">
-                                <Check size={12} strokeWidth={3} />
+                    <div className="space-y-4">
+                        <div className="flex items-center space-x-3.5">
+                            <div className="w-5.5 h-5.5 rounded-full bg-[#22C55E] text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <Check size={13} strokeWidth={3.5} />
                             </div>
-                            <span className="text-[14px] text-[#6E36E4] font-semibold">Nearby matches</span>
+                            <span className="text-[15px] text-black font-semibold">Nearby matches</span>
                         </div>
 
-                        <div className="flex items-center space-x-3">
-                            <div className="w-5 h-5 rounded-full bg-[#555555] text-white flex items-center justify-center shrink-0">
-                                <Check size={12} strokeWidth={3} />
+                        <div className="flex items-center space-x-3.5">
+                            <div className="w-5.5 h-5.5 rounded-full bg-[#22C55E] text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <Check size={13} strokeWidth={3.5} />
                             </div>
-                            <span className="text-[14px] text-[#6E36E4] font-semibold">Trusted profiles in your area</span>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                            <div className="w-5 h-5 rounded-full bg-[#555555] text-white flex items-center justify-center shrink-0">
-                                <Check size={12} strokeWidth={3} />
-                            </div>
-                            <span className="text-[14px] text-[#6E36E4] font-semibold">See who's active around you</span>
+                            <span className="text-[15px] text-black font-semibold">See who’s active around you</span>
                         </div>
                     </div>
+
+                    {permissionDenied && (
+                        <div className="mt-6 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-[12.5px] leading-relaxed animate-in fade-in">
+                            <p className="font-semibold mb-0.5">Location permission was not granted</p>
+                            <p className="text-amber-800 text-[12px]">
+                                You can continue now, or enable location anytime in your device/browser settings for accurate distance.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Footer Button */}
-            <div className="w-full shrink-0 mb-8 flex flex-col items-center">
+            {/* Footer Buttons */}
+            <div className="w-full shrink-0 mb-8 flex flex-col items-center gap-2.5">
                 <button
                     type="button"
                     onClick={handleEnableLocation}
@@ -161,6 +173,16 @@ const EnableLocationPage = () => {
                         <span>Enable Location</span>
                     )}
                 </button>
+
+                {permissionDenied && (
+                    <button
+                        type="button"
+                        onClick={handleContinueWithoutLocation}
+                        className="w-full bg-transparent text-gray-500 hover:text-black font-semibold h-[42px] rounded-full text-[14px] transition-colors cursor-pointer"
+                    >
+                        Continue without location
+                    </button>
+                )}
             </div>
         </div>
     );
