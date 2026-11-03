@@ -24,7 +24,7 @@ export const protect = async (req, res, next) => {
 
     // Re-check ban/active status on every request so a ban takes effect
     // immediately instead of waiting for the JWT to expire.
-    const user = await User.findById(decoded.id).select('isBanned isActive isPaused');
+    const user = await User.findById(decoded.id).select('isBanned isActive isPaused isPremium premiumExpiry');
     if (!user) {
       return res.status(401).json({ success: false, message: 'User account not found. Please login again.' });
     }
@@ -32,6 +32,11 @@ export const protect = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Account is banned or inactive' });
     }
 
+    // Prepaid premium has no renewal webhook — expire it lazily here.
+    if (user.isPremium && user.premiumExpiry && user.premiumExpiry < new Date()) {
+      await User.updateOne({ _id: user._id }, { isPremium: false });
+    }
+
     req.user = decoded;
     next();
   } catch (error) {

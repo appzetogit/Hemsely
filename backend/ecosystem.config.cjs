@@ -16,11 +16,11 @@ module.exports = {
       watch: false,
       max_memory_restart: '512M',
       min_uptime: '10s',
-      max_restarts: 10,
+      // Never give up: a capped max_restarts leaves PM2 in "errored" => nginx 502 until manual restart.
+      max_restarts: 1000000,
       kill_timeout: 5000,
-      listen_timeout: 8000,
-      restart_delay: 2000,
-      exp_backoff_restart_delay: 200,
+      listen_timeout: 30000,
+      exp_backoff_restart_delay: 1000,
       node_args: '--max-old-space-size=512',
       env: {
         NODE_ENV: 'development',

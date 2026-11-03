@@ -215,6 +215,7 @@ app.use(async (req, res, next) => {
 });
 
 import { getPublicWebsitePageBySlug } from './controllers/websitePageController.js';
+import { getPublicAppLinks } from './controllers/appConfigController.js';
 
 // Routes (supports both /api/* and direct /* paths for flexible reverse proxy setups)
 app.use(['/api/auth', '/auth'], authRoutes);
@@ -232,6 +233,7 @@ app.use(['/api/fcm', '/fcm'], fcmRoutes);
 app.use(['/api/notifications', '/notifications'], apiRateLimiter, notificationRoutes);
 app.use(['/api/media', '/media'], mediaSyncRoutes);
 app.get(['/api/pages/:slug', '/pages/:slug'], getPublicWebsitePageBySlug);
+app.get(['/api/public/app-links', '/public/app-links', '/api/app-links'], getPublicAppLinks);
 
 // Health check route
 app.get(['/api/health', '/health'], (req, res) => {

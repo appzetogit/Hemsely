@@ -73,6 +73,7 @@ export const AdminProvider = ({ children, onUnauthorized }) => {
             if (permKey === 'profile' || permKey === 'superadmin') return isSuperAdmin;
 
             const permList = Array.isArray(permKey) ? permKey : [permKey];
+            if (permList.includes('app-links') && permissions.includes('app-config')) return true;
             return permList.some((p) => permissions.includes(p));
         },
         [admin, isSuperAdmin, permissions]

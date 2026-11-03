@@ -64,6 +64,16 @@ const appConfigSchema = new mongoose.Schema(
       type: String,
       default: 'support@hemeshly.app',
     },
+    playStoreUrl: {
+      type: String,
+      default: 'https://play.google.com/store/apps/details?id=com.hemsely',
+      trim: true,
+    },
+    appStoreUrl: {
+      type: String,
+      default: 'https://apps.apple.com/app/hemsely/id000000000',
+      trim: true,
+    },
     boostPrice1: {
       type: Number,
       default: 199,

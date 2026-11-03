@@ -12,6 +12,7 @@ import {
     Bell,
     SlidersHorizontal,
     Globe,
+    Smartphone,
 } from 'lucide-react';
 
 export const ADMIN_PERMISSIONS = [
@@ -109,6 +110,14 @@ export const ADMIN_PERMISSIONS = [
         path: '/admin/app-config',
         icon: SlidersHorizontal,
         description: 'Configure app system parameters, gender ratios, and global settings.',
+        category: 'System',
+    },
+    {
+        id: 'app-links',
+        label: 'App Links',
+        path: '/admin/app-links',
+        icon: Smartphone,
+        description: 'Manage Google Play Store and iOS App Store download links for landing page.',
         category: 'System',
     },
     {

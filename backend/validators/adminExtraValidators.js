@@ -58,6 +58,8 @@ export const appConfigValidator = [
   body('queueRatioFemale').optional().isInt({ min: 1, max: 100 }),
   body('queueScope').optional().isIn(['country', 'radius']),
   body('queueRadiusKm').optional().isInt({ min: 1, max: 20000 }),
+  body('playStoreUrl').optional().isString().trim(),
+  body('appStoreUrl').optional().isString().trim(),
 ];
 
 export const websitePageValidator = [

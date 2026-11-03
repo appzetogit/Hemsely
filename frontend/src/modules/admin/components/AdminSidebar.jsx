@@ -16,6 +16,7 @@ import {
     LifeBuoy,
     UserCheck,
     Zap,
+    Smartphone,
 } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
     { id: 'transactions', icon: Receipt, label: 'Transactions', path: '/admin/transactions' },
     { id: 'notifications', icon: Bell, label: 'Notifications', path: '/admin/notifications' },
     { id: 'app-config', icon: SlidersHorizontal, label: 'App Config', path: '/admin/app-config' },
+    { id: 'app-links', icon: Smartphone, label: 'App Links', path: '/admin/app-links' },
     { id: 'profile', icon: UserCircle, label: 'My Profile', path: '/admin/profile' },
 ];
 

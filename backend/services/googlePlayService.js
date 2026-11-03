@@ -11,7 +11,7 @@ class GooglePlayService {
   constructor() {
     this.authClient = null;
     this.publisher = null;
-    this.defaultPackageName = process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.hemsely.app';
+    this.defaultPackageName = process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.hemsely.users';
     this.initialize();
   }
 
@@ -83,10 +83,22 @@ class GooglePlayService {
   }
 
   /**
+   * Mock Google responses only outside production. In production, missing
+   * credentials must fail loudly — a mock there would grant free purchases.
+   */
+  useMock() {
+    if (this.isConfigured()) return false;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Google Play billing is not configured on the server');
+    }
+    return true;
+  }
+
+  /**
    * Get target Android package name
    */
   getPackageName(overridePackageName) {
-    return (overridePackageName || this.defaultPackageName || process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.hemsely.app').trim();
+    return (overridePackageName || this.defaultPackageName || process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.hemsely.users').trim();
   }
 
   /**
@@ -99,7 +111,7 @@ class GooglePlayService {
   async verifySubscription(packageName, subscriptionId, token) {
     const pkg = this.getPackageName(packageName);
 
-    if (!this.isConfigured()) {
+    if (this.useMock()) {
       console.warn(`[GooglePlayService:DevFallback] Mocking successful subscription verification for: ${subscriptionId}`);
       const now = Date.now();
       const subLower = (subscriptionId || '').toLowerCase();
@@ -193,7 +205,7 @@ class GooglePlayService {
   async acknowledgeSubscription(packageName, subscriptionId, token, developerPayload = '') {
     const pkg = this.getPackageName(packageName);
 
-    if (!this.isConfigured()) {
+    if (this.useMock()) {
       return { success: true, isTest: true };
     }
 
@@ -227,11 +239,12 @@ class GooglePlayService {
   async verifyProduct(packageName, productId, token) {
     const pkg = this.getPackageName(packageName);
 
-    if (!this.isConfigured()) {
+    if (this.useMock()) {
       console.warn(`[GooglePlayService:DevFallback] Mocking product verification for: ${productId}`);
       const now = Date.now();
       return {
         isTest: true,
+        isMock: true,
         orderId: `GPA.DEV-INAPP-${now}`,
         packageName: pkg,
         productId,
@@ -267,7 +280,7 @@ class GooglePlayService {
   async acknowledgeProduct(packageName, productId, token, developerPayload = '') {
     const pkg = this.getPackageName(packageName);
 
-    if (!this.isConfigured()) {
+    if (this.useMock()) {
       return { success: true, isTest: true };
     }
 
@@ -296,7 +309,7 @@ class GooglePlayService {
   async consumeProduct(packageName, productId, token) {
     const pkg = this.getPackageName(packageName);
 
-    if (!this.isConfigured()) {
+    if (this.useMock()) {
       return { success: true, isTest: true };
     }
 

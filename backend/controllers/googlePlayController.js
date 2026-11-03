@@ -6,13 +6,19 @@ import Notification from '../models/Notification.js';
 import googlePlayService from '../services/googlePlayService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { releaseFromQueue } from '../utils/queueService.js';
+import { getOrCreateConfig } from './appConfigController.js';
 
 // Default Product IDs configured in Google Play Console
 export const GOOGLE_PLAY_CONFIG = {
   PREMIUM_SUBSCRIPTION_ID: process.env.GOOGLE_PLAY_PREMIUM_SUB_ID || 'hemsely_premium_monthly',
   BOOST_1_PRODUCT_ID: process.env.GOOGLE_PLAY_BOOST_1_ID || 'hemsely_boost_1',
   BOOST_5_PRODUCT_ID: process.env.GOOGLE_PLAY_BOOST_5_ID || 'hemsely_boost_5',
-  PACKAGE_NAME: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.hemsely.app',
+  PACKAGE_NAME: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.hemsely.users',
+};
+
+const BOOST_PRODUCTS = {
+  [GOOGLE_PLAY_CONFIG.BOOST_1_PRODUCT_ID]: 1,
+  [GOOGLE_PLAY_CONFIG.BOOST_5_PRODUCT_ID]: 5,
 };
 
 // RTDN Subscription Notification Types Mapping
@@ -281,24 +287,25 @@ export const verifySubscription = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc Verify Google Play In-App Consumable Purchase (Boosts)
+ * @desc Verify a Google Play one-time purchase (Premium pass or Boost pack) and grant it.
+ *       Premium passes are prepaid consumables: each purchase extends premiumExpiry.
  * @route POST /api/google-play/verify-purchase
  * @access Private/User
  */
 export const verifyPurchase = asyncHandler(async (req, res) => {
-  const userId = req.user?._id || req.user?.id;
-  const {
-    purchaseToken,
-    productId,
-    packageName = GOOGLE_PLAY_CONFIG.PACKAGE_NAME,
-    orderId,
-  } = req.body;
+  const userId = String(req.user?._id || req.user?.id);
+  const { purchaseToken, productId } = req.body;
+  const packageName = googlePlayService.getPackageName();
 
   if (!purchaseToken || !productId) {
-    return res.status(400).json({
-      success: false,
-      message: 'Both purchaseToken and productId are required',
-    });
+    return res.status(400).json({ success: false, message: 'Both purchaseToken and productId are required' });
+  }
+
+  // 1. Resolve what this product grants
+  const boostCount = BOOST_PRODUCTS[productId];
+  const plan = boostCount ? null : await Plan.findOne({ productId });
+  if (!boostCount && !plan) {
+    return res.status(400).json({ success: false, message: `Unknown product: ${productId}` });
   }
 
   const user = await User.findById(userId);
@@ -306,119 +313,123 @@ export const verifyPurchase = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
-  // 1. Anti-replay check: check if this purchase token was already credited and consumed
-  const existingEntitlement = await Entitlement.findOne({ purchaseToken });
-  if (existingEntitlement && existingEntitlement.consumptionState === 'CONSUMED') {
-    return res.status(409).json({
-      success: false,
-      message: 'This Google Play purchase token has already been consumed and credited.',
-    });
+  // Already granted? Return idempotently so the app can finish the transaction.
+  const existing = await Entitlement.findOne({ purchaseToken });
+  if (existing) {
+    if (String(existing.user) !== userId) {
+      return res.status(409).json({ success: false, message: 'This purchase belongs to another account.' });
+    }
+    return res.status(200).json({ success: true, alreadyProcessed: true, message: 'Purchase already applied', user });
   }
 
-  // 2. Verify Product Purchase with Google Play Developer API
+  // 2. Verify with Google
   let verification;
   try {
     verification = await googlePlayService.verifyProduct(packageName, productId, purchaseToken);
   } catch (apiErr) {
-    console.error('❌ Google Play product verification error:', apiErr.message);
+    return res.status(400).json({ success: false, message: apiErr.message || 'Failed to verify purchase with Google Play' });
+  }
+
+  if (verification.purchaseState !== 0) {
     return res.status(400).json({
       success: false,
-      message: apiErr.message || 'Failed to verify in-app product with Google Play',
+      pending: verification.purchaseState === 2,
+      message: verification.purchaseState === 2 ? 'Payment is still pending.' : 'Purchase was canceled.',
     });
   }
 
-  // Validate that purchase state is PURCHASED (0)
-  if (verification.purchaseState !== undefined && verification.purchaseState !== 0) {
-    return res.status(400).json({
-      success: false,
-      message: `Purchase is in state: ${verification.purchaseState === 1 ? 'CANCELED' : 'PENDING'}. Entitlement cannot be granted.`,
-    });
+  // Purchase must have been made from this account (app sets obfuscatedAccountIdAndroid = userId)
+  if (!verification.isMock && verification.obfuscatedExternalAccountId !== userId) {
+    return res.status(403).json({ success: false, message: 'Purchase does not belong to this account.' });
   }
 
-  // 3. Consume the consumable product so user can buy it again in Google Play
+  // 3. Consume on Google (makes it re-purchasable and stops the 3-day auto-refund). Don't grant if this fails.
+  if (verification.consumptionState !== 1) {
+    const consumed = await googlePlayService.consumeProduct(packageName, productId, purchaseToken);
+    if (!consumed.success) {
+      return res.status(502).json({ success: false, message: 'Could not finalize purchase with Google Play. Please retry.' });
+    }
+  }
+
+  // 4. Atomic claim — unique purchaseToken index guarantees only one request grants.
   try {
-    await googlePlayService.consumeProduct(packageName, productId, purchaseToken);
-  } catch (consumeErr) {
-    console.warn('⚠️ Google Play consumeProduct notice:', consumeErr.message);
-  }
-
-  // Calculate boost credits according to product ID
-  let boostIncrement = 1;
-  let defaultAmount = 199;
-  if (productId === GOOGLE_PLAY_CONFIG.BOOST_5_PRODUCT_ID || productId.includes('boost_5') || productId.includes('5')) {
-    boostIncrement = 5;
-    defaultAmount = 399;
-  }
-
-  // 4. Update / Create Entitlement
-  const entitlement = await Entitlement.findOneAndUpdate(
-    { purchaseToken },
-    {
+    await Entitlement.create({
       user: userId,
       platform: 'google_play',
-      packageName: googlePlayService.getPackageName(packageName),
+      packageName,
       productId,
       purchaseToken,
-      orderId: verification.orderId || orderId || `GPA.${Date.now()}`,
+      orderId: verification.orderId,
       productType: 'inapp_consumable',
       purchaseState: 'PURCHASED',
       acknowledgementState: 'ACKNOWLEDGED',
       consumptionState: 'CONSUMED',
-      purchaseTime: verification.purchaseTimeMillis ? new Date(parseInt(verification.purchaseTimeMillis, 10)) : new Date(),
-      environment: verification.isTest ? 'test' : 'production',
+      purchaseTime: verification.purchaseTimeMillis ? new Date(Number(verification.purchaseTimeMillis)) : new Date(),
+      environment: verification.isTest || verification.purchaseType === 0 ? 'test' : 'production',
       rawVerificationData: verification.raw || verification,
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      const fresh = await User.findById(userId);
+      return res.status(200).json({ success: true, alreadyProcessed: true, message: 'Purchase already applied', user: fresh });
+    }
+    throw err;
+  }
 
-  // 5. Create Transaction Record
-  const transactionId = `GP_BST_${Date.now()}`;
-  const subscriptionId = `BST_${productId.toUpperCase()}_${String(userId).slice(-6)}`;
-  const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Hemsely User';
+  // 5. Grant
+  let update;
+  let planName;
+  let amount;
+  if (plan) {
+    const now = Date.now();
+    const current = user.premiumExpiry ? new Date(user.premiumExpiry).getTime() : 0;
+    const premiumExpiry = new Date(Math.max(now, current) + plan.durationDays * 86400000);
+    update = { isPremium: true, premiumExpiry, $inc: { boostCount: 1 } };
+    planName = `Premium (${plan.name})`;
+    amount = plan.price;
+  } else {
+    const config = await getOrCreateConfig();
+    update = { $inc: { boostCount } };
+    planName = `${boostCount} Profile Boost${boostCount > 1 ? 's' : ''}`;
+    amount = (boostCount === 5 ? config.boostPrice5 : config.boostPrice1) ?? 0;
+  }
 
-  const transaction = await Transaction.create({
-    transactionId,
-    subscriptionId,
+  const updatedUser = await User.findByIdAndUpdate(userId, update, { new: true, runValidators: true });
+  if (plan) await releaseFromQueue(userId);
+
+  await Transaction.create({
+    transactionId: `GP_${plan ? 'SUB' : 'BST'}_${Date.now()}`,
+    subscriptionId: `${productId.toUpperCase()}_${userId.slice(-6)}`,
     user: userId,
-    userName,
+    userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Hemsely User',
     userEmail: user.email || `${user.phoneNumber || userId}@hemsely.com`,
     userPhone: user.phoneNumber || '',
-    planName: `${boostIncrement} Profile Boost${boostIncrement > 1 ? 's' : ''} (Google Play)`,
-    amount: defaultAmount,
+    plan: plan?._id,
+    planName,
+    durationDays: plan?.durationDays,
+    amount,
     currency: 'INR',
     status: 'success',
     gateway: 'google_play',
-    gatewayOrderId: verification.orderId || orderId,
+    gatewayOrderId: verification.orderId,
     gatewayPaymentId: purchaseToken.slice(0, 32),
     purchaseToken,
-    packageName: googlePlayService.getPackageName(packageName),
+    packageName,
     productId,
   });
 
-  // 6. Increment User Boost Count
-  const updatedUser = await User.findByIdAndUpdate(
-    userId,
-    { $inc: { boostCount: boostIncrement } },
-    { new: true, runValidators: true }
-  );
-
-  // 7. Send In-App Notification
   try {
     await Notification.create({
       user: userId,
       type: 'system',
-      title: 'Boost Package Purchased! 🚀',
-      message: `You successfully added ${boostIncrement} Profile Boost(s) to your account via Google Play.`,
+      title: plan ? 'Premium Activated! 🎉' : 'Boost Package Purchased! 🚀',
+      message: plan
+        ? `Your Premium is active until ${updatedUser.premiumExpiry.toLocaleDateString()}. Enjoy all VIP features!`
+        : `${boostCount} Profile Boost(s) added to your account.`,
     });
   } catch (_) {}
 
-  res.status(200).json({
-    success: true,
-    message: `${boostIncrement} Boost(s) added successfully!`,
-    user: updatedUser,
-    entitlement,
-    transaction,
-  });
+  res.status(200).json({ success: true, message: `${planName} activated!`, user: updatedUser });
 });
 
 /**

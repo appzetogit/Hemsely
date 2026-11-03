@@ -47,7 +47,7 @@ export const updateAppConfig = asyncHandler(async (req, res) => {
     'maintenanceMode', 'signupsEnabled', 'holdLikesQueue', 'dailyLikeLimit',
     'discoveryRadiusKm', 'maxAgeGapYears', 'minAppVersion', 'supportEmail',
     'genderQueueEnabled', 'queueRatioMale', 'queueRatioFemale', 'queueScope', 'queueRadiusKm',
-    'boostPrice1', 'boostPrice5',
+    'boostPrice1', 'boostPrice5', 'playStoreUrl', 'appStoreUrl',
   ];
   const updates = { updatedBy: req.admin.id };
   allowedFields.forEach((field) => {
@@ -81,4 +81,16 @@ export const updateAppConfig = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ success: true, message: 'App config updated', config });
+});
+
+// @desc Get public app download links for landing page & mobile redirects
+// @route GET /api/public/app-links
+// @access Public
+export const getPublicAppLinks = asyncHandler(async (req, res) => {
+  const config = await getOrCreateConfig();
+  res.status(200).json({
+    success: true,
+    playStoreUrl: config.playStoreUrl || 'https://play.google.com/store/apps/details?id=com.hemsely',
+    appStoreUrl: config.appStoreUrl || 'https://apps.apple.com/app/hemsely/id000000000',
+  });
 });
