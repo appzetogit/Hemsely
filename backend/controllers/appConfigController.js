@@ -1,5 +1,4 @@
 import AppConfig from '../models/AppConfig.js';
-import Admin from '../models/Admin.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { logAdminAction } from '../utils/auditLog.js';
 import { releaseAllQueuedUsers, processQueueReevaluation } from '../utils/queueService.js';
@@ -89,14 +88,9 @@ export const updateAppConfig = asyncHandler(async (req, res) => {
 // @access Public
 export const getPublicAppLinks = asyncHandler(async (req, res) => {
   const config = await getOrCreateConfig();
-  // Contact email = main admin's email from Admin > My Profile
-  const mainAdmin = await Admin.findOne({ role: { $in: ['superadmin', 'admin'] }, isActive: true })
-    .sort({ role: -1, createdAt: 1 }) // 'superadmin' sorts before 'admin' descending
-    .select('email')
-    .lean();
   res.status(200).json({
     success: true,
-    supportEmail: mainAdmin?.email || config.supportEmail || '',
+    supportEmail: config.supportEmail || 'support@hemeshly.app',
     playStoreUrl: config.playStoreUrl || 'https://play.google.com/store/apps/details?id=com.hemsely',
     appStoreUrl: config.appStoreUrl || 'https://apps.apple.com/app/hemsely/id000000000',
   });
