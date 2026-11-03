@@ -15,6 +15,7 @@ const DEFAULT_APP_STORE_URL = 'https://apps.apple.com/app/hemsely/id000000000';
 const LandingPage = () => {
     const [playStoreUrl, setPlayStoreUrl] = useState(DEFAULT_PLAY_STORE_URL);
     const [appStoreUrl, setAppStoreUrl] = useState(DEFAULT_APP_STORE_URL);
+    const [supportEmail, setSupportEmail] = useState('');
 
     useEffect(() => {
         let isMounted = true;
@@ -24,6 +25,7 @@ const LandingPage = () => {
                 if (ok && data?.success) {
                     if (data.playStoreUrl) setPlayStoreUrl(data.playStoreUrl);
                     if (data.appStoreUrl) setAppStoreUrl(data.appStoreUrl);
+                    if (data.supportEmail) setSupportEmail(data.supportEmail);
                 }
             })
             .catch(() => {
@@ -122,9 +124,11 @@ const LandingPage = () => {
                         <Link to="/terms-of-service" className="hover:text-[#6F3BCE] transition-colors">
                             Terms of Service
                         </Link>
-                        <a href="mailto:support@hemeshly.app" className="hover:text-[#6F3BCE] transition-colors">
-                            support@hemeshly.app
-                        </a>
+                        {supportEmail && (
+                            <a href={`mailto:${supportEmail}`} className="hover:text-[#6F3BCE] transition-colors">
+                                {supportEmail}
+                            </a>
+                        )}
                     </div>
 
                     <p className="text-xs text-slate-400">
