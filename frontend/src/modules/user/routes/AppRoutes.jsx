@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import PrivacyPolicyPage from '../pages/PrivacyPolicyPage';
 import TermsOfServicePage from '../pages/TermsOfServicePage';
+import { ChildSafetyPage, DeleteAccountPage } from '../pages/SafetyPages';
 
 // Admin Pages
 import AdminLoginPage from '../../admin/pages/AdminLoginPage';
@@ -33,6 +34,8 @@ const AppRoutes = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+            <Route path="/child-safety" element={<ChildSafetyPage />} />
+            <Route path="/delete-account" element={<DeleteAccountPage />} />
 
             {/* Legacy user routes redirect cleanly to the Landing Page */}
             <Route path="/login" element={<Navigate to="/" replace />} />

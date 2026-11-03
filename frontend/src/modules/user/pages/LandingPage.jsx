@@ -117,12 +117,18 @@ const LandingPage = () => {
                         <span className="font-extrabold text-base text-slate-900">Hemsely</span>
                     </div>
 
-                    <div className="flex items-center gap-6 text-xs text-slate-600 font-medium">
+                    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-600 font-medium">
                         <Link to="/privacy-policy" className="hover:text-[#6F3BCE] transition-colors">
                             Privacy Policy
                         </Link>
                         <Link to="/terms-of-service" className="hover:text-[#6F3BCE] transition-colors">
                             Terms of Service
+                        </Link>
+                        <Link to="/child-safety" className="hover:text-[#6F3BCE] transition-colors">
+                            Child Safety
+                        </Link>
+                        <Link to="/delete-account" className="hover:text-[#6F3BCE] transition-colors">
+                            Delete Account
                         </Link>
                         {supportEmail && (
                             <a href={`mailto:${supportEmail}`} className="hover:text-[#6F3BCE] transition-colors">
