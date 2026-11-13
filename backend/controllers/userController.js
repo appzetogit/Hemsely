@@ -215,6 +215,20 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
     }
   });
 
+  // Flatten location into dotted paths so a GPS-only sync doesn't wipe address/city,
+  // and accept both {coordinates:{type,coordinates:[lng,lat]}} and legacy {type,coordinates:[lng,lat]}.
+  if (updates.location && typeof updates.location === 'object') {
+    const loc = updates.location;
+    delete updates.location;
+    const coords = Array.isArray(loc.coordinates) ? loc.coordinates : loc.coordinates?.coordinates;
+    if (Array.isArray(coords) && coords.length === 2 && coords.every(Number.isFinite)) {
+      updates['location.coordinates'] = { type: 'Point', coordinates: coords };
+    }
+    ['address', 'city', 'state'].forEach((k) => {
+      if (typeof loc[k] === 'string') updates[`location.${k}`] = loc[k];
+    });
+  }
+
   if (updates.bio !== undefined) {
     updates.bio = stripAllHtml(updates.bio);
   }

@@ -128,7 +128,9 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], asy
 
   // If file is not found on local disk and remote VPS is configured (and in non-production)
   const vpsMediaUrl = process.env.VPS_MEDIA_URL || (process.env.NODE_ENV !== 'production' ? 'https://hemsely.com' : null);
-  if (vpsMediaUrl) {
+  // Skip when this request is itself a media-proxy fetch: on the live server VPS_MEDIA_URL points
+  // back to itself, which would chain 4s self-fetches per candidate URL before 404ing.
+  if (vpsMediaUrl && !req.get('x-media-proxy')) {
     try {
       const cleanVps = vpsMediaUrl.replace(/\/+$/, '');
       const remoteUrls = [
@@ -142,7 +144,7 @@ app.get(['/uploads/*', '/api/uploads/*', '/hemsely/*', '/public/uploads/*'], asy
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 4000);
-          const remoteRes = await fetch(remoteUrl, { signal: controller.signal });
+          const remoteRes = await fetch(remoteUrl, { signal: controller.signal, headers: { 'x-media-proxy': '1' } });
           clearTimeout(timeoutId);
 
           if (remoteRes.ok) {
