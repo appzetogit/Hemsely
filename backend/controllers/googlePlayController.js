@@ -239,7 +239,7 @@ export const verifySubscription = asyncHandler(async (req, res) => {
     throw err;
   }
 
-  // 6. Transaction audit record. An active intro offer = the ₹1 / 3-day trial (Play Console offer price).
+  // 6. Transaction audit record. An active intro offer = the ₹4 / 3-day trial (Play Console offer price).
   const isTrial = Boolean(verification.offerId);
   const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Hemsely User';
   const transaction = await Transaction.create({
@@ -252,7 +252,7 @@ export const verifySubscription = asyncHandler(async (req, res) => {
     plan: plan?._id,
     planName: isTrial ? 'Premium Trial (3 Days)' : planDisplayName,
     durationDays: isTrial ? 3 : planDurationDays,
-    amount: isTrial ? 1 : verification.priceAmountMicros ? verification.priceAmountMicros / 1000000 : planAmount,
+    amount: isTrial ? 4 : verification.priceAmountMicros ? verification.priceAmountMicros / 1000000 : planAmount,
     currency: verification.priceCurrencyCode || 'INR',
     status: 'success',
     gateway: 'google_play',

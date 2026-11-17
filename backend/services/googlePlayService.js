@@ -175,7 +175,7 @@ class GooglePlayService {
             expiryTimeMillis: String(expiryDate.getTime()),
             purchaseTimeMillis: String(data.startTime ? new Date(data.startTime).getTime() : Date.now()),
             obfuscatedExternalAccountId: data.externalAccountIdentifiers?.obfuscatedExternalAccountId,
-            offerId: lineItem?.offerDetails?.offerId, // set while the intro (₹1 trial) offer is the active phase
+            offerId: lineItem?.offerDetails?.offerId, // set while the intro (₹4 trial) offer is the active phase
             raw: data,
           };
         }
