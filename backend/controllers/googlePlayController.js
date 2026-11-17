@@ -16,6 +16,9 @@ export const GOOGLE_PLAY_CONFIG = {
   PACKAGE_NAME: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.hemsely.users',
 };
 
+// Monthly autopay price of the subscription base plan (mirror of Play Console) — used for renewal revenue records.
+const SUBSCRIPTION_RENEWAL_PRICE = 499;
+
 const BOOST_PRODUCTS = {
   [GOOGLE_PLAY_CONFIG.BOOST_1_PRODUCT_ID]: 1,
   [GOOGLE_PLAY_CONFIG.BOOST_5_PRODUCT_ID]: 5,
@@ -151,7 +154,7 @@ export const verifySubscription = asyncHandler(async (req, res) => {
     'Premium (1 Month)'
   );
 
-  // 1. Anti-replay check: verify if purchaseToken was already claimed by another user
+  // 1. Anti-replay check: a purchase token belongs to exactly one account
   const existingEntitlement = await Entitlement.findOne({ purchaseToken });
   if (existingEntitlement && String(existingEntitlement.user) !== String(userId)) {
     return res.status(409).json({
@@ -172,46 +175,51 @@ export const verifySubscription = asyncHandler(async (req, res) => {
     });
   }
 
-  // Determine expiration date
-  let expiryDate;
-  if (verification.expiryTimeMillis && !verification.isTest) {
-    expiryDate = new Date(parseInt(verification.expiryTimeMillis, 10));
-  } else {
-    // If existing active premium is in the future, extend it; otherwise start from now
-    const baseTime = (user.isPremium && user.premiumExpiry && new Date(user.premiumExpiry) > new Date())
-      ? new Date(user.premiumExpiry).getTime()
-      : Date.now();
-    expiryDate = new Date(baseTime + planDurationDays * 24 * 60 * 60 * 1000);
+  // Purchase must have been made from this account (app sets obfuscatedAccountId = userId)
+  if (!verification.isMock && verification.obfuscatedExternalAccountId !== String(userId)) {
+    return res.status(403).json({ success: false, message: 'Subscription does not belong to this account.' });
   }
 
-  // Check if subscription is active
-  const isExpired = expiryDate.getTime() < Date.now();
-  const subState = verification.subscriptionState || (isExpired ? 'SUBSCRIPTION_STATE_EXPIRED' : 'SUBSCRIPTION_STATE_ACTIVE');
-
-  if (isExpired) {
+  // Always trust Google's expiry (license-tester periods are only minutes long).
+  // CANCELED = auto-renew off but still paid up until expiry.
+  const expiryDate = new Date(parseInt(verification.expiryTimeMillis, 10));
+  const subState = verification.subscriptionState || 'SUBSCRIPTION_STATE_ACTIVE';
+  const VALID_STATES = ['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD', 'SUBSCRIPTION_STATE_CANCELED'];
+  if (!VALID_STATES.includes(subState) || !(expiryDate.getTime() > Date.now())) {
     return res.status(400).json({
       success: false,
-      message: 'The Google Play subscription has already expired.',
+      message: 'The Google Play subscription is not active.',
+      subscriptionState: subState,
       expiryDate,
     });
   }
 
-  // 3. Acknowledge the subscription with Google Play
+  // 3. Acknowledge the subscription with Google Play (unacknowledged purchases are auto-refunded after 3 days)
   try {
-    await googlePlayService.acknowledgeSubscription(
-      packageName,
-      productId,
-      purchaseToken,
-      String(userId)
-    );
+    await googlePlayService.acknowledgeSubscription(packageName, productId, purchaseToken, String(userId));
   } catch (ackErr) {
     console.warn('⚠️ Subscription acknowledgment notice:', ackErr.message);
   }
 
-  // 4. Update / Save Entitlement Record
-  const entitlement = await Entitlement.findOneAndUpdate(
-    { purchaseToken },
-    {
+  // Never shorten a longer premium the user already has (e.g. a prepaid pass).
+  const currentExpiry = user.premiumExpiry ? new Date(user.premiumExpiry).getTime() : 0;
+  const premiumExpiry = new Date(Math.max(expiryDate.getTime(), currentExpiry));
+  const syncState = { subscriptionState: subState, expiryTime: expiryDate, autoRenewing: verification.autoRenewing ?? true };
+
+  // 4. Known token (app restores on every launch, or a duplicate request): only re-sync expiry.
+  //    No new Transaction / boost / notification.
+  const syncOnly = async (entitlement) => {
+    Object.assign(entitlement, syncState);
+    await entitlement.save();
+    const syncedUser = await User.findByIdAndUpdate(userId, { isPremium: true, premiumExpiry }, { new: true });
+    return res.status(200).json({ success: true, alreadyProcessed: true, message: 'Subscription synced', user: syncedUser, entitlement });
+  };
+  if (existingEntitlement) return syncOnly(existingEntitlement);
+
+  // 5. First grant — unique purchaseToken index guarantees only one request gets here.
+  let entitlement;
+  try {
+    entitlement = await Entitlement.create({
       user: userId,
       platform: 'google_play',
       packageName: googlePlayService.getPackageName(packageName),
@@ -221,32 +229,30 @@ export const verifySubscription = asyncHandler(async (req, res) => {
       productType: 'subscription',
       purchaseState: 'PURCHASED',
       acknowledgementState: 'ACKNOWLEDGED',
-      subscriptionState: subState,
+      ...syncState,
       purchaseTime: verification.purchaseTimeMillis ? new Date(parseInt(verification.purchaseTimeMillis, 10)) : new Date(),
-      expiryTime: expiryDate,
-      autoRenewing: verification.autoRenewing ?? true,
       environment: verification.isTest ? 'test' : 'production',
       rawVerificationData: verification.raw || verification,
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
+    });
+  } catch (err) {
+    if (err.code === 11000) return syncOnly(await Entitlement.findOne({ purchaseToken }));
+    throw err;
+  }
 
-  // 5. Update Transaction Audit Record
-  const transactionId = `GP_SUB_${Date.now()}`;
-  const subscriptionId = `SUB_${productId.toUpperCase()}_${String(userId).slice(-6)}`;
+  // 6. Transaction audit record. An active intro offer = the ₹1 / 3-day trial (Play Console offer price).
+  const isTrial = Boolean(verification.offerId);
   const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Hemsely User';
-
   const transaction = await Transaction.create({
-    transactionId,
-    subscriptionId,
+    transactionId: `GP_SUB_${Date.now()}`,
+    subscriptionId: `SUB_${productId.toUpperCase()}_${String(userId).slice(-6)}`,
     user: userId,
     userName,
     userEmail: user.email || `${user.phoneNumber || userId}@hemsely.com`,
     userPhone: user.phoneNumber || '',
     plan: plan?._id,
-    planName: planDisplayName,
-    durationDays: planDurationDays,
-    amount: verification.priceAmountMicros ? verification.priceAmountMicros / 1000000 : planAmount,
+    planName: isTrial ? 'Premium Trial (3 Days)' : planDisplayName,
+    durationDays: isTrial ? 3 : planDurationDays,
+    amount: isTrial ? 1 : verification.priceAmountMicros ? verification.priceAmountMicros / 1000000 : planAmount,
     currency: verification.priceCurrencyCode || 'INR',
     status: 'success',
     gateway: 'google_play',
@@ -257,23 +263,25 @@ export const verifySubscription = asyncHandler(async (req, res) => {
     productId,
   });
 
-  // 6. Activate Premium on User Profile & grant 1 free boost
+  // 7. Activate Premium on User Profile & grant 1 free boost
   const updatedUser = await User.findByIdAndUpdate(
     userId,
-    { isPremium: true, premiumExpiry: expiryDate, $inc: { boostCount: 1 } },
+    { isPremium: true, premiumExpiry, $inc: { boostCount: 1 } },
     { new: true, runValidators: true }
   );
 
   // Release user from Gender Queue if active
   await releaseFromQueue(userId);
 
-  // 7. Send In-App Notification
+  // 8. Send In-App Notification
   try {
     await Notification.create({
       user: userId,
       type: 'system',
-      title: 'Premium Subscription Activated! 🎉',
-      message: `Your Google Play Premium subscription is active until ${expiryDate.toLocaleDateString()}. Enjoy all VIP features!`,
+      title: isTrial ? 'Premium Trial Started! 🎉' : 'Premium Subscription Activated! 🎉',
+      message: isTrial
+        ? `Your 3-day Premium trial is active until ${expiryDate.toLocaleDateString()}. Your plan renews automatically after that.`
+        : `Your Google Play Premium subscription is active until ${expiryDate.toLocaleDateString()}. Enjoy all VIP features!`,
     });
   } catch (_) {}
 
@@ -469,6 +477,13 @@ export const getEntitlements = asyncHandler(async (req, res) => {
  * @access Public (Protected by Pub/Sub Auth / Secret Token)
  */
 export const handlePubSubWebhook = asyncHandler(async (req, res) => {
+  // Pub/Sub push URL must be .../webhook?token=<GOOGLE_PLAY_WEBHOOK_TOKEN>; otherwise anyone could forge revoke/expire events.
+  const webhookToken = process.env.GOOGLE_PLAY_WEBHOOK_TOKEN;
+  if (!webhookToken || req.query.token !== webhookToken) {
+    if (!webhookToken) console.error('❌ [Google Play RTDN] GOOGLE_PLAY_WEBHOOK_TOKEN is not set — rejecting notification');
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
   const notification = googlePlayService.parsePubSubNotification(req.body);
 
   if (!notification) {
@@ -512,10 +527,34 @@ export const handlePubSubWebhook = asyncHandler(async (req, res) => {
             entitlement.autoRenewing = verification.autoRenewing ?? true;
             await entitlement.save();
 
-            await User.findByIdAndUpdate(userId, {
+            const renewedUser = await User.findByIdAndUpdate(userId, {
               isPremium: true,
               premiumExpiry: newExpiry,
-            });
+            }, { new: true });
+
+            // Each autopay charge gets one revenue record (Pub/Sub may redeliver — dedupe on orderId).
+            if (notificationType === 2 && renewedUser && verification.orderId &&
+                !(await Transaction.exists({ gatewayOrderId: verification.orderId }))) {
+              await Transaction.create({
+                transactionId: `GP_RENEW_${Date.now()}`,
+                subscriptionId: `SUB_${String(subscriptionId).toUpperCase()}_${String(userId).slice(-6)}`,
+                user: userId,
+                userName: [renewedUser.firstName, renewedUser.lastName].filter(Boolean).join(' ') || 'Hemsely User',
+                userEmail: renewedUser.email || `${renewedUser.phoneNumber || userId}@hemsely.com`,
+                userPhone: renewedUser.phoneNumber || '',
+                planName: 'Premium (1 Month, Autopay)',
+                durationDays: 30,
+                amount: SUBSCRIPTION_RENEWAL_PRICE,
+                currency: 'INR',
+                status: 'success',
+                gateway: 'google_play',
+                gatewayOrderId: verification.orderId,
+                gatewayPaymentId: purchaseToken.slice(0, 32),
+                purchaseToken,
+                packageName: notification.packageName,
+                productId: subscriptionId,
+              });
+            }
 
             console.log(`✅ [Google Play RTDN] Subscription active/renewed for user ${userId} until ${newExpiry.toISOString()}`);
           } catch (renewErr) {

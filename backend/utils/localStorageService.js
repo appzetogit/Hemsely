@@ -61,6 +61,36 @@ export async function syncFileToRemoteVPS(buffer, folder, filename) {
   }
 }
 
+// Push every local upload that the live server is missing (sync is fire-and-forget, so any upload
+// made while the VPS was down / misconfigured never arrived). Runs on dev server start.
+// ponytail: sequential HEAD per file, fine for hundreds of files; keep a synced-manifest if it grows to thousands.
+export async function backfillUploadsToVPS() {
+  const vpsUrl = (process.env.VPS_SYNC_URL || process.env.VPS_MEDIA_URL || '').replace(/\/+$/, '');
+  const syncOn = ['true', '1'].includes(process.env.ENABLE_VPS_MEDIA_SYNC);
+  if (!syncOn || !vpsUrl || !process.env.MEDIA_SYNC_SECRET) return;
+  if (process.env.NODE_ENV === 'production' && !process.env.VPS_SYNC_URL) return;
+
+  const root = path.join(backendDir, 'public', 'uploads');
+  const dir = path.join(root, 'hemsely');
+  if (!fs.existsSync(dir)) return;
+
+  let pushed = 0, failed = 0;
+  for (const rel of fs.readdirSync(dir, { recursive: true })) {
+    const full = path.join(dir, rel);
+    if (!fs.statSync(full).isFile()) continue;
+    const relPath = path.relative(root, full).split(path.sep).join('/'); // hemsely/profiles/x.jpg
+    try {
+      const head = await fetch(`${vpsUrl}/uploads/${relPath}`, { method: 'HEAD', headers: { 'x-media-proxy': '1' } });
+      if (head.ok) continue;
+      const r = await syncFileToRemoteVPS(fs.readFileSync(full), path.posix.dirname(relPath), path.basename(full));
+      r.synced ? pushed++ : failed++;
+    } catch {
+      failed++;
+    }
+  }
+  console.log(`[VPS Media Backfill] pushed ${pushed}, failed ${failed}`);
+}
+
 export function uploadToLocal(buffer, options = {}) {
   return new Promise(async (resolve, reject) => {
     try {

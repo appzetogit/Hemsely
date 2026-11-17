@@ -60,6 +60,8 @@ const userSchema = new mongoose.Schema(
       address: { type: String, default: '' },
       city: { type: String, default: '' },
       state: { type: String, default: '' },
+      // Premium "passport": a manually chosen location that GPS sync must not overwrite
+      isPassport: { type: Boolean, default: false },
       coordinates: {
         type: {
           type: String,

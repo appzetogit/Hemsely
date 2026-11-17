@@ -125,7 +125,7 @@ export const likeUser = asyncHandler(async (req, res, next) => {
 
     // Fetch user details for notification titles and bodies
     const [liker, target] = await Promise.all([
-      User.findById(likedBy).select('firstName lastName profilePicture'),
+      User.findById(likedBy).select('firstName lastName profilePicture galleryImages').lean(),
       User.findById(likedUser).select('firstName lastName profilePicture'),
     ]);
 
@@ -180,7 +180,9 @@ export const likeUser = asyncHandler(async (req, res, next) => {
     ).catch(() => {});
 
     // 3. Socket emit for real-time foreground updates
-    emitToUser(likedUser, 'new_match', { match, otherUserId: likedBy, partnerName: likerName, partnerPhoto: liker?.profilePicture });
+    // matchedUser lets the passive side (who didn't just swipe) show the match popup too;
+    // the swiper already gets it from the API response, so it isn't sent to them.
+    emitToUser(likedUser, 'new_match', { match, otherUserId: likedBy, partnerName: likerName, partnerPhoto: liker?.profilePicture, matchedUser: liker });
     emitToUser(likedBy, 'new_match', { match, otherUserId: likedUser, partnerName: targetName, partnerPhoto: target?.profilePicture });
 
     return res.status(200).json({
@@ -247,6 +249,14 @@ export const unmatchUser = asyncHandler(async (req, res, next) => {
           { likedBy: targetObjId, likedUser: userObjId },
           { likedBy: uId, likedUser: tId },
           { likedBy: tId, likedUser: uId },
+        ],
+      });
+
+      // Delete the whole chat history between the two users
+      await Message.deleteMany({
+        $or: [
+          { sender: userObjId, receiver: targetObjId },
+          { sender: targetObjId, receiver: userObjId },
         ],
       });
 

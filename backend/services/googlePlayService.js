@@ -130,6 +130,7 @@ class GooglePlayService {
       const expiryTime = new Date(now + durationDays * 24 * 60 * 60 * 1000);
       return {
         isTest: true,
+        isMock: true,
         orderId: `GPA.DEV-MOCK-${now}`,
         packageName: pkg,
         productId: subscriptionId,
@@ -173,6 +174,8 @@ class GooglePlayService {
             autoRenewing: lineItem?.autoRenewingPlan?.autoRenewEnabled ?? true,
             expiryTimeMillis: String(expiryDate.getTime()),
             purchaseTimeMillis: String(data.startTime ? new Date(data.startTime).getTime() : Date.now()),
+            obfuscatedExternalAccountId: data.externalAccountIdentifiers?.obfuscatedExternalAccountId,
+            offerId: lineItem?.offerDetails?.offerId, // set while the intro (₹1 trial) offer is the active phase
             raw: data,
           };
         }

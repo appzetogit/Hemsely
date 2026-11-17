@@ -221,11 +221,19 @@ export const updateUserProfile = asyncHandler(async (req, res, next) => {
     const loc = updates.location;
     delete updates.location;
     const coords = Array.isArray(loc.coordinates) ? loc.coordinates : loc.coordinates?.coordinates;
-    if (Array.isArray(coords) && coords.length === 2 && coords.every(Number.isFinite)) {
+    const isPremiumUser = Boolean(user.isPremium || user.isSuperPremium || user.isSuperUser || user.isSuperSubscriber);
+    if (loc.isPassport === true && !isPremiumUser) {
+      return res.status(403).json({ success: false, message: 'Location change is a Premium feature' });
+    }
+    if (typeof loc.isPassport === 'boolean') updates['location.isPassport'] = loc.isPassport;
+    else if (user.location?.isPassport && !isPremiumUser) updates['location.isPassport'] = false; // premium expired
+    // Plain GPS syncs (no isPassport flag) must not overwrite an active passport location
+    const keepPassport = loc.isPassport === undefined && user.location?.isPassport && isPremiumUser;
+    if (!keepPassport && Array.isArray(coords) && coords.length === 2 && coords.every(Number.isFinite)) {
       updates['location.coordinates'] = { type: 'Point', coordinates: coords };
     }
     ['address', 'city', 'state'].forEach((k) => {
-      if (typeof loc[k] === 'string') updates[`location.${k}`] = loc[k];
+      if (!keepPassport && typeof loc[k] === 'string') updates[`location.${k}`] = loc[k];
     });
   }
 
@@ -317,8 +325,7 @@ export const submitSelfie = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const profileInput = req.user.profilePicture || (req.user.galleryImages && req.user.galleryImages[0]?.url) || null;
-  const result = await compareFacesWithAWS(profileInput, req.file.path, true);
+  const result = await compareFacesWithAWS(userPhotoInputs(req.user), req.file.buffer || req.file.path);
   const isVerified = Boolean(result.verified);
   const selfieStatus = isVerified ? 'approved' : 'pending';
 
@@ -341,6 +348,10 @@ export const submitSelfie = asyncHandler(async (req, res, next) => {
     user,
   });
 });
+
+// All of a user's photos (main + gallery) to match a selfie against
+const userPhotoInputs = (user) =>
+  [...new Set([user?.profilePicture, ...(user?.galleryImages || []).map((g) => g?.url)].filter(Boolean))];
 
 // @desc Verify selfie using AWS Rekognition Facial Recognition API
 // @route POST /api/users/selfie-verify-aws
@@ -392,15 +403,11 @@ export const verifySelfieAWS = asyncHandler(async (req, res, next) => {
     user.selfiePhoto = selfiePhotoPath;
   }
 
-  // Profile image input from user document
-  const profileInput = user.profilePicture || (user.galleryImages && user.galleryImages[0]?.url) || null;
-
-  // Extract frame color state (green vs red) when selfie was captured
-  const isFaceInFrame = req.body?.isFaceInFrame !== 'false' && req.body?.isFaceInFrame !== false;
+  const profileInput = user.profilePicture || null;
 
   try {
-    // Perform face matching via AWS Rekognition Service
-    const result = await compareFacesWithAWS(profileInput, selfieInput, isFaceInFrame);
+    // Match the selfie against all of the user's photos via AWS Rekognition
+    const result = await compareFacesWithAWS(userPhotoInputs(user), selfieInput);
 
     if (result.verified) {
       user.isVerified = true;
@@ -420,8 +427,8 @@ export const verifySelfieAWS = asyncHandler(async (req, res, next) => {
         user,
       });
     } else {
-      // If no face detected at all, reject immediately so user gets feedback to retake
-      if (result.noFaceDetected) {
+      // No face / multiple faces / face doesn't match photos -> reject so the user can retake
+      if (result.rejected || result.noFaceDetected) {
         user.isVerified = false;
         user.selfieStatus = 'rejected';
         user.selfiePhoto = selfiePhotoPath || user.selfiePhoto || profileInput;
@@ -431,9 +438,9 @@ export const verifySelfieAWS = asyncHandler(async (req, res, next) => {
         return res.status(200).json({
           success: true,
           verified: false,
-          noFaceDetected: true,
+          noFaceDetected: Boolean(result.noFaceDetected),
           selfieStatus: 'rejected',
-          similarity: 0,
+          similarity: result.similarity || 0,
           isMock: result.isMock,
           message: result.message || 'No human face detected in selfie photo. Please try again with a clear photo showing your face.',
           user,
@@ -918,10 +925,18 @@ export const reportUser = asyncHandler(async (req, res, next) => {
     (id) => id && id.toString() === reportedUserId.toString()
   );
 
-  if (!alreadyReported) {
-    user.reportedUsers.push(reportedUserId);
-    await user.save();
+  if (!Array.isArray(user.blockedUsers)) {
+    user.blockedUsers = [];
   }
+
+  const alreadyBlocked = user.blockedUsers.some(
+    (id) => id && id.toString() === reportedUserId.toString()
+  );
+
+  // Reporting a user also blocks them automatically
+  if (!alreadyReported) user.reportedUsers.push(reportedUserId);
+  if (!alreadyBlocked) user.blockedUsers.push(reportedUserId);
+  if (!alreadyReported || !alreadyBlocked) await user.save();
 
   const validCategories = [
     'spam',

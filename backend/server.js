@@ -2,6 +2,7 @@ import http from 'http';
 import { execSync } from 'child_process';
 import 'dotenv/config';
 import app from './app.js';
+import { backfillUploadsToVPS } from './utils/localStorageService.js';
 import connectDB from './config/database.js';
 import { initSocket } from './socket/index.js';
 
@@ -89,6 +90,7 @@ httpServer.listen(PORT, () => {
   retryCount = 0;
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  backfillUploadsToVPS().catch((e) => console.warn('[VPS Media Backfill]', e.message));
 });
 
 const gracefulShutdown = (signal, callback) => {
